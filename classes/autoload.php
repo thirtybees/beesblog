@@ -25,11 +25,7 @@ spl_autoload_register(
     function ($className) {
         if (!in_array($className, [
             'BeesBlogModule\\BeesBlogCategory',
-            'BeesBlogModule\\BeesBlogImageType',
-            'BeesBlogModule\\BeesBlogModuleFrontController',
-            'BeesBlogModule\\BeesBlogObjectModel',
             'BeesBlogModule\\BeesBlogPost',
-            'BeesBlogModule\\BeesBlogPostCategory',
             'BeesBlogModule\\BeesBlogTag',
         ])) {
             return false;
@@ -40,12 +36,8 @@ spl_autoload_register(
         }
 
         $className = str_replace('BeesBlogModule\\', '', $className);
-        if (file_exists(__DIR__.'/'.$className.'.php')) {
-            require_once $className.'.php';
+        require $className.'.php';
 
-            return true;
-        }
-
-        return false;
+        return true;
     }
 );
