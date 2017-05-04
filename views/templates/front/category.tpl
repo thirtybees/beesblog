@@ -58,7 +58,7 @@
 							{if $k === $pageNumber}
 								<li><span class="page-active">{$k|intval}</span></li>
 							{else}
-								{if $category->title}
+								{if Validate::isLoadedObject($category)}
 									{* TODO: replace this call *}
 									<li>
 										<a class="page-link" href="{BeesBlog::getBeesBlogLink('beesblog_category_pagination', ['page' => $k, 'cat_rewrite' => $category->link_rewrite])|escape:'htmlall':'UTF-8'}">
@@ -68,7 +68,7 @@
 								{else}
 									{* TODO: replace this call *}
 									<li>
-										<a class="page-link" href="{BeesBlog::getBeesBlogLink('beesblog_list_pagination', ['page' => $k, 'cat_rewrite' => $category->link_rewrite])|escape:'htmlall':'UTF-8'}">
+										<a class="page-link" href="{BeesBlog::getBeesBlogLink('beesblog_list_pagination', ['page' => $k])|escape:'htmlall':'UTF-8'}">
 											{$k|intval}
 										</a>
 									</li>
