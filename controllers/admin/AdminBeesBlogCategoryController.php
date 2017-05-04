@@ -22,7 +22,6 @@ if (!defined('_TB_VERSION_')) {
 }
 
 use BeesBlogModule\BeesBlogCategory;
-use BeesBlogModule\BeesBlogImageType;
 use BeesBlogModule\BeesBlogPost;
 
 /**
@@ -37,20 +36,31 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
      */
     public function __construct()
     {
+        // This is the main table we are going to use for this controller
         $this->table = BeesBlogCategory::TABLE;
+
+        // This is the main class we are going to use for this AdminController
         $this->className = 'BeesBlogModule\\BeesBlogCategory';
 
+        // Shop bootstrap elements, not the old crappy interface
         $this->bootstrap = true;
 
+        // Retrieve the context from a static context, just because
         $this->context = \Context::getContext();
 
+        // Only display this page in single store context
         $this->multishop_context = Shop::CONTEXT_SHOP;
+
+        // Make sure that when we save the `BeesBlogCategory` ObjectModel, the `_shop` table is set, too (primary => id_shop relation)
+        Shop::addTableAssociation(BeesBlogCategory::TABLE, ['type' => 'shop']);
+
+        // We are going to use multilang ObjectModels but there is just one language to display
         $this->lang = true;
 
-        parent::__construct();
+        // Set the fields_list to display in fields mode
         $this->fields_list = [
             BeesBlogCategory::PRIMARY => [
-                'title' => $this->l('Id'),
+                'title' => $this->l('ID'),
                 'width' => 100,
                 'type'  => 'text',
             ],
@@ -70,6 +80,7 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
             ],
         ];
 
+        // With all this info set, it's about time to call the parent constructor
         parent::__construct();
     }
 
@@ -117,7 +128,7 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
                     'lang'     => true,
                     'size'     => 60,
                     'required' => false,
-                    'desc'     => $this->l('Enter Your Category Meta Keyword. Separated by comma(,)'),
+                    'desc'     => $this->l('Enter your category`s meta keywords. Separated by commas (,)'),
                 ],
                 [
                     'type'     => 'textarea',
@@ -127,11 +138,11 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
                     'cols'     => 62,
                     'lang'     => true,
                     'required' => false,
-                    'desc'     => $this->l('Enter Your Category Meta Description'),
+                    'desc'     => $this->l('Enter your category meta description'),
                 ],
                 [
                     'type'     => 'text',
-                    'label'    => $this->l('Link Rewrite'),
+                    'label'    => $this->l('URL rewrite'),
                     'name'     => 'link_rewrite',
                     'size'     => 60,
                     'lang'     => true,
@@ -183,9 +194,12 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
      */
     public function renderList()
     {
+        // Add row actions for the list
         $this->addRowAction('edit');
         $this->addRowAction('delete');
 
+        // Call the parent renderList function afterwards, because here
+        // we are actually going to render
         return parent::renderList();
     }
 
@@ -196,94 +210,7 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
      */
     public function postProcess()
     {
-        if (\Tools::isSubmit('delete'.BeesBlogCategory::TABLE) && \Tools::getValue(BeesBlogCategory::PRIMARY)) {
-            $idLang = (int) \Context::getContext()->language->id;
-            $catpost = (int) BeesBlogPost::getPostCountByCategory($idLang, \Tools::getValue(BeesBlogCategory::PRIMARY));
-            if ((int) $catpost != 0) {
-                $this->errors[] = \Tools::displayError('You need to delete all posts associate with this category .');
-            } else {
-                $blogCategory = new BeesBlogCategory((int) \Tools::getValue(BeesBlogCategory::PRIMARY));
-                if (!$blogCategory->delete()) {
-                    $this->errors[] = \Tools::displayError('An error occurred while deleting the object.').' <b>'.$this->table.' ('.\Db::getInstance()->getMsgError().')</b>';
-                } else {
-                    \Hook::exec('actionsbdeletecat', ['BlogCategory' => $blogCategory]);
-                    \Tools::redirectAdmin($this->context->link->getAdminLink('AdminBeesBlogCategory'));
-                }
-            }
-        } elseif (\Tools::isSubmit('submitAdd'.BeesBlogCategory::TABLE)) {
-            parent::validateRules();
-            if (count($this->errors)) {
-                return;
-            }
-            if (!$idBeesBlogCategory = (int) \Tools::getValue(BeesBlogCategory::PRIMARY)) {
-                $blogCategory = new BeesBlogCategory();
-
-                foreach (\Language::getLanguages(false) as $language) {
-                    $title = str_replace('"', '', htmlspecialchars_decode(html_entity_decode(\Tools::getValue('meta_title_'.$language['id_lang']))));
-                    $blogCategory->meta_title[$language['id_lang']] = $title;
-                    $blogCategory->meta_keyword[$language['id_lang']] = \Tools::getValue('meta_keyword_'.$language['id_lang']);
-                    $blogCategory->meta_description[$language['id_lang']] = \Tools::getValue('meta_description_'.$language['id_lang']);
-                    $blogCategory->description[$language['id_lang']] = \Tools::getValue('description_'.$language['id_lang']);
-                    if (\Tools::getValue('link_rewrite_'.$language['id_lang']) == '' && \Tools::getValue('link_rewrite_'.$language['id_lang']) == null) {
-                        $blogCategory->link_rewrite[$language['id_lang']] = str_replace(
-                            [' ', ':', '\\', '/', '#', '!', '*', '.', '?'],
-                            '-',
-                            \Tools::getValue('meta_title_'.$language['id_lang'])
-                        );
-                    } else {
-                        $blogCategory->link_rewrite[$language['id_lang']] = str_replace(
-                            [' ', ':', '\\', '/', '#', '!', '*', '.', '?'],
-                            '-',
-                            \Tools::getValue('link_rewrite_'.$language['id_lang'])
-                        );
-                    }
-                }
-
-                $blogCategory->id_parent = \Tools::getValue('id_parent');
-                $blogCategory->position = \Tools::getValue('position');
-                $blogCategory->desc_limit = \Tools::getValue('desc_limit');
-                $blogCategory->active = \Tools::getValue('active');
-                $blogCategory->date_add = date('Y-m-d H:i:s');
-                $blogCategory->date_upd = date('Y-m-d H:i:s');
-
-                if (!$blogCategory->save()) {
-                    $this->errors[] = \Db::getInstance()->getMsgError();
-                    $this->errors[] = \Tools::displayError('An error has occurred: Can\'t save the current object');
-                } else {
-                    \Hook::exec('actionsbnewcat', ['BlogCategory' => $blogCategory]);
-                    $this->processImageCategory($_FILES, $blogCategory->id);
-                    \Tools::redirectAdmin($this->context->link->getAdminLink('AdminBeesBlogCategory'));
-                }
-            } elseif ($idBeesBlogCategory = \Tools::getValue(BeesBlogCategory::PRIMARY)) {
-                $blogCategory = new BeesBlogCategory($idBeesBlogCategory);
-                $languages = \Language::getLanguages(false);
-                foreach ($languages as $language) {
-                    $title = str_replace('"', '', htmlspecialchars_decode(html_entity_decode(\Tools::getValue('meta_title_'.$language['id_lang']))));
-                    $blogCategory->meta_title[$language['id_lang']] = $title;
-                    $blogCategory->meta_keyword[$language['id_lang']] = \Tools::getValue('meta_keyword_'.$language['id_lang']);
-                    $blogCategory->meta_description[$language['id_lang']] = \Tools::getValue('meta_description_'.$language['id_lang']);
-                    $blogCategory->description[$language['id_lang']] = \Tools::getValue('description_'.$language['id_lang']);
-                    $blogCategory->link_rewrite[$language['id_lang']] = str_replace(
-                        [' ', ':', '\\', '/', '#', '!', '*', '.', '?'],
-                        '-',
-                        \Tools::getValue('link_rewrite_'.$language['id_lang'])
-                    );
-                }
-
-                $blogCategory->id_parent = \Tools::getValue('id_parent');
-                $blogCategory->position = \Tools::getValue('position');
-                $blogCategory->desc_limit = \Tools::getValue('desc_limit');
-                $blogCategory->active = \Tools::getValue('active');
-                $blogCategory->date_upd = date('y-m-d H:i:s');
-
-                if (!$blogCategory->update()) {
-                    $this->errors[] = \Tools::displayError('An error occurred while updating an object.').' <b>'.$this->table.' ('.\Db::getInstance()->getMsgError().')</b>';
-                } else {
-                    \Hook::exec('actionsbupdatecat', ['BlogCategory' => $blogCategory]);
-                }
-                $this->processImageCategory($_FILES, $blogCategory->id_bees_blog_category);
-            }
-        } elseif (\Tools::isSubmit('status'.BeesBlogCategory::TABLE) && \Tools::getValue(BeesBlogCategory::PRIMARY)) {
+        if (\Tools::isSubmit('status'.BeesBlogCategory::TABLE) && \Tools::getValue(BeesBlogCategory::PRIMARY)) {
             if ($this->tabAccess['edit'] === '1') {
                 if (\Validate::isLoadedObject($object = $this->loadObject())) {
                     if ($object->toggleStatus()) {
@@ -302,6 +229,8 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
         } elseif (\Tools::isSubmit(BeesBlogCategory::TABLE.'Orderby') && \Tools::isSubmit(BeesBlogCategory::TABLE.'Orderway')) {
             $this->_defaultOrderBy = \Tools::getValue(BeesBlogCategory::TABLE.'Orderby');
             $this->_defaultOrderWay = \Tools::getValue(BeesBlogCategory::TABLE.'Orderway');
+        } else {
+            parent::postProcess();
         }
     }
 
@@ -332,7 +261,7 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
                         @unlink(__DIR__.'/'.\Configuration::get('BLOCKBANNER_IMG'));
                     }
 
-                    $imageTypes = BeesBlogImageType::getAllImagesFromType('category');
+                    $imageTypes = ImageType::getAllImagesFromType('category');
                     foreach ($imageTypes as $imageType) {
                         $dir = _PS_MODULE_DIR_.'beesblog/images/category/'.$id.'-'.stripslashes($imageType['type_name']).'.jpg';
                         if (file_exists($dir)) {
@@ -352,5 +281,51 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
         }
 
         return '';
+    }
+
+    public function processAdd()
+    {
+        if (Tools::isSubmit(BeesBlogCategory::PRIMARY)) {
+            return false;
+        }
+
+        $blogCategory = new BeesBlogCategory();
+        $this->copyFromPost($blogCategory, $this->table);
+        $idLangDefault = (int) Configuration::get('PS_LANG_DEFAULT');
+        foreach (BeesBlogCategory::$definition['fields'] as $name => $field) {
+            if (isset($field['lang']) && $field['lang']) {
+                foreach (Language::getLanguages() as $language) {
+                    if ((int) $language['id_lang'] !== $idLangDefault) {
+                        $blogCategory->{$name}[$language['id_lang']] = $blogCategory->{$name}[$idLangDefault];
+                    }
+                }
+            }
+        }
+
+        if (!$blogCategory->id_parent) {
+            $blogCategory->id_parent = 0;
+        }
+        if (!$blogCategory->position) {
+            $blogCategory->position = 0;
+        }
+        $blogCategory->id_shop = (int) Context::getContext()->shop->id;
+
+        return $blogCategory->add();
+    }
+
+    public function processDelete()
+    {
+        $idLang = (int) \Context::getContext()->language->id;
+        $postCount = (int) BeesBlogPost::getPostCountByCategory($idLang, \Tools::getValue(BeesBlogCategory::PRIMARY));
+        if ((int) $postCount != 0) {
+            $this->errors[] = $this->l('You need to delete all posts associate with this category .');
+        } else {
+            $blogCategory = new BeesBlogCategory((int) \Tools::getValue(BeesBlogCategory::PRIMARY));
+            if (!$blogCategory->delete()) {
+                $this->errors[] = $this->l('An error occurred while deleting the object.').' <strong>'.$this->table.' ('.\Db::getInstance()->getMsgError().')</strong>';
+            } else {
+                \Tools::redirectAdmin($this->context->link->getAdminLink('AdminBeesBlogCategory'));
+            }
+        }
     }
 }

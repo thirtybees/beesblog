@@ -33,16 +33,14 @@ class BeesBlogPost extends \ObjectModel
     const TABLE = 'bees_blog_post';
     const LANG_TABLE = 'bees_blog_post_lang';
     const SHOP_TABLE = 'bees_blog_post_shop';
+    const IMAGE_TYPE = 'beesblog_post';
     public static $definition = [
         'table'          => self::TABLE,
         'primary'        => self::PRIMARY,
-        'multishop'      => true,
         'multilang'      => true,
-        'multilang_shop' => true,
         'fields'         => [
             'active'            => ['type' => self::TYPE_BOOL,                   'validate' => 'isBool',        'required' => true,  'default' => '1',                   'db_type' => 'TINYINT(1) UNSIGNED'],
-            'available'         => ['type' => self::TYPE_BOOL,                   'validate' => 'isBool',        'required' => true,  'default' => '1',                   'db_type' => 'TINYINT(1) UNSIGNED'],
-            'comments_allowed'  => ['type' => self::TYPE_BOOL,                   'validate' => 'isBool',        'required' => true,                                      'db_type' => 'TINYINT(1) UNSIGNED'],
+            'comments_enabled'  => ['type' => self::TYPE_BOOL,                   'validate' => 'isBool',        'required' => true,                                      'db_type' => 'TINYINT(1) UNSIGNED'],
             'date_add'          => ['type' => self::TYPE_DATE,                   'validate' => 'isDate',        'required' => true,  'default' => '1970-01-01 00:00:00', 'db_type' => 'DATETIME'],
             'date_upd'          => ['type' => self::TYPE_DATE,                   'validate' => 'isDate',        'required' => true,  'default' => '1970-01-01 00:00:00', 'db_type' => 'DATETIME'],
             'published'         => ['type' => self::TYPE_DATE,                   'validate' => 'isDate',        'required' => true,  'default' => '1970-01-01 00:00:00', 'db_type' => 'DATETIME'],
@@ -70,8 +68,6 @@ class BeesBlogPost extends \ObjectModel
     public $position = 0;
     /** @var bool $active */
     public $active = true;
-    /** @var bool $available */
-    public $available;
     /** @var string $date_add */
     public $date_add;
     /** @var string $date_upd */
@@ -82,8 +78,8 @@ class BeesBlogPost extends \ObjectModel
     public $short_description;
     /** @var int $viewed */
     public $viewed;
-    /** @var bool $comments_allowed */
-    public $comments_allowed = true;
+    /** @var bool $comments_enabled */
+    public $comments_enabled = true;
     /** @var int $post_type */
     public $post_type;
     /** @var string $meta_title */
@@ -98,102 +94,45 @@ class BeesBlogPost extends \ObjectModel
     public $content;
     /** @var string $link_rewrite */
     public $link_rewrite;
-    /** @var bool $lang_active */
+    /** @var array $lang_active */
     public $lang_active;
     /** @var bool $is_featured */
     public $is_featured;
     // @codingStandardsIgnoreEnd
 
     /**
-     * Get raw BeesBlogPost by ID and Language ID
+     * BeesBlogPost constructor.
      *
-     * @param int      $idBeesBlogPost BeesBlogPost ID
-     * @param int|null $idLang         Language ID
-     *
-     * @return bool|array
+     * @param int|null $id
+     * @param int|null $idLang
+     * @param int|null $idShop
      */
-    public static function getRaw($idBeesBlogPost, $idLang = null)
+    public function __construct($id = null, $idLang = null, $idShop = null)
     {
-        if ($idLang == null) {
-            $idLang = (int) \Context::getContext()->language->id;
-        }
+        parent::__construct($id, $idLang, $idShop);
 
-        $idShop = (int) \Context::getContext()->shop->id;
-        $sql = new \DbQuery();
-        $sql->select('*');
-        $sql->from(self::TABLE, 'sbp');
-        $sql->innerJoin(self::LANG_TABLE, 'sbpl', 'sbp.`'.self::PRIMARY.'` = sbpl.`'.self::PRIMARY.'`');
-        $sql->innerJoin(self::SHOP_TABLE, 'sbps', 'sbp.`'.self::PRIMARY.'` = sbps.`'.self::PRIMARY.'`');
-        $sql->where('sbpl.`id_lang` = '.(int) $idLang);
-        $sql->where('sbpl.`lang_active` = 1');
-        $sql->where('sbps.`id_shop` = '.(int) $idShop);
-        $sql->where('sbp.`'.self::PRIMARY.'` = '.(int) $idBeesBlogPost);
-        $sql->where('sbp.`active` = 1');
-        if (\Context::getContext()->customer->email !== 'info@thirtybees.com') {
-            $sql->where('sbp.`date_add` < \''.date('Y-m-d H:i:s').'\'');
-        }
-
-        return \Db::getInstance(_PS_USE_SQL_SLAVE_)->getRow($sql);
-    }
-
-    /**
-     * Get all BeesBlogPosts (raw)
-     *
-     * @param int|null $idLang Language ID
-     * @param int|bool $offset Offset
-     * @param int|bool $limit  Limit
-     *
-     * @return array
-     */
-    public static function getAllPosts($idLang = null, $offset = false, $limit = false)
-    {
-        if ($idLang == null) {
-            $idLang = (int) \Context::getContext()->language->id;
-        }
-        $idShop = (int) \Context::getContext()->shop->id;
-
-        if (!$offset) {
-            $offset = 0;
-        }
-
-        if (!$limit) {
-            $limit = 5;
-        }
-
-        $sql = new \DbQuery();
-        $sql->select('*');
-        $sql->from(self::TABLE, 'sbp');
-        $sql->innerJoin(self::LANG_TABLE, 'sbpl', 'sbp.`'.self::PRIMARY.'` = sbpl.`'.self::PRIMARY.'`');
-        $sql->innerJoin(self::SHOP_TABLE, 'sbps', 'sbp.`'.self::PRIMARY.'` = sbps.`'.self::PRIMARY.'`');
-        $sql->where('sbpl.`id_lang` = '.(int) $idLang);
-        $sql->where('sbps.`id_shop` = '.(int) $idShop);
-        $sql->where('sbp.`active` = 1');
-        $sql->where('sbpl.`lang_active` = 1');
-
-        // FIXME: check admin accounts
-//        if (\Context::getContext()->customer->email !== 'info@thirtybees.com') {
-//            $sql->where('sbp.`date_add` < \''.date('Y-m-d H:i:s').'\'');
-//        }
-
-        $sql->orderBy('sbp.`'.self::PRIMARY.'` DESC');
-        $sql->limit((int) $limit, (int) $offset);
-
-        return \Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($sql);
+        $this->image_dir = _PS_IMG_DIR_.'/beesblog/'.static::IMAGE_TYPE;
     }
 
     /**
      * Get BeesBlogPost count
      *
-     * @param int|null $idLang Language ID
+     * @param int|null       $idLang   Language ID
+     * @param \Employee|null $employee Employee object
      *
      * @return int BeesBlogPost count
      */
-    public static function getPostCount($idLang = null)
+    public static function getPostCount($idLang = null, \Employee $employee = null)
     {
         if ($idLang == null) {
             $idLang = (int) \Context::getContext()->language->id;
         }
         $idShop = (int) \Context::getContext()->shop->id;
+        $allowedProfiles = json_decode(\Configuration::get(\BeesBlog::ALLOWED_PROFILES), false, 2);
+        if (!is_array($allowedProfiles)) {
+            $allowedProfiles = [];
+        }
+
         $sql = new \DbQuery();
         $sql->select('count(*)');
         $sql->from(self::TABLE, 'sbp');
@@ -203,7 +142,7 @@ class BeesBlogPost extends \ObjectModel
         $sql->where('sbpl.`lang_active` = 1');
         $sql->where('sbps.`id_shop` = '.(int) $idShop);
         $sql->where('sbp.`active` = 1');
-        if (\Context::getContext()->customer->email !== 'info@thirtybees.com') {
+        if (\Validate::isLoadedObject($employee) && in_array($employee->id_profile, $allowedProfiles)) {
             $sql->where('sbp.`date_add` < \''.date('Y-m-d H:i:s').'\'');
         }
 
@@ -213,12 +152,14 @@ class BeesBlogPost extends \ObjectModel
     /**
      * Get BeesBlogPost count by BeesBlogCategory
      *
+     * @param int      $idBeesBlogCategory BeesBlogCategory ID
      * @param int|null $idLang             Language ID
-     * @param int|null $idBeesBlogCategory BeesBlogCategory ID
      *
      * @return bool|int
+     *
+     * @since 1.0.0
      */
-    public static function getPostCountByCategory($idLang = null, $idBeesBlogCategory = null)
+    public static function getPostCountByCategory($idBeesBlogCategory, $idLang = null)
     {
         if ($idLang == null) {
             $idLang = (int) \Context::getContext()->language->id;
@@ -228,7 +169,7 @@ class BeesBlogPost extends \ObjectModel
         }
         $idShop = (int) \Context::getContext()->shop->id;
         $sql = new \DbQuery();
-        $sql->select('*');
+        $sql->select('COUNT(*)');
         $sql->from(self::TABLE, 'sbp');
         $sql->innerJoin(self::LANG_TABLE, 'sbpl', 'sbp.`'.self::PRIMARY.'` = sbpl.`'.self::PRIMARY.'`');
         $sql->innerJoin(self::SHOP_TABLE, 'sbps', 'sbp.`'.self::PRIMARY.'` = sbps.`'.self::PRIMARY.'`');
@@ -240,11 +181,12 @@ class BeesBlogPost extends \ObjectModel
             $sql->where('sbp.`date_add` < \''.date('Y-m-d H:i:s').'\'');
         }
         $sql->where('sbp.`id_category` = '.(int) $idBeesBlogCategory);
-        if (!$posts = \Db::getInstance()->executeS($sql)) {
+        if (!$posts = \Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql)) {
             return false;
         }
 
-        return count($posts);
+
+        return $posts;
     }
 
     /**
@@ -1064,8 +1006,8 @@ class BeesBlogPost extends \ObjectModel
     {
         $sql = new \DbQuery();
         $sql->select('sbpl.`lang_active`');
-        $sql->from(self::LANG_TABLE, 'sbpl');
-        $sql->where('sbpl.`'.self::PRIMARY.'` = '.(int) $idBeesBlogPost);
+        $sql->from(static::LANG_TABLE, 'sbpl');
+        $sql->where('sbpl.`'.static::PRIMARY.'` = '.(int) $idBeesBlogPost);
         $sql->where('sbpl.`id_lang` = '.(int) $idLang);
 
         return \Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql);

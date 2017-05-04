@@ -28,74 +28,72 @@ if (!defined('_TB_VERSION_')) {
  */
 class BeesBlogCategory extends \ObjectModel
 {
-    // @codingStandardsIgnoreStart
-    /** @var int $id_bees_blog_category */
-    public $id_bees_blog_category;
-
-    /** @var int $id_parent */
-    public $id_parent;
-
-    /** @var int $position */
-    public $position;
-
-    /** @var int $desc_limit */
-    public $desc_limit;
-
-    /** @var bool $active */
-    public $active = true;
-
-    /** @var string $date_add */
-    public $date_add;
-
-    /** @var string $date_upd */
-    public $date_upd;
-
-    /** @var string $meta_title */
-    public $meta_title;
-
-    /** @var string $meta_keyword */
-    public $meta_keyword;
-
-    /** @var string $meta_description */
-    public $meta_description;
-
-    /** @var string $description */
-    public $description;
-
-    /** @var string $link_rewrite */
-    public $link_rewrite;
-    // @codingStandardsIgnoreEnd
-
     const TABLE = 'bees_blog_category';
     const PRIMARY = 'id_bees_blog_category';
     const LANG_TABLE = 'bees_blog_category_lang';
     const SHOP_TABLE = 'bees_blog_category_shop';
+    const IMAGE_TYPE = 'beesblog_category';
 
+    // @codingStandardsIgnoreStart
     public static $definition = [
         'table'          => self::TABLE,
         'primary'        => self::PRIMARY,
-        'multishop'      => true,
         'multilang'      => true,
-        'multilang_shop' => true,
         'fields'         => [
             'id_parent'        => ['type' => self::TYPE_INT,                    'validate' => 'isUnsignedInt', 'required' => true, 'default' => '0',                   'db_type' => 'INT(11) UNSIGNED'],
             'position'         => ['type' => self::TYPE_INT,                    'validate' => 'isUnsignedInt', 'required' => true, 'default' => '1',                   'db_type' => 'INT(11) UNSIGNED'],
-            'desc_limit'       => ['type' => self::TYPE_INT,                    'validate' => 'isUnsignedInt', 'required' => true, 'default' => '160',                 'db_type' => 'INT(11) UNSIGNED'],
             'active'           => ['type' => self::TYPE_BOOL,                   'validate' => 'isBool',        'required' => true, 'default' => '1',                   'db_type' => 'TINYINT(1)'],
             'date_add'         => ['type' => self::TYPE_DATE,                   'validate' => 'isString',      'required' => true, 'default' => '1970-01-01 00:00:00', 'db_type' => 'DATETIME'],
             'date_upd'         => ['type' => self::TYPE_DATE,                   'validate' => 'isString',      'required' => true, 'default' => '1970-01-01 00:00:00', 'db_type' => 'DATETIME'],
             'meta_title'       => ['type' => self::TYPE_STRING, 'lang' => true, 'validate' => 'isString',      'required' => true,                                     'db_type' => 'VARCHAR(255)'],
             'meta_keyword'     => ['type' => self::TYPE_STRING, 'lang' => true, 'validate' => 'isString',      'required' => false,                                    'db_type' => 'VARCHAR(255)'],
             'meta_description' => ['type' => self::TYPE_STRING, 'lang' => true, 'validate' => 'isString',      'required' => false,                                    'db_type' => 'VARCHAR(512)'],
-            'description'      => ['type' => self::TYPE_HTML,   'lang' => true, 'validate' => 'isCleanHtml',   'required' => true,                                     'db_type' => 'TEXT'],
+            'description'      => ['type' => self::TYPE_HTML,   'lang' => true, 'validate' => 'isCleanHtml',   'required' => false,                                    'db_type' => 'TEXT'],
             'link_rewrite'     => ['type' => self::TYPE_STRING, 'lang' => true, 'validate' => 'isString',      'required' => true,                                     'db_type' => 'VARCHAR(256)'],
         ],
     ];
+    /** @var int $id_bees_blog_category */
+    public $id_bees_blog_category;
+    /** @var int $id_parent */
+    public $id_parent;
+    /** @var int $position */
+    public $position;
+    /** @var bool $active */
+    public $active = true;
+    /** @var string $date_add */
+    public $date_add;
+    /** @var string $date_upd */
+    public $date_upd;
+    /** @var array $meta_title */
+    public $meta_title;
+    /** @var array $meta_keyword */
+    public $meta_keyword;
+    /** @var array $meta_description */
+    public $meta_description;
+    /** @var array $description */
+    public $description;
+    /** @var array $link_rewrite */
+    public $link_rewrite;
+    // @codingStandardsIgnoreEnd
+
+    /**
+     * BeesBlogPost constructor.
+     *
+     * @param int|null $id
+     * @param int|null $idLang
+     * @param int|null $idShop
+     */
+    public function __construct($id = null, $idLang = null, $idShop = null)
+    {
+        parent::__construct($id, $idLang, $idShop);
+
+        $this->image_dir = _PS_IMG_DIR_.'/beesblog/'.static::IMAGE_TYPE;
+    }
 
     /**
      * @param int|null $idLang Language ID
      *
-     * @return self|false
+     * @return BeesBlogCategory|false
      */
     public static function getRootCategory($idLang = null)
     {
@@ -106,16 +104,16 @@ class BeesBlogCategory extends \ObjectModel
 
         $sql = new \DbQuery();
         $sql->select('*');
-        $sql->from(self::TABLE, 'sbc');
+        $sql->from(static::TABLE, 'sbc');
         $sql->innerJoin(
-            self::LANG_TABLE,
+            static::LANG_TABLE,
             'sbcl',
-            'sbc.`'.self::PRIMARY.'` = sbcl.`'.self::PRIMARY.'`'
+            'sbc.`'.static::PRIMARY.'` = sbcl.`'.static::PRIMARY.'`'
         );
         $sql->innerJoin(
-            self::SHOP_TABLE,
+            static::SHOP_TABLE,
             'sbcs',
-            'sbc.`'.self::PRIMARY.'` = sbcs.`'.self::PRIMARY.'`'
+            'sbc.`'.static::PRIMARY.'` = sbcs.`'.static::PRIMARY.'`'
         );
         $sql->where('sbcl.`id_lang` = '.(int) $idLang);
         $sql->where('sbcs.`id_shop` = '.(int) $idShop);
@@ -132,29 +130,15 @@ class BeesBlogCategory extends \ObjectModel
     }
 
     /**
-     * @return array|bool|false|null|\PDOStatement
-     */
-    public static function getCatImage()
-    {
-        $sql = new \DbQuery();
-        $sql->select(self::PRIMARY);
-        $sql->from(self::TABLE);
-        if (!$result = \Db::getInstance()->executeS($sql)) {
-            return false;
-        }
-
-        return $result;
-    }
-
-    /**
      * Get BeesBlogCategory
      *
      * @param bool     $active Active
      * @param int|null $idLang Language ID
+     * @param bool     $count  Count
      *
-     * @return array|false|null|\PDOStatement
+     * @return array|int|false|null|\PDOStatement
      */
-    public static function getAllCategories($active = true, $idLang = null)
+    public static function getAllCategories($active = true, $idLang = null, $count = false)
     {
         if (empty($idLang)) {
             $idLang = (int) \Context::getContext()->language->id;
@@ -163,13 +147,21 @@ class BeesBlogCategory extends \ObjectModel
         $idShop = (int) \Context::getContext()->shop->id;
 
         $sql = new \DbQuery();
-        $sql->select('*');
-        $sql->from(self::TABLE, 'sbc');
-        $sql->innerJoin(self::LANG_TABLE, 'sbcl', 'sbc.`'.self::PRIMARY.'` = sbcl.`'.self::PRIMARY.'`');
-        $sql->innerJoin(self::SHOP_TABLE, 'sbcs', 'sbc.`'.self::PRIMARY.'` = sbcs.`'.self::PRIMARY.'`');
+        if ($count) {
+            $sql->select('COUNT(*)');
+        } else {
+            $sql->select('*');
+        }
+        $sql->from(static::TABLE, 'sbc');
+        $sql->innerJoin(static::LANG_TABLE, 'sbcl', 'sbc.`'.static::PRIMARY.'` = sbcl.`'.static::PRIMARY.'`');
+        $sql->innerJoin(static::SHOP_TABLE, 'sbcs', 'sbc.`'.static::PRIMARY.'` = sbcs.`'.static::PRIMARY.'`');
         $sql->where('sbcl.`id_lang` = '.(int) $idLang);
         $sql->where('sbcs.`id_shop` = '.(int) $idShop);
         $sql->where('sbc.`active` = '.(int) $active);
+
+        if ($count) {
+            return (int) \Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql);
+        }
 
         return \ObjectModel::hydrateCollection(__CLASS__, \Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($sql), $idLang);
     }
@@ -228,13 +220,13 @@ class BeesBlogCategory extends \ObjectModel
 
         $sql = new \DbQuery();
         $sql->select('*');
-        $sql->from(self::TABLE, 'sbc');
-        $sql->innerJoin(self::LANG_TABLE, 'smbcl', 'sbc.`'.self::PRIMARY.'` = sbcl.`'.self::PRIMARY.'`');
-        $sql->innerJoin(self::SHOP_TABLE, 'sbcs', 'sbc.`'.self::PRIMARY.'` = sbcs.`'.self::PRIMARY.'`');
+        $sql->from(static::TABLE, 'sbc');
+        $sql->innerJoin(static::LANG_TABLE, 'smbcl', 'sbc.`'.static::PRIMARY.'` = sbcl.`'.static::PRIMARY.'`');
+        $sql->innerJoin(static::SHOP_TABLE, 'sbcs', 'sbc.`'.static::PRIMARY.'` = sbcs.`'.static::PRIMARY.'`');
         $sql->where('sbcl.`id_lang` = '.(int) $idLang);
         $sql->where('sbcs.`id_shop` = '.(int) $idShop);
         $sql->where('sbc.`active` = 1');
-        $sql->where('sbc.`'.self::PRIMARY.'` = '.(int) $idBeesBlogCategory);
+        $sql->where('sbc.`'.static::PRIMARY.'` = '.(int) $idBeesBlogCategory);
         $result = \Db::getInstance(_PS_USE_SQL_SLAVE_)->getRow($sql);
 
         if ($result['meta_title'] == '' && $result['meta_title'] == null) {
@@ -278,10 +270,10 @@ class BeesBlogCategory extends \ObjectModel
             $idShop = (int) \Context::getContext()->shop->id;
         }
         $sql = new \DbQuery();
-        $sql->select('sbc.`'.self::PRIMARY.'`');
-        $sql->from(self::TABLE, 'sbc');
-        $sql->innerJoin(self::LANG_TABLE, 'sbcl', 'sbc.`'.self::PRIMARY.'` = sbcl.`'.self::PRIMARY.'`');
-        $sql->innerJoin(self::SHOP_TABLE, 'sbcs', 'sbc.`'.self::PRIMARY.'` = sbcs.`'.self::PRIMARY.'`');
+        $sql->select('sbc.`'.static::PRIMARY.'`');
+        $sql->from(static::TABLE, 'sbc');
+        $sql->innerJoin(static::LANG_TABLE, 'sbcl', 'sbc.`'.static::PRIMARY.'` = sbcl.`'.static::PRIMARY.'`');
+        $sql->innerJoin(static::SHOP_TABLE, 'sbcs', 'sbc.`'.static::PRIMARY.'` = sbcs.`'.static::PRIMARY.'`');
         $sql->where('sbcl.`id_lang` = '.(int) $idLang);
         $sql->where('sbcs.`id_shop` = '.(int) $idShop);
         $sql->where('sbc.`active` = '.(int) $active);
