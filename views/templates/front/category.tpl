@@ -18,7 +18,11 @@
 {capture name=path}
 	<a href="{$blogHome|escape:'htmlall':'UTF-8'}">{l s='Blog' mod='beesblog'}</a>
 	{if $totalPostsOnThisPage > 0}
-		<span class="navigation-pipe">{$navigationPipe|escape:'htmlall':'UTF-8'}</span>{$category->title}
+		{if $category->id}
+			<span class="navigation-pipe">{$navigationPipe|escape:'htmlall':'UTF-8'}</span>{l s='Category: %s' mod='beesblog' sprintf=[$category->title]}
+		{else}
+			<span class="navigation-pipe">{$navigationPipe|escape:'htmlall':'UTF-8'}</span>{$category->title}
+        {/if}
 	{/if}
 {/capture}
 {if $totalPostsOnThisPage <= 0}

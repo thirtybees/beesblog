@@ -16,10 +16,11 @@
  *  @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
 *}
 {capture name=path}
-	<a href="{BeesBlog::GetBeesBlogLink()}">
+	<a href="{$blogHome|escape:'htmlall':'UTF-8'}">{l s='Blog' mod='beesblog'}</a>
 		{l s='Blog' mod='beesblog'}
 	</a>
-	<span class="navigation-pipe">{$navigationPipe|escape:'htmlall':'UTF-8'}</span>{$post->title|escape:'htmlall':'UTF-8'}{/capture}
+	<span class="navigation-pipe">{$navigationPipe|escape:'htmlall':'UTF-8'}</span>{$post->title}
+{/capture}
 <div id="content" class="block">
 	<div itemtype="#" itemscope="" id="sdsblogArticle" class="blog-post">
 		<div>
