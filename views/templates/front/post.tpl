@@ -17,8 +17,6 @@
 *}
 {capture name=path}
 	<a href="{$blogHome|escape:'htmlall':'UTF-8'}">{l s='Blog' mod='beesblog'}</a>
-		{l s='Blog' mod='beesblog'}
-	</a>
 	<span class="navigation-pipe">{$navigationPipe|escape:'htmlall':'UTF-8'}</span>{$post->title}
 {/capture}
 <div id="content" class="block">
