@@ -77,8 +77,8 @@
 					</ul>
 				</div>
 				<div class="col-md-6">
-					<div class="results">{l s="Showing" mod="beesblog"} {if $limit_start!=0}{$limit_start}{else}1{/if} {l s="to" mod="beeslatestnews"} {if $limit_start+$limit >= $total}{$total}{else}{$limit_start+$limit}{/if} {l s="of" mod="beesblog"} {$total}
-						({$c} {l s="Pages" mod="beesblog"})
+					<div class="results">{l s="Showing" mod="beesblog"} {if $limit_start!=0}{$limit_start}{else}1{/if} {l s="to" mod="beeslatestnews"} {if $limit_start+$limit >= $total}{$total}{else}{$limit_start+$limit}{/if} {l s="of" mod="beesblog"} {$total|intval}
+						({$page|intval} {l s="Pages" mod="beesblog"})
 					</div>
 				</div>
 			</div>

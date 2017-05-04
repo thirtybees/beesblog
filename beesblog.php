@@ -81,7 +81,7 @@ class BeesBlog extends Module
         $this->version = '1.0.0';
         $this->author = 'thirty bees';
 
-        $this->controllers = ['archive', 'category', 'post', 'search', 'tagpost'];
+        $this->controllers = ['category', 'post', 'search'];
         $this->secureKey = Tools::encrypt($this->name);
         $this->beesShopId = Context::getContext()->shop->id;
         $this->bootstrap = true;
@@ -295,7 +295,7 @@ class BeesBlog extends Module
             ],
             'beesblog_list'                => [
                 'controller' => 'category',
-                'rule'       => "{$alias}/cat",
+                'rule'       => "{$alias}/category",
                 'keywords'   => [],
                 'params'     => [
                     'fc'     => 'module',
@@ -313,7 +313,7 @@ class BeesBlog extends Module
             ],
             'beesblog_list_pagination'     => [
                 'controller' => 'category',
-                'rule'       => "{$alias}/cat/page/{page}",
+                'rule'       => "{$alias}/category/page/{page}",
                 'keywords'   => [
                     'page' => ['regexp' => '[_a-zA-Z0-9-\pL]*', 'param' => 'page'],
                 ],
@@ -335,7 +335,7 @@ class BeesBlog extends Module
             ],
             'beesblog_category'            => [
                 'controller' => 'category',
-                'rule'       => "{$alias}/cat/{cat_rewrite}",
+                'rule'       => "{$alias}/category/{cat_rewrite}",
                 'keywords'   => [
                     'cat_rewrite' => ['regexp' => '[_a-zA-Z0-9-\pL]*', 'param' => 'cat_rewrite'],
                 ],
@@ -346,7 +346,7 @@ class BeesBlog extends Module
             ],
             'beesblog_category_pagination' => [
                 'controller' => 'category',
-                'rule'       => "{$alias}/cat/{cat_rewrite}/page/{page}",
+                'rule'       => "{$alias}/category/{cat_rewrite}/page/{page}",
                 'keywords'   => [
                     'page'        => ['regexp' => '[_a-zA-Z0-9-\pL]*', 'param' => 'page'],
                     'cat_rewrite' => ['regexp' => '[_a-zA-Z0-9-\pL]*', 'param' => 'cat_rewrite'],
@@ -358,7 +358,7 @@ class BeesBlog extends Module
             ],
             'beesblog_cat_page_mod'        => [
                 'controller' => 'category',
-                'rule'       => "module/{$alias}/cat/{blog_rewrite}/page/{page}",
+                'rule'       => "module/{$alias}/category/{blog_rewrite}/page/{page}",
                 'keywords'   => [
                     'page'         => ['regexp' => '[_a-zA-Z0-9-\pL]*', 'param' => 'page'],
                     'blog_rewrite' => ['regexp' => '[_a-zA-Z0-9-\pL]*'],
@@ -538,13 +538,11 @@ class BeesBlog extends Module
      */
     public static function getBeesBlogLink($rewrite = null, $params = [], $idShop = null, $idLang = null)
     {
-        $params['fc'] = 'module';
-        $params['module'] = 'beesblog';
         if (!$rewrite) {
             $rewrite = 'beesblog';
         }
 
-        return Context::getContext()->shop->getBaseURI().Dispatcher::getInstance()->createUrl($rewrite, $idLang, $params, false, '', $idShop);
+        return Context::getContext()->link->getBaseLink().Context::getContext()->link->getLangLink().Dispatcher::getInstance()->createUrl($rewrite, $idLang, $params, false, '', $idShop);
     }
 
     /**

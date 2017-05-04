@@ -101,7 +101,7 @@ class BeesBlogCategoryModuleFrontController extends ModuleFrontController
             'customCss'            => Configuration::get(\BeesBlog::CUSTOM_CSS),
             'disableCategoryImage' => Configuration::get(\BeesBlog::DISABLE_CATEGORY_IMAGE),
             'showViewed'           => Configuration::get(\BeesBlog::SHOW_POST_COUNT),
-            'showImage'            => Configuration::get(\BeesBlog::SHOW_NO_IMAGE),
+            'showNoImage'          => Configuration::get(\BeesBlog::SHOW_NO_IMAGE),
             'postsPerPage'         => $limit,
             'totalPosts'           => $totalPosts,
             'totalPostsOnThisPage' => $totalPostsOnThisPage,

@@ -30,8 +30,8 @@
 		</div>
 		<div class="post-info">
 			<span>
-				{l s='Posted by ' mod='beesblog'}
 				{if $showAuthor}
+                    {l s='Posted by ' mod='beesblog'}
 					<i class="icon icon-user"></i>
 					<span itemprop="author">
 						{if $authorStyle}
@@ -41,9 +41,11 @@
 						{/if}
 					</span>&nbsp;
 					<i class="icon icon-calendar"></i>&nbsp;
-					<span itemprop="dateCreated">{$post->created|date_format}</span>
+					<span itemprop="dateCreated">{$post->published|date_format}</span>
 				{/if}
+				{if $showComments}
 				<i class="icon icon-comments"></i>&nbsp;
+                {/if}
 			</span>
 			<a title="" style="display:none" itemprop="url" href="#"></a>
 		</div>

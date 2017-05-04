@@ -74,18 +74,20 @@ class BeesBlogPostModuleFrontController extends \ModuleFrontController
         ]);
 
         $postProperties = [
-            'blogHome'        => \BeesBlog::getBeesBlogLink(),
-            'post'            => $post,
-            'category'        => $category,
-            'authorStyle'     => Configuration::get('beesshowauthorstyle'),
-            'showAuthor'      => Configuration::get('beesshowauthor'),
-            'beescustomcss'   => Configuration::get('beescustomcss'),
-            'beesshownoimg'   => Configuration::get('beesshownoimg'),
-            'beesshowviewed'  => Configuration::get('beesshowviewed'),
-            'PS_SC_TWITTER'   => Configuration::get('PS_SC_TWITTER'),
-            'PS_SC_GOOGLE'    => Configuration::get('PS_SC_GOOGLE'),
-            'PS_SC_FACEBOOK'  => Configuration::get('PS_SC_FACEBOOK'),
-            'PS_SC_PINTEREST' => Configuration::get('PS_SC_PINTEREST'),
+            'blogHome'             => \BeesBlog::getBeesBlogLink(),
+            'post'                 => $post,
+            'category'             => $category,
+            'authorStyle'          => Configuration::get(BeesBlog::AUTHOR_STYLE),
+            'showAuthor'           => (bool) Configuration::get(BeesBlog::SHOW_AUTHOR),
+            'customCss'            => (bool) Configuration::get(BeesBlog::CUSTOM_CSS),
+            'disableCategoryImage' => (bool) Configuration::get(BeesBlog::DISABLE_CATEGORY_IMAGE),
+            'showViewed'           => (bool) Configuration::get(BeesBlog::SHOW_POST_COUNT),
+            'showNoImage'          => (bool) Configuration::get(BeesBlog::SHOW_NO_IMAGE),
+            'showComments'         => (bool) Configuration::get(BeesBlog::DISQUS_USERNAME),
+            'PS_SC_TWITTER'        => Configuration::get('PS_SC_TWITTER'),
+            'PS_SC_GOOGLE'         => Configuration::get('PS_SC_GOOGLE'),
+            'PS_SC_FACEBOOK'       => Configuration::get('PS_SC_FACEBOOK'),
+            'PS_SC_PINTEREST'      => Configuration::get('PS_SC_PINTEREST'),
         ];
         $postProperties = array_merge($postProperties, [
             'displayBeesBlogBeforePost' => \Hook::exec('displayBeesBlogBeforePost', $postProperties),
