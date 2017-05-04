@@ -38,6 +38,7 @@ class BeesBlogPost extends \ObjectModel
         'table'          => self::TABLE,
         'primary'        => self::PRIMARY,
         'multilang'      => true,
+        'multishop'      => true,
         'fields'         => [
             'active'            => ['type' => self::TYPE_BOOL,                   'validate' => 'isBool',        'required' => true,  'default' => '1',                   'db_type' => 'TINYINT(1) UNSIGNED'],
             'comments_enabled'  => ['type' => self::TYPE_BOOL,                   'validate' => 'isBool',        'required' => true,                                      'db_type' => 'TINYINT(1) UNSIGNED'],
@@ -51,31 +52,30 @@ class BeesBlogPost extends \ObjectModel
             'position'          => ['type' => self::TYPE_INT,                    'validate' => 'isUnsignedInt', 'required' => true,  'default' => '1',                   'db_type' => 'INT(11) UNSIGNED'],
             'post_type'         => ['type' => self::TYPE_STRING,                 'validate' => 'isString',      'required' => true,                                      'db_type' => 'VARCHAR(45)',  'size' => 45],
             'viewed'            => ['type' => self::TYPE_INT,                    'validate' => 'isUnsignedInt', 'required' => true,  'default' => '0',                   'db_type' => 'INT(20) UNSIGNED'],
-            'meta_title'        => ['type' => self::TYPE_STRING, 'lang' => true, 'validate' => 'isString',      'required' => false,                                     'db_type' => 'VARCHAR(255)'],
-            'meta_keyword'      => ['type' => self::TYPE_STRING, 'lang' => true, 'validate' => 'isString',      'required' => false,                                     'db_type' => 'VARCHAR(255)'],
-            'meta_description'  => ['type' => self::TYPE_STRING, 'lang' => true, 'validate' => 'isString',      'required' => false,                                     'db_type' => 'VARCHAR(512)'],
-            'short_description' => ['type' => self::TYPE_STRING, 'lang' => true, 'validate' => 'isString',      'required' => false,                                     'db_type' => 'VARCHAR(512)'],
+            'title'             => ['type' => self::TYPE_STRING, 'lang' => true, 'validate' => 'isString',      'required' => false,                                     'db_type' => 'VARCHAR(255)'],
+            'keywords'          => ['type' => self::TYPE_STRING, 'lang' => true, 'validate' => 'isString',      'required' => false,                                     'db_type' => 'VARCHAR(255)'],
             'content'           => ['type' => self::TYPE_HTML,   'lang' => true, 'validate' => 'isString',      'required' => false,                                     'db_type' => 'TEXT'],
+            'summary'           => ['type' => self::TYPE_STRING, 'lang' => true, 'validate' => 'isString',      'required' => false,                                     'db_type' => 'VARCHAR(512)'],
             'link_rewrite'      => ['type' => self::TYPE_STRING, 'lang' => true, 'validate' => 'isString',      'required' => true,                                      'db_type' => 'VARCHAR(255)'],
             'lang_active'       => ['type' => self::TYPE_BOOL,   'lang' => true, 'validate' => 'isBool',        'required' => true,  'default' => '1',                   'db_type' => 'TINYINT(1) UNSIGNED'],
         ],
     ];
+    /** @var bool $active */
+    public $active = true;
     /** @var int $id_employee */
     public $id_employee;
     /** @var int $id_category */
     public $id_category;
     /** @var int $position */
     public $position = 0;
-    /** @var bool $active */
-    public $active = true;
     /** @var string $date_add */
     public $date_add;
     /** @var string $date_upd */
     public $date_upd;
     /** @var string $published */
     public $published;
-    /** @var string $short_description */
-    public $short_description;
+    /** @var string $summary */
+    public $summary;
     /** @var int $viewed */
     public $viewed;
     /** @var bool $comments_enabled */
@@ -83,11 +83,9 @@ class BeesBlogPost extends \ObjectModel
     /** @var int $post_type */
     public $post_type;
     /** @var string $meta_title */
-    public $meta_title;
+    public $title;
     /** @var string $meta_keyword */
-    public $meta_keyword;
-    /** @var string $meta_description */
-    public $meta_description;
+    public $keywords;
     /** @var string $image */
     public $image;
     /** @var string $content */
@@ -112,6 +110,49 @@ class BeesBlogPost extends \ObjectModel
         parent::__construct($id, $idLang, $idShop);
 
         $this->image_dir = _PS_IMG_DIR_.'/beesblog/'.static::IMAGE_TYPE;
+    }
+
+    /**
+     * Get categories
+     *
+     * @param int|null $idLang
+     * @param int      $page
+     * @param int      $limit
+     * @param bool     $count
+     * @param bool     $raw
+     * @param array    $propertyFilter
+     *
+     * @return array|int
+     */
+    public static function getPosts($idLang = null, $page = 0, $limit = 0, $count = false, $raw = false, $propertyFilter = [])
+    {
+        $postCollection = new \Collection('BeesBlogModule\\BeesBlogPost', $idLang);
+        $postCollection->setPageSize($limit);
+        $postCollection->setPageNumber($page);
+
+        if ($count) {
+            return $postCollection->count();
+        }
+
+        $results = $postCollection->getResults();
+
+        if ($raw) {
+            $newResults = [];
+            foreach ($postCollection as $post) {
+                if (!empty($propertyFilter)) {
+                    $newPost = [];
+                    foreach ($propertyFilter as $filter) {
+                        $newPost[$filter] = $post->{$filter};
+                    }
+                    $newResults[] = $newPost;
+                } else {
+                    $newResults[] = (array) $post;
+                }
+            }
+            $results = $newResults;
+        }
+
+        return $results;
     }
 
     /**
@@ -985,13 +1026,11 @@ class BeesBlogPost extends \ObjectModel
         $sql->innerJoin(self::LANG_TABLE, 'sbpl', 'sbp.`'.self::PRIMARY.'` = sbpl.`'.self::PRIMARY.'`');
         $sql->innerJoin(self::SHOP_TABLE, 'sbps', 'sbp.`'.self::PRIMARY.'` = sbps.`'.self::PRIMARY.'`');
         $sql->where('sbpl.`id_lang` = '.(int) $idLang);
-        $sql->where('sbpl.`lang_active` = 1');
         $sql->where('sbps.`id_shop` = '.(int) $idShop);
         $sql->where('sbp.`active` = '.(int) $active);
-        if (\Context::getContext()->customer->email !== 'info@thirtybees.com') {
-            $sql->where('sbp.`date_add` < \''.date('Y-m-d H:i:s').'\'');
-        }
         $sql->where('sbpl.`link_rewrite` = \''.pSQL($rewrite).'\'');
+//        ddd($sql->build());
+//        ddd(\Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql));
 
         return \Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql);
     }

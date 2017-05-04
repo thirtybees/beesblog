@@ -22,7 +22,6 @@ if (!defined('_TB_VERSION_')) {
 }
 
 use BeesBlogModule\BeesBlogCategory;
-use BeesBlogModule\BeesBlogImageType;
 use BeesBlogModule\BeesBlogPost;
 
 /**
@@ -50,14 +49,17 @@ class AdminBeesBlogPostController extends \ModuleAdminController
         // Shop bootstrap elements, not the old crappy interface
         $this->bootstrap = true;
 
-        // We are going to use multilang ObjectModels, but there is just one language to display
-        $this->lang = true;
-
         // Retrieve the context from a static context, just because
         $this->context = \Context::getContext();
 
+        // Only display this page in single store context
+        $this->multishop_context = Shop::CONTEXT_SHOP;
+
         // Make sure that when we save the `BeesBlogCategory` ObjectModel, the `_shop` table is set, too (primary => id_shop relation)
-        Shop::addTableAssociation(BeesBlogPost::TABLE, ['type' => 'post']);
+        Shop::addTableAssociation(BeesBlogPost::TABLE, ['type' => 'shop']);
+
+        // We are going to use multilang ObjectModels, but there is just one language to display
+        $this->lang = true;
 
         $this->fields_list = [
             BeesBlogPost::PRIMARY => [
@@ -86,7 +88,7 @@ class AdminBeesBlogPostController extends \ModuleAdminController
                 'align' => 'center',
                 'filter' => false,
             ],
-            'meta_title' => [
+            'title' => [
                 'title' => $this->l('Title'),
                 'width' => 440,
                 'type' => 'text',
@@ -128,7 +130,7 @@ class AdminBeesBlogPostController extends \ModuleAdminController
         }
 
         // Check if there are any categories available
-        if (BeesBlogCategory::getAllCategories(true, null, true) < 1) {
+        if (BeesBlogCategory::getCategories($this->context->language->id, 0, 10, true) < 1) {
             $this->errors[] = $this->l('No categories found. Please add a category before making a new post.');
         }
 
@@ -333,17 +335,17 @@ class AdminBeesBlogPostController extends \ModuleAdminController
                 [
                     'type' => 'text',
                     'label' => $this->l('Blog title'),
-                    'name' => 'meta_title',
+                    'name' => 'title',
                     'id' => 'name',
                     'class' => 'copyMeta2friendlyURL',
                     'size' => 60,
                     'required' => true,
-                    'desc' => $this->l('Enter Your Blog Post Title'),
+                    'desc' => $this->l('Enter the title of your blog post'),
                     'lang' => true,
                 ],
                 [
                     'type' => 'textarea',
-                    'label' => $this->l('Description'),
+                    'label' => $this->l('Content'),
                     'name' => 'content',
                     'lang' => true,
                     'rows' => 10,
@@ -352,62 +354,52 @@ class AdminBeesBlogPostController extends \ModuleAdminController
                     'autoload_rte' => true,
                     'required' => true,
                     'hint' => [
-                        $this->l('Enter Your Post Description'),
+                        $this->l('Enter the content of your post'),
                         $this->l('Invalid characters:').' <>;=#{}',
                     ],
                 ],
                 [
+                    'type' => 'textarea',
+                    'label' => $this->l('Summary'),
+                    'name' => 'summary',
+                    'rows' => 10,
+                    'cols' => 62,
+                    'lang' => true,
+                    'required' => true,
+                    'hint' => [
+                        $this->l('Enter a short description of your post'),
+                    ],
+                ],
+                [
                     'type' => 'file',
-                    'label' => $this->l('Feature Image'),
+                    'label' => $this->l('Image'),
                     'name' => 'image',
                     'display_image' => true,
                     'image' => $imageUrl ? $imageUrl : false,
                     'size' => $imageSize,
                     'delete_url' => self::$currentIndex.'&'.$this->identifier.'='.\Tools::getValue(BeesBlogPost::PRIMARY).'&token='.$this->token.'&deleteImage=1',
-                    'hint' => $this->l('Upload a feature image from your computer.'),
+                    'hint' => $this->l('Upload an image from your computer.'),
                 ],
                 [
                     'type' => 'select',
                     'label' => $this->l('Blog Category'),
                     'name' => 'id_category',
                     'options' => [
-                        'query' => BeesBlogCategory::getAllCategories(),
-                        'id' => BeesBlogCategory::PRIMARY,
-                        'name' => 'meta_title',
+                        'query' => BeesBlogCategory::getCategories($this->context->language->id, 0, 0, false, true, ['id', 'title']),
+                        'id' => 'id',
+                        'name' => 'title',
                     ],
                     'desc' => $this->l('Select Your Parent Category'),
                 ],
                 [
                     'type' => 'tags',
-                    'label' => $this->l('Meta keywords'),
-                    'name' => 'meta_keywords',
+                    'label' => $this->l('Keywords'),
+                    'name' => 'keywords',
                     'lang' => true,
                     'hint' => [
                         $this->l('To add "tags" click in the field, write something, and then press "Enter."'),
                         $this->l('Invalid characters:').' &lt;&gt;;=#{}',
                     ],
-                ],
-                [
-                    'type' => 'textarea',
-                    'label' => $this->l('Short Description'),
-                    'name' => 'short_description',
-                    'rows' => 10,
-                    'cols' => 62,
-                    'lang' => true,
-                    'required' => true,
-                    'hint' => [
-                        $this->l('Enter Your Post Short Description'),
-                    ],
-                ],
-                [
-                    'type' => 'textarea',
-                    'label' => $this->l('Meta Description'),
-                    'name' => 'meta_description',
-                    'rows' => 10,
-                    'cols' => 62,
-                    'lang' => true,
-                    'required' => false,
-                    'desc' => $this->l('Enter Your Post Meta Description'),
                 ],
                 [
                     'type' => 'text',
@@ -643,6 +635,7 @@ class AdminBeesBlogPostController extends \ModuleAdminController
         foreach ($blogPost->lang_active as &$active) {
             $active = ($active === 'on' ? true : false);
         }
+        $blogPost->id_shop = (int) Context::getContext()->shop->id;
 
         return $blogPost->add();
     }
@@ -653,7 +646,7 @@ class AdminBeesBlogPostController extends \ModuleAdminController
             return false;
         }
 
-        $blogPost = new BeesBlogPost();
+        $blogPost = new BeesBlogPost((int) Tools::getValue(BeesBlogPost::PRIMARY));
         $this->copyFromPost($blogPost, $this->table);
         $idLangDefault = (int) Configuration::get('PS_LANG_DEFAULT');
         foreach (BeesBlogPost::$definition['fields'] as $name => $field) {
@@ -671,12 +664,13 @@ class AdminBeesBlogPostController extends \ModuleAdminController
             }
         }
 
+        // TODO: check if link_rewrite is unique
+
         if (!$blogPost->published) {
             $blogPost->published = date('Y-m-d H:i:s');
         }
         $blogPost->id_employee = $this->context->employee->id;
-        $blogPost->viewed = 0;
-        ddd($blogPost);
+        $blogPost->id_shop = (int) Context::getContext()->shop->id;
 
         return $blogPost->update();
     }

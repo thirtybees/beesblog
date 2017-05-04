@@ -43,9 +43,9 @@ class BeesBlog extends Module
     const SHOW_COLUMN = 'BEESBLOG_SHOW_COLUMN';
     const CUSTOM_CSS = 'BEESBLOG_CUSTOM_CSS';
     const DISABLE_CATEGORY_IMAGE = 'BEESBLOG_DISABLE_CATEGORY_IMAGE';
-    const META_TITLE = 'BEESBLOG_META_TITLE';
-    const META_KEYWORDS = 'BEESBLOG_META_KEYWORDS';
-    const META_DESCRIPTION = 'BEESBLOG_META_DESCRIPTION';
+    const HOME_TITLE = 'BEESBLOG_META_TITLE';
+    const HOME_KEYWORDS = 'BEESBLOG_META_KEYWORDS';
+    const HOME_DESCRIPTION = 'BEESBLOG_META_DESCRIPTION';
     const DISQUS_USERNAME = 'BEESBLOG_DISQUS_USERNAME';
     const MAX_POSTS_PER_PAGE = 20;
     const MAX_CATEGORIES_PER_PAGE = 20;
@@ -81,14 +81,14 @@ class BeesBlog extends Module
         $this->version = '1.0.0';
         $this->author = 'thirty bees';
 
-        $this->controllers = ['archive', 'category', 'details', 'search', 'tagpost'];
+        $this->controllers = ['archive', 'category', 'post', 'search', 'tagpost'];
         $this->secureKey = Tools::encrypt($this->name);
         $this->beesShopId = Context::getContext()->shop->id;
         $this->bootstrap = true;
 
         parent::__construct();
         $this->displayName = $this->l('Bees Blog');
-        $this->description = $this->l('Thirty Bees blog module');
+        $this->description = $this->l('thirty bees blog module');
     }
 
     /**
@@ -109,9 +109,9 @@ class BeesBlog extends Module
         Configuration::updateGlobalValue(static::SHOW_COLUMN, '3');
         Configuration::updateGlobalValue(static::CUSTOM_CSS, '');
         Configuration::updateGlobalValue(static::DISABLE_CATEGORY_IMAGE, '1');
-        Configuration::updateGlobalValue(static::META_TITLE, 'Bees blog title');
-        Configuration::updateGlobalValue(static::META_KEYWORDS, 'thirty bees blog,thirty bees');
-        Configuration::updateGlobalValue(static::META_DESCRIPTION, 'The beesiest blog for thirty bees');
+        Configuration::updateGlobalValue(static::HOME_TITLE, 'Bees blog title');
+        Configuration::updateGlobalValue(static::HOME_KEYWORDS, 'thirty bees blog,thirty bees');
+        Configuration::updateGlobalValue(static::HOME_DESCRIPTION, 'The beesiest blog for thirty bees');
         Configuration::updateGlobalValue(static::ALLOWED_PROFILES, json_encode([1]));
 
         if (!parent::install()
@@ -214,9 +214,9 @@ class BeesBlog extends Module
     public function uninstall()
     {
         if (!parent::uninstall() ||
-            !Configuration::deleteByName(static::META_TITLE) ||
-            !Configuration::deleteByName(static::META_KEYWORDS) ||
-            !Configuration::deleteByName(static::META_DESCRIPTION) ||
+            !Configuration::deleteByName(static::HOME_TITLE) ||
+            !Configuration::deleteByName(static::HOME_KEYWORDS) ||
+            !Configuration::deleteByName(static::HOME_DESCRIPTION) ||
             !Configuration::deleteByName(static::POSTS_PER_PAGE) ||
             !Configuration::deleteByName(static::USE_HTML) ||
             !Configuration::deleteByName(static::SHOW_POST_COUNT) ||
@@ -295,7 +295,7 @@ class BeesBlog extends Module
             ],
             'beesblog_list'                => [
                 'controller' => 'category',
-                'rule'       => $alias.'/cat',
+                'rule'       => "{$alias}/cat",
                 'keywords'   => [],
                 'params'     => [
                     'fc'     => 'module',
@@ -304,7 +304,7 @@ class BeesBlog extends Module
             ],
             'beesblog_list_module'         => [
                 'controller' => 'category',
-                'rule'       => 'module/'.$alias.'/category',
+                'rule'       => "module/{$alias}/category",
                 'keywords'   => [],
                 'params'     => [
                     'fc'     => 'module',
@@ -313,7 +313,7 @@ class BeesBlog extends Module
             ],
             'beesblog_list_pagination'     => [
                 'controller' => 'category',
-                'rule'       => $alias.'/cat/page/{page}',
+                'rule'       => "{$alias}/cat/page/{page}",
                 'keywords'   => [
                     'page' => ['regexp' => '[_a-zA-Z0-9-\pL]*', 'param' => 'page'],
                 ],
@@ -324,7 +324,7 @@ class BeesBlog extends Module
             ],
             'beesblog_pagination'          => [
                 'controller' => 'category',
-                'rule'       => $alias.'/page/{page}',
+                'rule'       => "{$alias}/page/{page}",
                 'keywords'   => [
                     'page' => ['regexp' => '[_a-zA-Z0-9-\pL]*', 'param' => 'page'],
                 ],
@@ -335,7 +335,7 @@ class BeesBlog extends Module
             ],
             'beesblog_category'            => [
                 'controller' => 'category',
-                'rule'       => $alias.'/cat/{cat_rewrite}',
+                'rule'       => "{$alias}/cat/{cat_rewrite}",
                 'keywords'   => [
                     'cat_rewrite' => ['regexp' => '[_a-zA-Z0-9-\pL]*', 'param' => 'cat_rewrite'],
                 ],
@@ -346,7 +346,7 @@ class BeesBlog extends Module
             ],
             'beesblog_category_pagination' => [
                 'controller' => 'category',
-                'rule'       => $alias.'/cat/{cat_rewrite}/page/{page}',
+                'rule'       => "{$alias}/cat/{cat_rewrite}/page/{page}",
                 'keywords'   => [
                     'page'        => ['regexp' => '[_a-zA-Z0-9-\pL]*', 'param' => 'page'],
                     'cat_rewrite' => ['regexp' => '[_a-zA-Z0-9-\pL]*', 'param' => 'cat_rewrite'],
@@ -358,7 +358,7 @@ class BeesBlog extends Module
             ],
             'beesblog_cat_page_mod'        => [
                 'controller' => 'category',
-                'rule'       => 'module/'.$alias.'/cat/{blog_rewrite}/page/{page}',
+                'rule'       => "module/{$alias}/cat/{blog_rewrite}/page/{page}",
                 'keywords'   => [
                     'page'         => ['regexp' => '[_a-zA-Z0-9-\pL]*', 'param' => 'page'],
                     'blog_rewrite' => ['regexp' => '[_a-zA-Z0-9-\pL]*'],
@@ -369,8 +369,8 @@ class BeesBlog extends Module
                 ],
             ],
             'beesblog_post'                => [
-                'controller' => 'details',
-                'rule'       => $alias.'/{blog_rewrite}',
+                'controller' => 'post',
+                'rule'       => "{$alias}/{blog_rewrite}",
                 'keywords'   => [
                     'blog_rewrite' => ['regexp' => '[_a-zA-Z0-9-\pL]+', 'param' => 'blog_rewrite'],
                 ],
@@ -381,7 +381,7 @@ class BeesBlog extends Module
             ],
             'beesblog_tag'                 => [
                 'controller' => 'tagpost',
-                'rule'       => $alias.'/tag/{tag}',
+                'rule'       => "{$alias}/tag/{tag}",
                 'keywords'   => [
                     'tag' => ['regexp' => '[_a-zA-Z0-9-\pL\+\s\-]*', 'param' => 'tag'],
                 ],
@@ -392,7 +392,7 @@ class BeesBlog extends Module
             ],
             'beesblog_search_pagination'   => [
                 'controller' => 'search',
-                'rule'       => $alias.'/search/page/{page}',
+                'rule'       => "{$alias}/search/page/{page}",
                 'keywords'   => [
                     'page' => ['regexp' => '[_a-zA-Z0-9-\pL]*', 'param' => 'page'],
                 ],
@@ -403,7 +403,7 @@ class BeesBlog extends Module
             ],
             'beesblog_archive'             => [
                 'controller' => 'archive',
-                'rule'       => $alias.'/archive',
+                'rule'       => "{$alias}/archive",
                 'keywords'   => [],
                 'params'     => [
                     'fc'     => 'module',
@@ -412,7 +412,7 @@ class BeesBlog extends Module
             ],
             'beesblog_archive_pagination'  => [
                 'controller' => 'archive',
-                'rule'       => $alias.'/archive/page/{page}',
+                'rule'       => "{$alias}/archive/page/{page}",
                 'keywords'   => [
                     'page' => ['regexp' => '[_a-zA-Z0-9-\pL]*', 'param' => 'page'],
                 ],
@@ -423,7 +423,7 @@ class BeesBlog extends Module
             ],
             'beesblog_month'               => [
                 'controller' => 'archive',
-                'rule'       => $alias.'/archive/{year}/{month}',
+                'rule'       => "{$alias}/archive/{year}/{month}",
                 'keywords'   => [
                     'year'  => ['regexp' => '[_a-zA-Z0-9-\pL]*', 'param' => 'year'],
                     'month' => ['regexp' => '[_a-zA-Z0-9-\pL]*', 'param' => 'month'],
@@ -435,7 +435,7 @@ class BeesBlog extends Module
             ],
             'beesblog_month_pagination'    => [
                 'controller' => 'archive',
-                'rule'       => $alias.'/archive/{year}/{month}/page/{page}',
+                'rule'       => "{$alias}/archive/{year}/{month}/page/{page}",
                 'keywords'   => [
                     'year'  => ['regexp' => '[_a-zA-Z0-9-\pL]*', 'param' => 'year'],
                     'month' => ['regexp' => '[_a-zA-Z0-9-\pL]*', 'param' => 'month'],
@@ -448,7 +448,7 @@ class BeesBlog extends Module
             ],
             'beesblog_year'                => [
                 'controller' => 'archive',
-                'rule'       => $alias.'/archive/{year}',
+                'rule'       => "{$alias}/archive/{year}",
                 'keywords'   => [
                     'year' => ['regexp' => '[_a-zA-Z0-9-\pL]*', 'param' => 'year'],
                 ],
@@ -459,7 +459,7 @@ class BeesBlog extends Module
             ],
             'beesblog_year_pagination'     => [
                 'controller' => 'archive',
-                'rule'       => $alias.'/archive/{year}/page/{page}',
+                'rule'       => "{$alias}/archive/{year}/page/{page}",
                 'keywords'   => [
                     'year' => ['regexp' => '[_a-zA-Z0-9-\pL]*', 'param' => 'year'],
                     'page' => ['regexp' => '[_a-zA-Z0-9-\pL]*', 'param' => 'page'],
@@ -538,48 +538,13 @@ class BeesBlog extends Module
      */
     public static function getBeesBlogLink($rewrite = null, $params = [], $idShop = null, $idLang = null)
     {
+        $params['fc'] = 'module';
+        $params['module'] = 'beesblog';
         if (!$rewrite) {
-            $rewrite = Configuration::get(static::MAIN_URL_KEY);
+            $rewrite = 'beesblog';
         }
 
-        $url = BeesBlog::getBeesBlogUrl();
-        $dispatcher = Dispatcher::getInstance();
-
-        return $url.$dispatcher->createUrl($rewrite, $idLang, $params, false, '', $idShop);
-    }
-
-    /**
-     * @return string
-     */
-    public static function getBeesBlogUrl()
-    {
-        $sslEnabled = Configuration::get('PS_SSL_ENABLED');
-        $idLang = (int) Context::getContext()->language->id;
-        $idShop = (int) Context::getContext()->shop->id;
-        $rewriteSet = (int) Configuration::get('PS_REWRITING_SETTINGS');
-        $ssl = null;
-        static $forceSsl = null;
-        if ($ssl === null) {
-            if ($forceSsl === null) {
-                $forceSsl = (Configuration::get('PS_SSL_ENABLED') && Configuration::get('PS_SSL_ENABLED_EVERYWHERE'));
-            }
-            $ssl = $forceSsl;
-        }
-        if (Configuration::get('PS_MULTISHOP_FEATURE_ACTIVE') && $idShop !== null) {
-            $shop = new Shop($idShop);
-        } else {
-            $shop = Context::getContext()->shop;
-        }
-        $base = (($ssl && $sslEnabled) ? 'https://'.$shop->domain_ssl : 'http://'.$shop->domain);
-        $langUrl = Language::getIsoById($idLang).'/';
-        if ((!$rewriteSet && in_array($idShop, [(int) Context::getContext()->shop->id, null]))
-            || !Language::isMultiLanguageActivated($idShop)
-            || !(int) Configuration::get('PS_REWRITING_SETTINGS', null, null, $idShop)
-        ) {
-            $langUrl = '';
-        }
-
-        return $base.$shop->getBaseURI().$langUrl;
+        return Context::getContext()->shop->getBaseURI().Dispatcher::getInstance()->createUrl($rewrite, $idLang, $params, false, '', $idShop);
     }
 
     /**
@@ -600,9 +565,9 @@ class BeesBlog extends Module
         $this->postProcess();
         $html = '';
         if (Tools::isSubmit('submit'.$this->name)) {
-            Configuration::updateValue(static::META_TITLE, Tools::getValue(static::META_TITLE));
-            Configuration::updateValue(static::META_KEYWORDS, Tools::getValue(static::META_KEYWORDS));
-            Configuration::updateValue(static::META_DESCRIPTION, Tools::getValue(static::META_DESCRIPTION));
+            Configuration::updateValue(static::HOME_TITLE, Tools::getValue(static::HOME_TITLE));
+            Configuration::updateValue(static::HOME_KEYWORDS, Tools::getValue(static::HOME_KEYWORDS));
+            Configuration::updateValue(static::HOME_DESCRIPTION, Tools::getValue(static::HOME_DESCRIPTION));
             Configuration::updateValue(static::POSTS_PER_PAGE, Tools::getValue(static::POSTS_PER_PAGE));
             Configuration::updateValue(static::SHOW_POST_COUNT, Tools::getValue(static::SHOW_POST_COUNT));
             Configuration::updateValue(static::DISABLE_CATEGORY_IMAGE, Tools::getValue(static::DISABLE_CATEGORY_IMAGE));
@@ -720,21 +685,21 @@ class BeesBlog extends Module
                 [
                     'type'     => 'text',
                     'label'    => $this->l('Meta title'),
-                    'name'     => static::META_TITLE,
+                    'name'     => static::HOME_TITLE,
                     'size'     => 70,
                     'required' => true,
                 ],
                 [
                     'type'     => 'tags',
                     'label'    => $this->l('Meta keywords'),
-                    'name'     => static::META_KEYWORDS,
+                    'name'     => static::HOME_KEYWORDS,
                     'size'     => 70,
                     'required' => true,
                 ],
                 [
                     'type'     => 'textarea',
                     'label'    => $this->l('Meta Description'),
-                    'name'     => static::META_DESCRIPTION,
+                    'name'     => static::HOME_DESCRIPTION,
                     'rows'     => 7,
                     'cols'     => 66,
                     'required' => true,
@@ -889,9 +854,9 @@ class BeesBlog extends Module
                 static::MAIN_URL_KEY,
                 static::USE_HTML,
                 static::SHOW_COLUMN,
-                static::META_TITLE,
-                static::META_KEYWORDS,
-                static::META_DESCRIPTION,
+                static::HOME_TITLE,
+                static::HOME_KEYWORDS,
+                static::HOME_DESCRIPTION,
                 static::SHOW_POST_COUNT,
                 static::SHOW_POST_COUNT,
                 static::DISABLE_CATEGORY_IMAGE,

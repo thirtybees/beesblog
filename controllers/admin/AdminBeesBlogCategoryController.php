@@ -64,7 +64,7 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
                 'width' => 100,
                 'type'  => 'text',
             ],
-            'meta_title'              => [
+            'title'                   => [
                 'title' => $this->l('Title'),
                 'width' => 440,
                 'type'  => 'text',
@@ -96,8 +96,8 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
             'input'  => [
                 [
                     'type'     => 'text',
-                    'label'    => $this->l('Meta title'),
-                    'name'     => 'meta_title',
+                    'label'    => $this->l('Title'),
+                    'name'     => 'title',
                     'size'     => 60,
                     'required' => true,
                     'desc'     => $this->l('Enter Your Category Name'),
@@ -105,40 +105,30 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
                 ],
                 [
                     'type'         => 'textarea',
-                    'label'        => $this->l('Description'),
-                    'name'         => 'description',
+                    'label'        => $this->l('Summary'),
+                    'name'         => 'summary',
                     'lang'         => true,
                     'rows'         => 10,
                     'cols'         => 62,
                     'class'        => 'rte',
                     'autoload_rte' => true,
                     'required'     => false,
-                    'desc'         => $this->l('Enter Your Category Description'),
+                    'desc'         => $this->l('Enter a summary'),
                 ],
                 [
                     'type'          => 'file',
-                    'label'         => $this->l('Category Image'),
+                    'label'         => $this->l('Category image'),
                     'name'          => 'category_image',
                     'display_image' => true,
                 ],
                 [
                     'type'     => 'text',
-                    'label'    => $this->l('Meta keywords'),
-                    'name'     => 'meta_keyword',
+                    'label'    => $this->l('Keywords'),
+                    'name'     => 'keywords',
                     'lang'     => true,
                     'size'     => 60,
                     'required' => false,
-                    'desc'     => $this->l('Enter your category`s meta keywords. Separated by commas (,)'),
-                ],
-                [
-                    'type'     => 'textarea',
-                    'label'    => $this->l('Meta Description'),
-                    'name'     => 'meta_description',
-                    'rows'     => 10,
-                    'cols'     => 62,
-                    'lang'     => true,
-                    'required' => false,
-                    'desc'     => $this->l('Enter your category meta description'),
+                    'desc'     => $this->l('Enter your category`s keywords. Separated by commas (,)'),
                 ],
                 [
                     'type'     => 'text',
@@ -154,9 +144,9 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
                     'label'   => $this->l('Parent Category'),
                     'name'    => 'id_parent',
                     'options' => [
-                        'query' => BeesBlogCategory::getAllCategories(),
+                        'query' => BeesBlogCategory::getCategories($this->context->language->id, 0, 0, false, true, [BeesBlogCategory::PRIMARY, 'title']),
                         'id'    => BeesBlogCategory::PRIMARY,
-                        'name'  => 'meta_title',
+                        'name'  => 'title',
                     ],
                     'desc'    => $this->l('Select your parent category'),
                 ],
@@ -244,7 +234,7 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
      */
     public function processImageCategory($files, $id)
     {
-
+        return true;
         if (isset($files['category_image']) && isset($files['category_image']['tmp_name']) && !empty($files['category_image']['tmp_name'])) {
             if ($error = \ImageManager::validateUpload($files['category_image'], 4000000)) {
                 return $this->errors[] = $this->l('Invalid image');
@@ -309,6 +299,41 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
             $blogCategory->position = 0;
         }
         $blogCategory->id_shop = (int) Context::getContext()->shop->id;
+
+        // TODO: check if link_rewrite is unique
+
+        return $blogCategory->add();
+    }
+
+    public function processUpdate()
+    {
+        if (Tools::isSubmit(BeesBlogCategory::PRIMARY)) {
+            return false;
+        }
+
+        $blogCategory = new BeesBlogCategory((int) Tools::getValue(BeesBlogCategory::PRIMARY));
+        $isRoot = (int) $blogCategory->id_parent === 0;
+        $this->copyFromPost($blogCategory, $this->table);
+        $idLangDefault = (int) Configuration::get('PS_LANG_DEFAULT');
+        foreach (BeesBlogCategory::$definition['fields'] as $name => $field) {
+            if (isset($field['lang']) && $field['lang']) {
+                foreach (Language::getLanguages() as $language) {
+                    if ((int) $language['id_lang'] !== $idLangDefault) {
+                        $blogCategory->{$name}[$language['id_lang']] = $blogCategory->{$name}[$idLangDefault];
+                    }
+                }
+            }
+        }
+
+        if ($isRoot) {
+            $blogCategory->id_parent = 0;
+        }
+        if (!$blogCategory->position) {
+            $blogCategory->position = 0;
+        }
+        $blogCategory->id_shop = (int) Context::getContext()->shop->id;
+
+        // TODO: check if link_rewrite is unique
 
         return $blogCategory->add();
     }

@@ -19,7 +19,6 @@
 
 use BeesBlogModule\BeesBlogCategory;
 use BeesBlogModule\BeesBlogPost;
-use BeesBlogModule\BeesBlogPostCategory;
 
 if (!defined('_TB_VERSION_')) {
     exit;
@@ -49,89 +48,68 @@ class BeesBlogCategoryModuleFrontController extends ModuleFrontController
     {
         parent::initContent();
 
-        $configuration = \Configuration::getMultiple([
-            \BeesBlog::POSTS_PER_PAGE,
-            \BeesBlog::SHOW_AUTHOR,
-            \BeesBlog::AUTHOR_STYLE,
-            \BeesBlog::CUSTOM_CSS,
-            \BeesBlog::SHOW_NO_IMAGE,
-            \BeesBlog::DISABLE_CATEGORY_IMAGE,
-            \BeesBlog::SHOW_POST_COUNT,
-        ]);
-
-        $categoryStatus = '';
         $totalPages = 0;
-        $categoryImage = 'no';
-        $categoryinfo = '';
-        $titleCategory = '';
-        $categoryLinkRewrite = '';
-        $blogPost = new BeesBlogPost();
-        $blogCategory = new BeesBlogCategory();
-        $postsPerPage = $configuration[\BeesBlog::POSTS_PER_PAGE];
-        $limitStart = 0;
+        $postsPerPage = Configuration::get(\BeesBlog::POSTS_PER_PAGE);
         $limit = $postsPerPage;
 
-        if (!$this->idCategory = BeesBlogCategory::getIdByRewrite(\Tools::getValue('cat_rewrite'))) {
-            $total = $blogPost->getPostCount($this->context->language->id);
+        $this->idCategory = BeesBlogCategory::getIdByRewrite(\Tools::getValue('cat_rewrite'));
+        if ($this->idCategory) {
+            $category = new BeesBlogCategory($this->idCategory, $this->context->language->id);
         } else {
-            $total = $blogPost->getPostCountByCategory($this->context->language->id, $this->idCategory);
-            \Hook::exec('actionsbcat', ['id_category' => (int) $this->idCategory]);
+            // Make a fake category if the category ID has not been given
+            $category = new BeesBlogCategory();
+            $category->active = true;
+            $category->title = Configuration::get(BeesBlog::HOME_TITLE);
+            $category->summary = Configuration::get(BeesBlog::HOME_DESCRIPTION);
+            $category->keywords = Configuration::get(BeesBlog::HOME_KEYWORDS);
         }
 
-        if ($total != 0) {
-            $totalPages = ceil($total / $postsPerPage);
-        }
+        $page = (int) Tools::getValue('page');
 
-        if ((bool) \Tools::getValue('page')) {
-            $c = \Tools::getValue('page');
-            $limitStart = $postsPerPage * ($c - 1);
-        }
-        if (!$this->idCategory) {
-            $allNews = $blogPost->getAllPosts($this->context->language->id, $limitStart, $limit);
+        // Check if we are not using our fake category (happens at blog homepage)
+        if (Validate::isLoadedObject($category)) {
+            $posts = $category->getPostsInCategory($this->context->language->id, $page, $limit);
+            $totalPosts = $category->getPostsInCategory($this->context->language->id, 0, 0, true);
+            $totalPostsOnThisPage = count($posts);
         } else {
-            if (file_exists(_PS_MODULE_DIR_.'beesblog/images/category/'.$this->idCategory.'.jpg')
-                || file_exists(_PS_MODULE_DIR_.'beesblog/images/category/'.$this->idCategory.'.png')) {
-                $categoryImage = $this->idCategory;
+            $posts = BeesBlogPost::getPosts($this->context->language->id, $page, $limit);
+            $totalPosts = BeesBlogPost::getPosts($this->context->language->id, 0, 0, true);
+            $totalPostsOnThisPage = count($posts);
+        }
+        if ($totalPosts !== 0) {
+            $totalPages = ceil($totalPosts / $postsPerPage);
+        }
+        foreach ($posts as &$post) {
+            /** @var BeesBlogModule\BeesBlogPost $post */
+            $employee = new Employee($post->id_employee);
+            if (Validate::isLoadedObject($employee)) {
+                $post->firstname = $employee->firstname;
+                $post->lastname = $employee->lastname;
             } else {
-                $categoryImage = 'no';
+                $post->firstname = '';
+                $post->lastname = '';
             }
-            $categoryinfo = $blogCategory->getNameCategory($this->idCategory);
-            $titleCategory = $categoryinfo[0]['meta_title'];
-            $categoryStatus = $categoryinfo[0]['active'];
-            $categoryLinkRewrite = $categoryinfo[0]['link_rewrite'];
-            $allNews = '';
+            $post->category = new BeesBlogCategory($post->id_category, $this->context->language->id);
         }
 
-        // FIXME: $allNews might not have been defined
-        // TODO: Change title separator
-        $this->context->smarty->assign(
-            [
-                'postcategory'        => isset($allNews) ? $allNews : '',
-                'category_status'     => $categoryStatus,
-                'title_category'      => $titleCategory,
-                'meta_title'          => (empty($titleCategory) ? 'Blog' : $titleCategory).' • '.\Configuration::get('PS_SHOP_NAME'),
-                'cat_link_rewrite'    => $categoryLinkRewrite,
-                'id_category'         => $this->idCategory,
-                'cat_image'           => $categoryImage,
-                'categoryinfo'        => $categoryinfo,
-                'beesshowauthorstyle' => $configuration[\BeesBlog::AUTHOR_STYLE],
-                'beesshowauthor'      => $configuration[\BeesBlog::SHOW_AUTHOR],
-                'limit'               => isset($limit) ? $limit : 0,
-                'limit_start'         => isset($limitStart) ? $limitStart : 0,
-                'c'                   => isset($c) ? $c : 1,
-                'total'               => $total,
-                'beesblogliststyle'   => \Configuration::get('beesblogliststyle'),
-                'beescustomcss'       => $configuration[\BeesBlog::CUSTOM_CSS],
-                'beesshownoimg'       => $configuration[\BeesBlog::SHOW_NO_IMAGE],
-                'beesdisablecatimg'   => $configuration[\BeesBlog::DISABLE_CATEGORY_IMAGE],
-                'beesshowviewed'      => $configuration[\BeesBlog::SHOW_POST_COUNT],
-                'post_per_page'       => $postsPerPage,
-                'pagenums'            => $totalPages - 1,
-                'totalpages'          => $totalPages,
-            ]
-        );
+        $this->context->smarty->assign([
+            'blogHome'             => BeesBlog::getBeesBlogLink(),
+            'posts'                => $posts,
+            'category'             => $category,
+            'authorStyle'          => Configuration::get(\BeesBlog::AUTHOR_STYLE),
+            'showAuthor'           => Configuration::get(\BeesBlog::SHOW_AUTHOR),
+            'customCss'            => Configuration::get(\BeesBlog::CUSTOM_CSS),
+            'disableCategoryImage' => Configuration::get(\BeesBlog::DISABLE_CATEGORY_IMAGE),
+            'showViewed'           => Configuration::get(\BeesBlog::SHOW_POST_COUNT),
+            'showImage'            => Configuration::get(\BeesBlog::SHOW_NO_IMAGE),
+            'postsPerPage'         => $limit,
+            'totalPosts'           => $totalPosts,
+            'totalPostsOnThisPage' => $totalPostsOnThisPage,
+            'totalPages'           => $totalPages,
+            'pageNumber'           => $page,
+        ]);
 
-        $templateName = 'postcategory.tpl';
+        $templateName = 'category.tpl';
 
         $this->setTemplate($templateName);
     }

@@ -16,73 +16,64 @@
  *  @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
 *}
 {capture name=path}
-	{* TODO: remove call to BeesBlog *}
-	<a href="{BeesBlog::GetBeesBlogLink('beesblog')}">
-		{l s='All Blog News' mod='beesblog'}
+	<a href="{BeesBlog::GetBeesBlogLink()}">
+		{l s='Blog' mod='beesblog'}
 	</a>
-	<span class="navigation-pipe">{$navigationPipe|escape:'htmlall':'UTF-8'}</span>{$title_post|escape:'htmlall':'UTF-8'}{/capture}
+	<span class="navigation-pipe">{$navigationPipe|escape:'htmlall':'UTF-8'}</span>{$post->title|escape:'htmlall':'UTF-8'}{/capture}
 <div id="content" class="block">
 	<div itemtype="#" itemscope="" id="sdsblogArticle" class="blog-post">
+		<div>
+			{$displayBeesBlogBeforePost}
+		</div>
 		<div class="page-item-title">
-			<h1>{$title_post|escape:'htmlall':'UTF-8'}</h1>
+			<h1>{$post->title|escape:'htmlall':'UTF-8'}</h1>
 		</div>
 		<div class="post-info">
-			{* TODO: remove assign from template *}
-			{assign var="catOptions" value=null}
-			{$catOptions.id_category = $id_category}
-			{$catoptions.url_key = $cat_link_rewrite}
 			<span>
 				{l s='Posted by ' mod='beesblog'}
-				{if $beesshowauthor ==1}
+				{if $showAuthor}
 					<i class="icon icon-user"></i>
 					<span itemprop="author">
-						{if $beesshowauthorstyle != 0}
-							{$firstname|escape:'htmlall':'UTF-8'} {$lastname|escape:'htmlall':'UTF-8'}
+						{if $authorStyle}
+							{$post->firstname|escape:'htmlall':'UTF-8'} {$post->lastname|escape:'htmlall':'UTF-8'}
 						{else}
-							{$lastname|escape:'htmlall':'UTF-8'} {$firstname|escape:'htmlall':'UTF-8'}
+							{$post->lastname|escape:'htmlall':'UTF-8'} {$post->firstname|escape:'htmlall':'UTF-8'}
 						{/if}
 					</span>&nbsp;
 					<i class="icon icon-calendar"></i>&nbsp;
-					<span itemprop="dateCreated">{$created|date_format}</span>
+					<span itemprop="dateCreated">{$post->created|date_format}</span>
 				{/if}
 				<i class="icon icon-comments"></i>&nbsp;
-				{if $countcomment != ''}
-					{$countcomment|escape:'htmlall':'UTF-8'}
-				{else}
-					{l s='0' mod='beesblog'}
-				{/if}&nbsp;
-				{l s=' Comments' mod='beesblog'}
 			</span>
-			{* TODO: remove style from template *}
 			<a title="" style="display:none" itemprop="url" href="#"></a>
 		</div>
 		<div itemprop="articleBody">
-			<div id="lipsum" class="articleContent">
-				{assign var="activeimgincat" value='0'}
-				{$activeimgincat = $beesshownoimg}
-				{if ($post_img != "no" && $activeimgincat == 0) || $activeimgincat == 1}
-					<a id="post_images" href="{$modules_dir|escape:'htmlall':'UTF-8'}/beesblog/images/{$post_img|escape:'htmlall':'UTF-8'}-single-default.jpg">
-						<img src="{$modules_dir|escape:'htmlall':'UTF-8'}/beesblog/images/{$post_img|escape:'htmlall':'UTF-8'}-single-default.jpg" alt="{$title_post|escape:'htmlall':'UTF-8'}">
-					</a>
-				{/if}
-			</div>
+			{*<div id="lipsum" class="articleContent">*}
+				{*{assign var="activeimgincat" value='0'}*}
+				{*{$activeimgincat = $beesshownoimg}*}
+				{*{if ($post_img != "no" && $activeimgincat == 0) || $activeimgincat == 1}*}
+					{*<a id="post_images" href="{$modules_dir|escape:'htmlall':'UTF-8'}/beesblog/images/{$post_img|escape:'htmlall':'UTF-8'}-single-default.jpg">*}
+						{*<img src="{$modules_dir|escape:'htmlall':'UTF-8'}/beesblog/images/{$post_img|escape:'htmlall':'UTF-8'}-single-default.jpg" alt="{$title_post|escape:'htmlall':'UTF-8'}">*}
+					{*</a>*}
+				{*{/if}*}
+			{*</div>*}
 			<div class="sdsarticle-des">
-				{$content}
+				{$post->content}
 			</div>
-			{if $tags != ''}
-				<div class="sdstags-update">
-					<span class="tags"><b>{l s='Tags:' mod='beesblog'} </b>
-						{foreach from=$tags item=tag}
-							{assign var="options" value=null}
-							{$options.tag = $tag.name|urlencode}
-							<a title="tag" href="{beesblog::GetBeesBlogLink('beesblog_tag', $options)|escape:'html':'UTF-8'}">{$tag.name|escape:'htmlall':'UTF-8'}</a>
-						{/foreach}
-					</span>
-				</div>
-			{/if}
+			{*{if $tags != ''}*}
+				{*<div class="sdstags-update">*}
+					{*<span class="tags"><b>{l s='Tags:' mod='beesblog'} </b>*}
+						{*{foreach from=$tags item=tag}*}
+							{*{assign var="options" value=null}*}
+							{*{$options.tag = $tag.name|urlencode}*}
+							{*<a title="tag" href="{beesblog::GetBeesBlogLink('beesblog_tag', $options)|escape:'html':'UTF-8'}">{$tag.name|escape:'htmlall':'UTF-8'}</a>*}
+						{*{/foreach}*}
+					{*</span>*}
+				{*</div>*}
+			{*{/if}*}
 		</div>
 		<div class="sdsarticleBottom">
-			{$HOOK_SMART_BLOG_POST_FOOTER}
+			{$displayBeesBlogAfterPost}
 		</div>
 	</div>
 	<div id="disqus_thread"></div>

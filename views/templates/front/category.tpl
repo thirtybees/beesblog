@@ -16,28 +16,24 @@
  *  @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
 *}
 {capture name=path}
-	<a href="{$blogHome}">{l s='Blog' mod='beesblog'}</a>
-	{if $title_category != ''}
-		<span class="navigation-pipe">{$navigationPipe|escape:'htmlall':'UTF-8'}</span>{$title_category}
+	<a href="{$blogHome|escape:'htmlall':'UTF-8'}">{l s='Blog' mod='beesblog'}</a>
+	{if $totalPostsOnThisPage > 0}
+		<span class="navigation-pipe">{$navigationPipe|escape:'htmlall':'UTF-8'}</span>{$category->title}
 	{/if}
 {/capture}
-{if $postcategory == ''}
-	{if $title_category != ''}
-		<p class="error">{l s='No posts in category' mod='beesblog'}</p>
-	{else}
-		<p class="error">{l s='No posts' mod='beesblog'}</p>
-	{/if}
+{if $totalPostsOnThisPage <= 0}
+	<p class="error">{l s='No posts' mod='beesblog'}</p>
 {else}
-	{if $beesdisablecatimg == '1'}
+	{if isset($beesdisablecatimg)}
 		{assign var="activeimgincat" value='0'}
 		{$activeimgincat = $beesshownoimg}
 		{if $title_category != ''}
 			{foreach from=$categoryinfo item=category}
-				<div id="sdsblogCategory">
+				<div>
 					{if ($cat_image != "no" && $activeimgincat == 0) || $activeimgincat == 1}
 						<img alt="{$category.meta_title|escape:'htmlall':'UTF-8'}"
-							 src="{$modules_dir|escape:'htmlall':'UTF-8'}/beesblog/images/category/{$categoryImage|escape:'htmlall':'UTF-8'}-home-default.jpg"
-							 class="imageFeatured">
+							 src="{$img_dir|escape:'htmlall':'UTF-8'}/beesblog/beesblog_category/{$category->id|intval}-home-default.jpg"
+						>
 					{/if}
 					{$category.description}
 				</div>
@@ -45,8 +41,8 @@
 		{/if}
 	{/if}
 	<div id="beesblogcat" class="block">
-		{foreach from=$postcategory item=post}
-			{include file="./category_loop.tpl" postcategory=$postcategory}
+		{foreach from=$posts item=post}
+			{include file="./post_list_item.tpl" post=$post}
 		{/foreach}
 	</div>
 	{if !empty($pagenums)}
@@ -67,13 +63,13 @@
 							{if ($k+1) == $c}
 								<li><span class="page-active">{$k+1|intval}</span></li>
 							{else}
-								{if $title_category != ''}
+								{if $category->meta_title != ''}
 									{* TODO: replace this call *}
-									<li><a class="page-link" href="{beesblog::GetBeesBlogLink('beesblog_category_pagination', $options)}">{$k+1|intval}</a>
+									<li><a class="page-link" href="{BeesBlog::getBeesBlogLink('beesblog_category_pagination', $options)}">{$k+1|intval}</a>
 									</li>
 								{else}
 									{* TODO: replace this call *}
-									<li><a class="page-link" href="{beesblog::GetBeesBlogLink('beesblog_list_pagination', $options)}">{$k+1|intval}</a>
+									<li><a class="page-link" href="{BeesBlog::getBeesBlogLink('beesblog_list_pagination', $options)}">{$k+1|intval}</a>
 									</li>
 								{/if}
 							{/if}
