@@ -54,7 +54,7 @@ class BeesBlogCategoryModuleFrontController extends ModuleFrontController
             $category = new BeesBlogCategory();
             $category->active = true;
             $category->title = Configuration::get(BeesBlog::HOME_TITLE);
-            $category->summary = Configuration::get(BeesBlog::HOME_DESCRIPTION);
+            $category->description = Configuration::get(BeesBlog::HOME_DESCRIPTION);
             $category->keywords = Configuration::get(BeesBlog::HOME_KEYWORDS);
         }
 

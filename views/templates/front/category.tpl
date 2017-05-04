@@ -50,38 +50,35 @@
 		{/foreach}
 	</div>
 	{if $totalPages}
-		<div class="row">
-			<div class="post-page col-md-12">
-				<div class="col-md-6">
-					<ul class="pagination">
-						{for $k = 1 to $totalPages}
-							{if $k === $pageNumber}
-								<li><span class="page-active">{$k|intval}</span></li>
+		<div class="beesblog-category-list row">
+			<div class="col-md-6 col-sm-6">
+				<ul class="pagination">
+					{for $k = 1 to $totalPages}
+						{if $k === $pageNumber}
+							<li><span class="page-active">{$k|intval}</span></li>
+						{else}
+							{if Validate::isLoadedObject($category)}
+								{* TODO: replace this call *}
+								<li>
+									<a class="page-link" href="{BeesBlog::getBeesBlogLink('beesblog_category_pagination', ['page' => $k, 'cat_rewrite' => $category->link_rewrite])|escape:'htmlall':'UTF-8'}">
+										{$k|intval}
+									</a>
+								</li>
 							{else}
-								{if Validate::isLoadedObject($category)}
-									{* TODO: replace this call *}
-									<li>
-										<a class="page-link" href="{BeesBlog::getBeesBlogLink('beesblog_category_pagination', ['page' => $k, 'cat_rewrite' => $category->link_rewrite])|escape:'htmlall':'UTF-8'}">
-											{$k|intval}
-										</a>
-									</li>
-								{else}
-									{* TODO: replace this call *}
-									<li>
-										<a class="page-link" href="{BeesBlog::getBeesBlogLink('beesblog_list_pagination', ['page' => $k])|escape:'htmlall':'UTF-8'}">
-											{$k|intval}
-										</a>
-									</li>
-								{/if}
+								{* TODO: replace this call *}
+								<li>
+									<a class="page-link" href="{BeesBlog::getBeesBlogLink('beesblog_list_pagination', ['page' => $k])|escape:'htmlall':'UTF-8'}">
+										{$k|intval}
+									</a>
+								</li>
 							{/if}
-						{/for}
-					</ul>
-				</div>
-				<div class="col-md-6">
-					<div class="results">{l s='Showing' mod='beesblog'} {if $start !== 0}{$start}{else}1{/if} {l s='to' mod='beesblog'} {if $start + $postsPerPage >= $totalPosts}{$totalPosts|intval}{else}{$start + $postsPerPage|intval}{/if} {l s='of' mod="beesblog"} {$totalPosts|intval}
-						({$totalPages|intval} {if intval($totalPages) === 1}{l s='Page' mod='beesblog'}{else}{l s='Pages' mod='beesblog'}{/if})
-					</div>
-				</div>
+						{/if}
+					{/for}
+				</ul>
+			</div>
+			<div class="col-md-6 col-sm-6">
+				<div class="beesblog-results">{l s='Showing' mod='beesblog'} {if $start !== 0}{$start}{else}1{/if} {l s='to' mod='beesblog'} {if $start + $postsPerPage >= $totalPosts}{$totalPosts|intval}{else}{$start + $postsPerPage|intval}{/if} {l s='of' mod="beesblog"} {$totalPosts|intval}
+					({$totalPages|intval} {if intval($totalPages) === 1}{l s='Page' mod='beesblog'}{else}{l s='Pages' mod='beesblog'}{/if})</div>
 			</div>
 		</div>
 	{/if}

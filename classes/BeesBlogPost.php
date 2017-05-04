@@ -55,7 +55,6 @@ class BeesBlogPost extends \ObjectModel
             'title'             => ['type' => self::TYPE_STRING, 'lang' => true, 'validate' => 'isString',      'required' => false,                                     'db_type' => 'VARCHAR(255)'],
             'keywords'          => ['type' => self::TYPE_STRING, 'lang' => true, 'validate' => 'isString',      'required' => false,                                     'db_type' => 'VARCHAR(255)'],
             'content'           => ['type' => self::TYPE_HTML,   'lang' => true, 'validate' => 'isString',      'required' => false,                                     'db_type' => 'TEXT'],
-            'summary'           => ['type' => self::TYPE_STRING, 'lang' => true, 'validate' => 'isString',      'required' => false,                                     'db_type' => 'VARCHAR(512)'],
             'link_rewrite'      => ['type' => self::TYPE_STRING, 'lang' => true, 'validate' => 'isString',      'required' => true,                                      'db_type' => 'VARCHAR(255)'],
             'lang_active'       => ['type' => self::TYPE_BOOL,   'lang' => true, 'validate' => 'isBool',        'required' => true,  'default' => '1',                   'db_type' => 'TINYINT(1) UNSIGNED'],
         ],
@@ -1050,5 +1049,21 @@ class BeesBlogPost extends \ObjectModel
         $sql->where('sbpl.`id_lang` = '.(int) $idLang);
 
         return \Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql);
+    }
+
+    /**
+     * Get summary of content
+     *
+     * @return string
+     *
+     * @since 1.0.0
+     */
+    public function getSummary()
+    {
+        if (\Tools::strlen(strip_tags($this->content)) < 512) {
+            return strip_tags($this->content);
+        }
+
+        return \Tools::substr(strip_tags($this->content), 0, 512).' [...]';
     }
 }

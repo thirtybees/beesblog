@@ -21,13 +21,16 @@
 {/capture}
 <div id="content" class="block">
 	<div itemtype="#" itemscope="" id="sdsblogArticle" class="blog-post">
-		<div>
+		<div id="beesblog-before-pos" class="row">
 			{$displayBeesBlogBeforePost}
 		</div>
-		<div class="page-item-title">
-			<h1>{$post->title|escape:'htmlall':'UTF-8'}</h1>
+		<div class="row">
+			<h4 class="title_block">{$post->title|escape:'htmlall':'UTF-8'}</h4>
 		</div>
-		<div class="post-info">
+		<div class="row">
+            {$post->content}
+		</div>
+		<div class="row">
 			<span>
 				{if $showAuthor}
                     {l s='Posted by' mod='beesblog'}&nbsp;
@@ -47,32 +50,7 @@
                 {/if}
 			</span>
 		</div>
-		<div itemprop="articleBody">
-			{*<div id="lipsum" class="articleContent">*}
-				{*{assign var="activeimgincat" value='0'}*}
-				{*{$activeimgincat = $beesshownoimg}*}
-				{*{if ($post_img != "no" && $activeimgincat == 0) || $activeimgincat == 1}*}
-					{*<a id="post_images" href="{$modules_dir|escape:'htmlall':'UTF-8'}/beesblog/images/{$post_img|escape:'htmlall':'UTF-8'}-single-default.jpg">*}
-						{*<img src="{$modules_dir|escape:'htmlall':'UTF-8'}/beesblog/images/{$post_img|escape:'htmlall':'UTF-8'}-single-default.jpg" alt="{$title_post|escape:'htmlall':'UTF-8'}">*}
-					{*</a>*}
-				{*{/if}*}
-			{*</div>*}
-			<div class="sdsarticle-des">
-				{$post->content}
-			</div>
-			{*{if $tags != ''}*}
-				{*<div class="sdstags-update">*}
-					{*<span class="tags"><b>{l s='Tags:' mod='beesblog'} </b>*}
-						{*{foreach from=$tags item=tag}*}
-							{*{assign var="options" value=null}*}
-							{*{$options.tag = $tag.name|urlencode}*}
-							{*<a title="tag" href="{beesblog::GetBeesBlogLink('beesblog_tag', $options)|escape:'html':'UTF-8'}">{$tag.name|escape:'htmlall':'UTF-8'}</a>*}
-						{*{/foreach}*}
-					{*</span>*}
-				{*</div>*}
-			{*{/if}*}
-		</div>
-		<div class="sdsarticleBottom">
+		<div id="beesblog-after-post" class="row">
 			{$displayBeesBlogAfterPost}
 		</div>
 	</div>
