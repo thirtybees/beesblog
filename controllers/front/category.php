@@ -1,6 +1,6 @@
 <?php
 /**
- * 2017 Thirty Bees
+ * 2017 thirty bees
  *
  * NOTICE OF LICENSE
  *
@@ -12,8 +12,8 @@
  * obtain it through the world-wide-web, please send an email
  * to license@thirtybees.com so we can send you a copy immediately.
  *
- *  @author    Thirty Bees <modules@thirtybees.com>
- *  @copyright 2017 Thirty Bees
+ *  @author    thirty bees <modules@thirtybees.com>
+ *  @copyright 2017 thirty bees
  *  @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
  */
 
@@ -22,12 +22,6 @@ use BeesBlogModule\BeesBlogPost;
 
 if (!defined('_TB_VERSION_')) {
     exit;
-}
-
-require_once _PS_MODULE_DIR_.'beesblog/classes/autoload.php';
-
-if (!class_exists('BeesBlog')) {
-    require_once _PS_MODULE_DIR_.'beesblog/beesblog.php';
 }
 
 /**
@@ -65,6 +59,9 @@ class BeesBlogCategoryModuleFrontController extends ModuleFrontController
         }
 
         $page = (int) Tools::getValue('page');
+        if ($page <= 0) {
+            $page = 1;
+        }
 
         // Check if we are not using our fake category (happens at blog homepage)
         if (Validate::isLoadedObject($category)) {
@@ -96,17 +93,20 @@ class BeesBlogCategoryModuleFrontController extends ModuleFrontController
             'blogHome'             => BeesBlog::getBeesBlogLink(),
             'posts'                => $posts,
             'category'             => $category,
-            'authorStyle'          => Configuration::get(\BeesBlog::AUTHOR_STYLE),
-            'showAuthor'           => Configuration::get(\BeesBlog::SHOW_AUTHOR),
-            'customCss'            => Configuration::get(\BeesBlog::CUSTOM_CSS),
-            'disableCategoryImage' => Configuration::get(\BeesBlog::DISABLE_CATEGORY_IMAGE),
-            'showViewed'           => Configuration::get(\BeesBlog::SHOW_POST_COUNT),
-            'showNoImage'          => Configuration::get(\BeesBlog::SHOW_NO_IMAGE),
-            'postsPerPage'         => $limit,
-            'totalPosts'           => $totalPosts,
-            'totalPostsOnThisPage' => $totalPostsOnThisPage,
-            'totalPages'           => $totalPages,
-            'pageNumber'           => $page,
+            'authorStyle'          => (bool) Configuration::get(\BeesBlog::AUTHOR_STYLE),
+            'showAuthor'           => (bool) Configuration::get(\BeesBlog::SHOW_AUTHOR),
+            'customCss'            => (bool) Configuration::get(\BeesBlog::CUSTOM_CSS),
+            'disableCategoryImage' => (bool) Configuration::get(\BeesBlog::DISABLE_CATEGORY_IMAGE),
+            'showViewed'           => (bool) Configuration::get(\BeesBlog::SHOW_POST_COUNT),
+            'showNoImage'          => (bool) Configuration::get(\BeesBlog::SHOW_NO_IMAGE),
+            'showComments'         => (bool) Configuration::get(\BeesBlog::DISQUS_USERNAME),
+            'disqusUsername'       => Configuration::get(\BeesBlog::DISQUS_USERNAME),
+            'start'                => (int) $start = (($page - 1) * $limit) + 1,
+            'postsPerPage'         => (int) $limit,
+            'totalPosts'           => (int) $totalPosts,
+            'totalPostsOnThisPage' => (int) $totalPostsOnThisPage,
+            'totalPages'           => (int) $totalPages,
+            'pageNumber'           => (int) $page,
         ]);
 
         $templateName = 'category.tpl';

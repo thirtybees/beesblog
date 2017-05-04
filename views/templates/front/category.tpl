@@ -1,5 +1,5 @@
 {*
- * 2017 Thirty Bees
+ * 2017 thirty bees
  *
  * NOTICE OF LICENSE
  *
@@ -11,8 +11,8 @@
  * obtain it through the world-wide-web, please send an email
  * to license@thirtybees.com so we can send you a copy immediately.
  *
- *  @author    Thirty Bees <modules@thirtybees.com>
- *  @copyright 2017 Thirty Bees
+ *  @author    thirty bees <modules@thirtybees.com>
+ *  @copyright 2017 thirty bees
  *  @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
 *}
 {capture name=path}
@@ -21,7 +21,7 @@
 		{if $category->id}
 			<span class="navigation-pipe">{$navigationPipe|escape:'htmlall':'UTF-8'}</span>{l s='Category: %s' mod='beesblog' sprintf=[$category->title]}
 		{else}
-			<span class="navigation-pipe">{$navigationPipe|escape:'htmlall':'UTF-8'}</span>{$category->title}
+			<span class="navigation-pipe">{$navigationPipe|escape:'htmlall':'UTF-8'}</span>{$category->title|escape:'htmlall':'UTF-8'}
         {/if}
 	{/if}
 {/capture}
@@ -49,31 +49,28 @@
 			{include file="./post_list_item.tpl" post=$post}
 		{/foreach}
 	</div>
-	{if !empty($pagenums)}
+	{if $totalPages}
 		<div class="row">
 			<div class="post-page col-md-12">
 				<div class="col-md-6">
 					<ul class="pagination">
-						{for $k=0 to $pagenums}
-							{if $title_category != ''}
-								{assign var="options" value=null}
-								{$options.page = $k+1}
-								{$options.id_category = $id_category}
-								{$options.url_key = $cat_link_rewrite}
+						{for $k = 1 to $totalPages}
+							{if $k === $pageNumber}
+								<li><span class="page-active">{$k|intval}</span></li>
 							{else}
-								{assign var="options" value=null}
-								{$options.page = $k+1}
-							{/if}
-							{if ($k+1) == $c}
-								<li><span class="page-active">{$k+1|intval}</span></li>
-							{else}
-								{if $category->meta_title != ''}
+								{if $category->title}
 									{* TODO: replace this call *}
-									<li><a class="page-link" href="{BeesBlog::getBeesBlogLink('beesblog_category_pagination', $options)}">{$k+1|intval}</a>
+									<li>
+										<a class="page-link" href="{BeesBlog::getBeesBlogLink('beesblog_category_pagination', ['page' => $k, 'cat_rewrite' => $category->link_rewrite])|escape:'htmlall':'UTF-8'}">
+											{$k|intval}
+										</a>
 									</li>
 								{else}
 									{* TODO: replace this call *}
-									<li><a class="page-link" href="{BeesBlog::getBeesBlogLink('beesblog_list_pagination', $options)}">{$k+1|intval}</a>
+									<li>
+										<a class="page-link" href="{BeesBlog::getBeesBlogLink('beesblog_list_pagination', ['page' => $k, 'cat_rewrite' => $category->link_rewrite])|escape:'htmlall':'UTF-8'}">
+											{$k|intval}
+										</a>
 									</li>
 								{/if}
 							{/if}
@@ -81,16 +78,16 @@
 					</ul>
 				</div>
 				<div class="col-md-6">
-					<div class="results">{l s="Showing" mod="beesblog"} {if $limit_start!=0}{$limit_start}{else}1{/if} {l s="to" mod="beeslatestnews"} {if $limit_start+$limit >= $total}{$total}{else}{$limit_start+$limit}{/if} {l s="of" mod="beesblog"} {$total|intval}
-						({$page|intval} {l s="Pages" mod="beesblog"})
+					<div class="results">{l s='Showing' mod='beesblog'} {if $start !== 0}{$start}{else}1{/if} {l s='to' mod='beesblog'} {if $start + $postsPerPage >= $totalPosts}{$totalPosts|intval}{else}{$start + $postsPerPage|intval}{/if} {l s='of' mod="beesblog"} {$totalPosts|intval}
+						({$totalPages|intval} {if intval($totalPages) === 1}{l s='Page' mod='beesblog'}{else}{l s='Pages' mod='beesblog'}{/if})
 					</div>
 				</div>
 			</div>
 		</div>
 	{/if}
 {/if}
-{if isset($beescustomcss)}
+{if isset($customCss)}
 	<style>
-		{$beescustomcss|escape:'htmlall':'UTF-8'}
+		{$customCss|escape:'htmlall':'UTF-8'}
 	</style>
 {/if}

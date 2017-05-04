@@ -1,5 +1,5 @@
 {*
- * 2017 Thirty Bees
+ * 2017 thirty bees
  *
  * NOTICE OF LICENSE
  *
@@ -11,8 +11,8 @@
  * obtain it through the world-wide-web, please send an email
  * to license@thirtybees.com so we can send you a copy immediately.
  *
- *  @author    Thirty Bees <modules@thirtybees.com>
- *  @copyright 2017 Thirty Bees
+ *  @author    thirty bees <modules@thirtybees.com>
+ *  @copyright 2017 thirty bees
  *  @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
 *}
 <div itemtype="#" itemscope="" class="sdsarticleCat clearfix">
@@ -32,7 +32,7 @@
                         {$post->lastname|escape:'htmlall':'UTF-8'} {$post->firstname|escape:'htmlall':'UTF-8'}
                     {/if}
 				</span>
-                {/if} &nbsp;<i class="icon icon-tags"></i>&nbsp;
+                {/if} &nbsp;<i class="icon icon-object-group"></i>&nbsp;
 				<span itemprop="articleSection">
 					<a
                             href="{BeesBlog::GetBeesBlogLink('beesblog_category', ['cat_rewrite' => $post->category->link_rewrite])}"
@@ -40,6 +40,7 @@
                         {$post->category->title|escape:'htmlall':'UTF-8'}
 					</a>
 				</span>
+                {if $showComments}
 				<span class="comment">
 					<i class="icon icon-comments"></i>&nbsp;
                     {*TODO: fix disqus comment counter*}
@@ -47,7 +48,8 @@
                     {*{$post.totalcomment|escape:'htmlall':'UTF-8'} {l s=' Comments' mod='beesblog'}*}
                     {*</a>*}
 				</span>
-                {if $showViewed}&nbsp;
+                {/if}
+                {if $showViewed}
                     <i class="icon icon-eye-open"></i>
                     {l s=' views' mod='beesblog'} ({$post->viewed|escape:'htmlall':'UTF-8'})
                 {/if}

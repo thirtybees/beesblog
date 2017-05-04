@@ -1,6 +1,6 @@
 <?php
 /**
- * 2017 Thirty Bees
+ * 2017 thirty bees
  *
  * NOTICE OF LICENSE
  *
@@ -12,8 +12,8 @@
  * obtain it through the world-wide-web, please send an email
  * to license@thirtybees.com so we can send you a copy immediately.
  *
- *  @author    Thirty Bees <modules@thirtybees.com>
- *  @copyright 2017 Thirty Bees
+ *  @author    thirty bees <modules@thirtybees.com>
+ *  @copyright 2017 thirty bees
  *  @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
  */
 
@@ -83,7 +83,8 @@ class BeesBlogPostModuleFrontController extends \ModuleFrontController
             'disableCategoryImage' => (bool) Configuration::get(BeesBlog::DISABLE_CATEGORY_IMAGE),
             'showViewed'           => (bool) Configuration::get(BeesBlog::SHOW_POST_COUNT),
             'showNoImage'          => (bool) Configuration::get(BeesBlog::SHOW_NO_IMAGE),
-            'showComments'         => (bool) Configuration::get(BeesBlog::DISQUS_USERNAME),
+            'showComments'         => (bool) Configuration::get(\BeesBlog::DISQUS_USERNAME),
+            'disqusUsername'       => Configuration::get(\BeesBlog::DISQUS_USERNAME),
             'PS_SC_TWITTER'        => Configuration::get('PS_SC_TWITTER'),
             'PS_SC_GOOGLE'         => Configuration::get('PS_SC_GOOGLE'),
             'PS_SC_FACEBOOK'       => Configuration::get('PS_SC_FACEBOOK'),

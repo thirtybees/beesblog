@@ -1,5 +1,5 @@
 {*
- * 2017 Thirty Bees
+ * 2017 thirty bees
  *
  * NOTICE OF LICENSE
  *
@@ -11,8 +11,8 @@
  * obtain it through the world-wide-web, please send an email
  * to license@thirtybees.com so we can send you a copy immediately.
  *
- *  @author    Thirty Bees <modules@thirtybees.com>
- *  @copyright 2017 Thirty Bees
+ *  @author    thirty bees <modules@thirtybees.com>
+ *  @copyright 2017 thirty bees
  *  @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
 *}
 {capture name=path}
@@ -30,7 +30,7 @@
 		<div class="post-info">
 			<span>
 				{if $showAuthor}
-                    {l s='Posted by ' mod='beesblog'}
+                    {l s='Posted by' mod='beesblog'}&nbsp;
 					<i class="icon icon-user"></i>
 					<span itemprop="author">
 						{if $authorStyle}
@@ -46,7 +46,6 @@
 				<i class="icon icon-comments"></i>&nbsp;
                 {/if}
 			</span>
-			<a title="" style="display:none" itemprop="url" href="#"></a>
 		</div>
 		<div itemprop="articleBody">
 			{*<div id="lipsum" class="articleContent">*}
