@@ -467,14 +467,12 @@ class BeesBlog extends Module
      */
     public function hookDisplayHeader()
     {
-        if (Configuration::get(static::SOCIAL_SHARING)) {
-            if (file_exists(_PS_ROOT_DIR_._THEME_CSS_DIR_.'modules/socialsharing/socialsharing.css')) {
-                $this->context->controller->addCSS(_PS_ROOT_DIR_._THEME_CSS_DIR_.'modules/socialsharing/socialsharing.css', 'all');
-            } else {
-                $this->context->controller->addCSS(_PS_MODULE_DIR_.'socialsharing/views/css/socialsharing.css', 'all');
-            }
-        }
         $this->context->controller->addCSS($this->_path.'views/css/beesblogstyle.css', 'all');
+    }
+
+    public function hookDisplayBackOfficeHeader()
+    {
+        $this->context->controller->addCSS($this->_path.'views/css/back.css', 'all');
     }
 
     /**

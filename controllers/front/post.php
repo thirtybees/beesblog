@@ -72,6 +72,14 @@ class BeesBlogPostModuleFrontController extends \ModuleFrontController
             'sharing_img' => addcslashes(\Tools::getHttpHost(true).'/modules/beesblog/images/'.(int) $post->id.'.jpg', "'"),
         ]);
 
+        if (Configuration::get(BeesBlog::SOCIAL_SHARING)) {
+            if (file_exists(_PS_ROOT_DIR_._THEME_CSS_DIR_.'modules/socialsharing/socialsharing.css')) {
+                $this->context->controller->addCSS(_PS_ROOT_DIR_._THEME_CSS_DIR_.'modules/socialsharing/socialsharing.css', 'all');
+            } else {
+                $this->context->controller->addCSS(_PS_MODULE_DIR_.'socialsharing/views/css/socialsharing.css', 'all');
+            }
+        }
+
         $postProperties = [
             'blogHome'             => \BeesBlog::getBeesBlogLink(),
             'post'                 => $post,
@@ -84,7 +92,7 @@ class BeesBlogPostModuleFrontController extends \ModuleFrontController
             'showViewed'           => (bool) Configuration::get(BeesBlog::SHOW_POST_COUNT),
             'showNoImage'          => (bool) Configuration::get(BeesBlog::SHOW_NO_IMAGE),
             'showComments'         => (bool) Configuration::get(\BeesBlog::DISQUS_USERNAME),
-            'disqusUsername'       => Configuration::get(\BeesBlog::DISQUS_USERNAME),
+            'disqusUsername'       => Configuration::get(BeesBlog::DISQUS_USERNAME),
             'PS_SC_TWITTER'        => Configuration::get('PS_SC_TWITTER'),
             'PS_SC_GOOGLE'         => Configuration::get('PS_SC_GOOGLE'),
             'PS_SC_FACEBOOK'       => Configuration::get('PS_SC_FACEBOOK'),
