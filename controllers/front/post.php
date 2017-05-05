@@ -54,24 +54,9 @@ class BeesBlogPostModuleFrontController extends \ModuleFrontController
         $post = new BeesBlogPost($this->idPost, $this->context->language->id);
         $category = new BeesBlogCategory($post->id_category, $this->context->language->id);
         $post->category = $category;
-
-//        if (file_exists(_PS_MODULE_DIR_.'beesblog/images/'.(int) $this->idPost.'.jpg')
-//            || file_exists(_PS_MODULE_DIR_.'beesblog/images/'.(int) $this->idPost.'.jpg')) {
-//            $postImage = $this->idPost;
-//        } else {
-//            $postImage = 'no';
-//        }
-
         $post->employee = new Employee($post->id_employee);
 
         BeesBlogPost::viewed($this->idPost);
-
-        \Media::addJsDef([
-            'sharing_name' => addcslashes($post->title, "'"),
-            'sharing_url' => addcslashes(\Tools::getHttpHost(true).$_SERVER['REQUEST_URI'], "'"),
-            'sharing_img' => addcslashes(\Tools::getHttpHost(true).'/modules/beesblog/images/'.(int) $post->id.'.jpg', "'"),
-        ]);
-
         if (Configuration::get(BeesBlog::SOCIAL_SHARING)) {
             if (file_exists(_PS_ROOT_DIR_._THEME_CSS_DIR_.'modules/socialsharing/socialsharing.css')) {
                 $this->context->controller->addCSS(_PS_ROOT_DIR_._THEME_CSS_DIR_.'modules/socialsharing/socialsharing.css', 'all');
@@ -87,7 +72,6 @@ class BeesBlogPostModuleFrontController extends \ModuleFrontController
             'showAuthor'           => (bool) Configuration::get(BeesBlog::SHOW_AUTHOR),
             'showDate'             => (bool) Configuration::get(BeesBlog::SHOW_DATE),
             'socialSharing'        => (bool) Configuration::get(BeesBlog::SOCIAL_SHARING) && Module::isEnabled('socialsharing'),
-            'customCss'            => (bool) Configuration::get(BeesBlog::CUSTOM_CSS),
             'disableCategoryImage' => (bool) Configuration::get(BeesBlog::SHOW_CATEGORY_IMAGE),
             'showViewed'           => (bool) Configuration::get(BeesBlog::SHOW_POST_COUNT),
             'showNoImage'          => (bool) Configuration::get(BeesBlog::SHOW_NO_IMAGE),

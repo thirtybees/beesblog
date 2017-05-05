@@ -90,7 +90,6 @@ class BeesBlogCategoryModuleFrontController extends ModuleFrontController
             'authorStyle'          => (bool) Configuration::get(\BeesBlog::AUTHOR_STYLE),
             'showAuthor'           => (bool) Configuration::get(\BeesBlog::SHOW_AUTHOR),
             'showDate'             => (bool) Configuration::get(\BeesBlog::SHOW_DATE),
-            'customCss'            => (bool) Configuration::get(\BeesBlog::CUSTOM_CSS),
             'showCategoryImage'    => (bool) Configuration::get(\BeesBlog::SHOW_CATEGORY_IMAGE),
             'showViewed'           => (bool) Configuration::get(\BeesBlog::SHOW_POST_COUNT),
             'showNoImage'          => (bool) Configuration::get(\BeesBlog::SHOW_NO_IMAGE),

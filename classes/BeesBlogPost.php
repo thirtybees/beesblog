@@ -113,7 +113,7 @@ class BeesBlogPost extends \ObjectModel
     }
 
     /**
-     * Get categories
+     * Get posts
      *
      * @param int|null $idLang
      * @param int      $page
@@ -171,401 +171,47 @@ class BeesBlogPost extends \ObjectModel
     }
 
     /**
-     * Get popular BeesBlogPosts
+     * Get posts by popularity
      *
-     * @param int|null $idLang Language ID
+     * @param int|null $idLang
+     * @param int      $page
+     * @param int      $limit
+     * @param bool     $count
+     * @param bool     $raw
+     * @param array    $propertyFilter
      *
-     * @return array|false|null|\PDOStatement
+     * @return array|int
      */
-    public static function getPopularPosts($idLang = null)
+    public static function getPopularPosts($idLang = null, $page = 0, $limit = 0, $count = false, $raw = false, $propertyFilter = [])
     {
-        if ($idLang == null) {
-            $idLang = (int) \Context::getContext()->language->id;
-        }
-        $idShop = (int) \Context::getContext()->shop->id;
-        if (\Configuration::get('beesshowpopularpost') != '' && \Configuration::get('beesshowpopularpost') != null) {
-            $limit = \Configuration::get('beesshowpopularpost');
-        } else {
-            $limit = 5;
-        }
-        $sql = new \DbQuery();
-        $sql->select('*');
-        $sql->from(self::TABLE, 'sbp');
-        $sql->innerJoin(self::LANG_TABLE, 'sbpl', 'sbp.`'.self::PRIMARY.'` = sbpl.`'.self::PRIMARY.'`');
-        $sql->innerJoin(self::SHOP_TABLE, 'sbps', 'sbp.`'.self::PRIMARY.'` = sbps.`'.self::PRIMARY.'`');
-        $sql->where('sbpl.`id_lang` = '.(int) $idLang);
-        $sql->where('sbpl.`lang_active` = 1');
-        $sql->where('sbps.`id_shop` = '.(int) $idShop);
-        $sql->where('sbp.`active` = 1');
-        if (\Context::getContext()->customer->email !== 'info@thirtybees.com') {
-            $sql->where('sbp.`date_add` < \''.date('Y-m-d H:i:s').'\'');
-        }
-        $sql->orderBy('sbp.`viewed`');
-        $sql->limit((int) $limit);
-        $result = \Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($sql);
+        $postCollection = new \Collection('BeesBlogModule\\BeesBlogPost', $idLang);
+        $postCollection->setPageSize($limit);
+        $postCollection->setPageNumber($page);
+        $postCollection->orderBy('viewed', 'desc');
 
-        return $result;
-    }
-
-    /**
-     * Get related posts
-     *
-     * @param int|null $idLang             Language ID
-     * @param int|null $idBeesBlogCategory BeesBlogCategory ID
-     * @param int|null $idBeesBlogPost     BeesBlogPost ID
-     *
-     * @return array|bool|false|null|\PDOStatement
-     */
-    public static function getRelatedPosts($idLang = null, $idBeesBlogCategory = null, $idBeesBlogPost = null)
-    {
-        if ($idLang == null) {
-            $idLang = (int) \Context::getContext()->language->id;
-        }
-        $idShop = (int) \Context::getContext()->shop->id;
-        if (\Configuration::get('beesshowrelatedpost') != '' && \Configuration::get('beesshowrelatedpost') != null) {
-            $limit = \Configuration::get('beesshowrelatedpost');
-        } else {
-            $limit = 5;
-        }
-        if ($idBeesBlogCategory == null) {
-            $idBeesBlogCategory = 1;
-        }
-        if ($idBeesBlogPost == null) {
-            $idBeesBlogPost = 1;
-        }
-        $sql = new \DbQuery();
-        $sql->select('*');
-        $sql->from(self::TABLE, 'sbp');
-        $sql->innerJoin(self::LANG_TABLE, 'sbpl', 'sbp.`'.self::PRIMARY.'` = sbpl.`'.self::PRIMARY.'`');
-        $sql->innerJoin(self::SHOP_TABLE, 'sbps', 'sbp.`'.self::PRIMARY.'` = sbps.`'.self::PRIMARY.'`');
-        $sql->where('sbpl.`id_lang` = '.(int) $idLang);
-        $sql->where('sbpl.`lang_active` = 1');
-        $sql->where('sbps.`id_shop` = '.(int) $idShop);
-        $sql->where('sbp.`active` = 1');
-        // TODO: detect admin
-        if (\Context::getContext()->customer->email !== 'info@thirtybees.com') {
-            $sql->where('sbp.`date_add` < \''.date('Y-m-d H:i:s').'\'');
-        }
-        $sql->where('sbp.`id_category` = '.(int) $idBeesBlogCategory);
-        $sql->where('sbp.`'.self::PRIMARY.'` != '.(int) $idBeesBlogPost);
-        $sql->orderBy('sbp.`'.self::PRIMARY.'` DESC');
-        $sql->limit((int) $limit);
-
-        if (!$posts = \Db::getInstance()->executeS($sql)) {
-            return false;
+        if ($count) {
+            return $postCollection->count();
         }
 
-        return $posts;
-    }
+        $results = $postCollection->getResults();
 
-    /**
-     * Get archive result
-     *
-     * @param int|null  $month  Month
-     * @param int| null $year   Year
-     * @param int       $offset Offset
-     * @param int       $limit  Limit
-     *
-     * @return bool|array
-     *
-     * @TODO: change parameter order
-     */
-    public static function getArchiveResult($month = null, $year = null, $offset = 0, $limit = 5)
-    {
-        $result = [];
-        $idLang = (int) \Context::getContext()->language->id;
-        $idShop = (int) \Context::getContext()->shop->id;
-        if ($month != '' and $month != null and $year != '' and $year != null) {
-            $sql = new \DbQuery();
-            $sql->select('*');
-            $sql->from(self::TABLE, 'sbp');
-            $sql->innerJoin(self::LANG_TABLE, 'sbpl', 'sbp.`'.self::PRIMARY.'` = sbpl.`'.self::PRIMARY.'`');
-            $sql->innerJoin(self::SHOP_TABLE, 'sbps', 'sbp.`'.self::PRIMARY.'` = sbps.`'.self::PRIMARY.'`');
-            $sql->where('sbpl.`id_lang` = '.(int) $idLang);
-            $sql->where('sbpl.`lang_active` = 1');
-
-            // FIXME: detect admin users properly
-//            if (\Context::getContext()->customer->email !== 'info@thirtybees.com') {
-//                $sql->where('sbp.`date_add` < \''.date('Y-m-d H:i:s').'\'');
-//            }
-            $sql->where('sbps.`id_shop` = '.(int) $idShop);
-            $sql->where('sbp.`active` = 1');
-            $sql->where('MONTH(sbp.`date_add`) = '.(int) $month);
-            $sql->where('YEAR(sbp.`date_add` = '.(int) $year);
-            $sql->orderBy('sbp.`'.self::PRIMARY.'` DESC');
-        } elseif ($month == '' && $month == null && $year != '' && $year != null) {
-            $sql = new \DbQuery();
-            $sql->select('*');
-            $sql->from(self::TABLE, 'sbp');
-            $sql->innerJoin(self::LANG_TABLE, 'sbpl', 'sbp.`'.self::PRIMARY.'` = sbpl.`'.self::PRIMARY.'`');
-            $sql->innerJoin(self::SHOP_TABLE, 'sbps', 'sbp.`'.self::PRIMARY.'` = sbps.`'.self::PRIMARY.'`');
-            $sql->where('sbpl.`id_lang` = '.(int) $idLang);
-            $sql->where('sbpl.`lang_active` = 1');
-            if (\Context::getContext()->customer->email !== 'info@thirtybees.com') {
-                $sql->where('sbp.`date_add` < \''.date('Y-m-d H:i:s').'\'');
+        if ($raw) {
+            $newResults = [];
+            foreach ($postCollection as $post) {
+                if (!empty($propertyFilter)) {
+                    $newPost = [];
+                    foreach ($propertyFilter as $filter) {
+                        $newPost[$filter] = $post->{$filter};
+                    }
+                    $newResults[] = $newPost;
+                } else {
+                    $newResults[] = (array) $post;
+                }
             }
-            $sql->where('sbps.`id_shop` = '.(int) $idShop);
-            $sql->where('sbp.`active` = 1');
-            $sql->where('YEAR(sbp.`date_add`) = '.(int) $year);
-            $sql->orderBy('sbp.`'.self::PRIMARY.'` DESC');
-        } elseif ($month != '' and $month != null and $year == '' and $year == null) {
-            $sql = new \DbQuery();
-            $sql->select('*');
-            $sql->from(self::TABLE, 'sbp');
-            $sql->innerJoin(self::LANG_TABLE, 'sbpl', 'sbp.`'.self::PRIMARY.'` = sbpl.`'.self::PRIMARY.'`');
-            $sql->innerJoin(self::SHOP_TABLE, 'sbps', 'sbp.`'.self::PRIMARY.'` = sbps.`'.self::PRIMARY.'`');
-            $sql->where('sbpl.`id_lang` = '.(int) $idLang);
-            $sql->where('sbpl.`lang_active` = 1');
-            if (\Context::getContext()->customer->email !== 'info@thirtybees.com') {
-                $sql->where('sbp.`date_add` < \''.date('Y-m-d H:i:s').'\'');
-            }
-            $sql->where('sbps.`id_shop` = '.(int) $idShop);
-            $sql->where('sbp.`active` = 1');
-            $sql->where('MONTH(sbp.`date_add`) = '.(int) $month);
-            $sql->orderBy('sbp.`'.self::PRIMARY.'` DESC');
-        } else {
-            $sql = new \DbQuery();
-            $sql->select('*');
-            $sql->from(self::TABLE, 'sbp');
-            $sql->innerJoin(self::LANG_TABLE, 'sbpl', 'sbp.`'.self::PRIMARY.'` = sbpl.`'.self::PRIMARY.'`');
-            $sql->innerJoin(self::SHOP_TABLE, 'sbps', 'sbp.`'.self::PRIMARY.'` = sbps.`'.self::PRIMARY.'`');
-            $sql->where('sbpl.`id_lang` = '.(int) $idLang);
-            $sql->where('sbpl.`lang_active` = 1');
-            if (\Context::getContext()->customer->email !== 'info@thirtybees.com') {
-                $sql->where('sbp.`date_add` < \''.date('Y-m-d H:i:s').'\'');
-            }
-            $sql->where('sbps.`id_shop` = '.(int) $idShop);
-            $sql->where('sbp.`active` = 1');
-            $sql->orderBy('sbp.`'.self::PRIMARY.'` DESC');
-        }
-        if (!$posts = \Db::getInstance()->executeS($sql)) {
-            return false;
+            $results = $newResults;
         }
 
-        $blogCategory = new BeesBlogCategory();
-        $i = 0;
-        foreach ($posts as $post) {
-            $result[$i]['id_post'] = $post['id_bees_blog_post'];
-            $result[$i]['viewed'] = $post['viewed'];
-            $result[$i]['is_featured'] = $post['is_featured'];
-            $result[$i]['meta_title'] = $post['meta_title'];
-            $result[$i]['short_description'] = $post['short_description'];
-            $result[$i]['meta_description'] = $post['meta_description'];
-            $result[$i]['content'] = $post['content'];
-            $result[$i]['meta_keyword'] = $post['meta_keyword'];
-            $result[$i]['id_category'] = $post['id_category'];
-            $result[$i]['link_rewrite'] = $post['link_rewrite'];
-//            $result[$i]['cat_name'] = $blogCategory->getCatName($post['id_category']);
-//            $result[$i]['cat_link_rewrite'] = $blogCategory->getCatLinkRewrite($post['id_category']);
-            $employee = new \Employee($post['id_employee']);
-
-            $result[$i]['lastname'] = $employee->lastname;
-            $result[$i]['firstname'] = $employee->firstname;
-            if (file_exists(_PS_MODULE_DIR_.'beesblog/images/'.$post['id_bees_blog_post'].'.jpg')) {
-                $image = $post['id_bees_blog_post'];
-                $result[$i]['post_img'] = $image;
-            } else {
-                $result[$i]['post_img'] = 'no';
-            }
-            $result[$i]['date_add'] = $post['date_add'];
-            $i++;
-        }
-
-        return $result;
-    }
-
-    /**
-     * @return array|bool
-     */
-    public static function getArchive()
-    {
-        $result = [];
-        $sql = new \DbQuery();
-        $sql->select('YEAR(sbp.`date_add`) AS year');
-        $sql->from(self::TABLE, 'sbp');
-        $sql->innerJoin(self::SHOP_TABLE, 'sbps', 'sbp.`'.self::PRIMARY.'` = sbps.`'.self::PRIMARY.'`');
-        $sql->groupBy('YEAR(sbp.`date_add`)');
-        if (!$posts = \Db::getInstance()->executeS($sql)) {
-            return false;
-        }
-        $i = 0;
-        foreach ($posts as $value) {
-            $result[$i]['year'] = $value['year'];
-            $result[$i]['month'] = BeesBlogPost::getArchiveM($value['year']);
-            $months = BeesBlogPost::getArchiveM($value['year']);
-            $j = 0;
-            foreach ($months as $month) {
-                $result[$i]['month'][$j]['day'] = BeesBlogPost::getArchiveD($month['month'], $value['year']);
-                $j++;
-            }
-            $i++;
-        }
-
-        return $result;
-    }
-
-    /**
-     * @param int $year Year
-     *
-     * @return array|bool|false|null|\PDOStatement
-     */
-    public static function getArchiveM($year)
-    {
-        $sql = new \DbQuery();
-        $sql->select('MONTH(sbp.`date_add`) AS month');
-        $sql->from(self::TABLE, 'sbp');
-        $sql->innerJoin(self::SHOP_TABLE, 'sbps', 'sbp.`'.self::PRIMARY.'` = sbps.`'.self::PRIMARY.'`');
-        $sql->where('YEAR(sbp.`date_add`) = '.(int) $year);
-        $sql->groupBy('MONTH(sbp.`date_add`)');
-        if (!$posts = \Db::getInstance()->executeS($sql)) {
-            return false;
-        }
-
-        return $posts;
-
-    }
-
-    /**
-     * @param int $month Month
-     * @param int $year  Year
-     *
-     * @return array|bool|false|null|\PDOStatement
-     */
-    public static function getArchiveD($month, $year)
-    {
-        $sql = new \DbQuery();
-        $sql->select('DAY(sbp.`date_add`) AS day');
-        $sql->from(self::TABLE, 'sbp');
-        $sql->innerJoin(self::SHOP_TABLE, 'sbps', 'sbp.`'.self::PRIMARY.'` = sbps.`'.self::PRIMARY.'`');
-        $sql->where('MONTH(sbp.`date_add`) = '.(int) $month);
-        $sql->where('YEAR(sbp.`date_add`) = '.(int) $year);
-        $sql->groupBy('sbp.`date_add`');
-        if (!$posts = \Db::getInstance()->executeS($sql)) {
-            return false;
-        }
-
-        return $posts;
-
-    }
-
-    /**
-     * @param string|null $keyword Keyword
-     * @param int|null    $idLang  Language ID
-     * @param int         $offset  Offset
-     * @param int         $limit   Limit
-     *
-     * @return array|bool
-     */
-    public static function beesBlogSearchPost($keyword = null, $idLang = null, $offset = 0, $limit = 5)
-    {
-        $result = [];
-        if ($keyword == null) {
-            return false;
-        }
-        if ($idLang == null) {
-            $idLang = (int) \Context::getContext()->language->id;
-        }
-        $idShop = (int) \Context::getContext()->shop->id;
-
-        $sql = new \DbQuery();
-        $sql->select('*');
-        $sql->from(self::TABLE, 'sbp');
-        $sql->innerJoin(self::LANG_TABLE, 'sbpl', 'sbp.`'.self::PRIMARY.'` = sbpl.`'.self::PRIMARY.'`');
-        $sql->innerJoin(self::SHOP_TABLE, 'sbps', 'sbp.`'.self::PRIMARY.'` = sbps.`'.self::PRIMARY.'`');
-        $sql->where('sbpl.`id_lang` = '.(int) $idLang);
-        $sql->where('sbpl.`lang_active` = 1');
-        $sql->where('sbps.`id_shop` = '.(int) $idShop);
-        $sql->where('sbp.`active` = 1');
-
-        // FIXME: detect admin users properly
-//        if (\Context::getContext()->customer->email !== 'info@thirtybees.com') {
-//            $sql->where('sbp.`date_add` < \''.date('Y-m-d H:i:s').'\'');
-//        }
-        $sql->where(
-            'sbpl.`meta_title` LIKE \'%'.pSQL($keyword).'\'
-             OR sbpl.`meta_keyword` LIKE \'%'.pSQL($keyword).'\'
-             OR sbpl.`meta_description` LIKE \'%'.pSQL($keyword).'\'
-             OR sbpl.`meta_content` LIKE \'%'.pSQL($keyword).'\''
-        );
-        $sql->orderBy('sbp.`'.self::PRIMARY.'` DESC');
-        $sql->limit($limit, $offset);
-        if (!$posts = \Db::getInstance()->executeS($sql)) {
-            return false;
-        }
-
-        $blogCategory = new BeesBlogCategory();
-        $i = 0;
-        foreach ($posts as $post) {
-            $result[$i]['id_post'] = $post['id_bees_blog_post'];
-            $result[$i]['viewed'] = $post['viewed'];
-            $result[$i]['is_featured'] = $post['is_featured'];
-            $result[$i]['meta_title'] = $post['meta_title'];
-            $result[$i]['short_description'] = $post['short_description'];
-            $result[$i]['meta_description'] = $post['meta_description'];
-            $result[$i]['content'] = $post['content'];
-            $result[$i]['meta_keyword'] = $post['meta_keyword'];
-            $result[$i]['id_category'] = $post['id_category'];
-            $result[$i]['link_rewrite'] = $post['link_rewrite'];
-            $result[$i]['cat_name'] = $blogCategory->getCatName($post['id_category']);
-            $result[$i]['cat_link_rewrite'] = $blogCategory->getCatLinkRewrite($post['id_category']);
-            $employee = new \Employee($post['id_employee']);
-
-            $result[$i]['lastname'] = $employee->lastname;
-            $result[$i]['firstname'] = $employee->firstname;
-            if (file_exists(_PS_MODULE_DIR_.'beesblog/images/'.$post['id_bees_blog_post'].'.jpg')) {
-                $image = $post['id_bees_blog_post'];
-                $result[$i]['post_img'] = $image;
-            } else {
-                $result[$i]['post_img'] = 'no';
-            }
-            $result[$i]['date_add'] = $post['date_add'];
-            $i++;
-        }
-
-        return $result;
-    }
-
-    /**
-     * @param string|null $keyword Keyword
-     * @param int|null    $idLang  Langauge ID
-     *
-     * @return bool|int
-     */
-    public static function beesBlogSearchPostCount($keyword = null, $idLang = null)
-    {
-        if ($keyword == null) {
-            return false;
-        }
-        if ($idLang == null) {
-            $idLang = (int) \Context::getContext()->language->id;
-        }
-        $idShop = (int) \Context::getContext()->shop->id;
-
-        // Use same query as BeesBlogSearchPost as this query will be repeated and cached
-        $sql = new \DbQuery();
-        $sql->select('*');
-        $sql->from(self::TABLE, 'sbp');
-        $sql->innerJoin(self::LANG_TABLE, 'sbpl', 'sbp.`'.self::PRIMARY.'` = sbpl.`'.self::PRIMARY.'`');
-        $sql->innerJoin(self::SHOP_TABLE, 'sbps', 'sbp.`'.self::PRIMARY.'` = sbps.`'.self::PRIMARY.'`');
-        $sql->where('sbpl.`id_lang` = '.(int) $idLang);
-        $sql->where('sbpl.`lang_active` = 1');
-        $sql->where('sbps.`id_shop` = '.(int) $idShop);
-        $sql->where('sbp.`active` = 1');
-        if (\Context::getContext()->customer->email !== 'info@thirtybees.com') {
-            $sql->where('sbp.`date_add` < \''.date('Y-m-d H:i:s').'\'');
-        }
-        $sql->where(
-            'sbpl.`meta_title` LIKE \'%'.pSQL($keyword).'\'
-                     OR sbpl.`meta_keyword` LIKE \'%'.pSQL($keyword).'\'
-                     OR sbpl.`meta_description` LIKE \'%'.pSQL($keyword).'\'
-                     OR sbpl.`meta_content` LIKE \'%'.pSQL($keyword).'\''
-        );
-        $sql->orderBy('sbp.`'.self::PRIMARY.'` DESC');
-        if (!$posts = \Db::getInstance()->executeS($sql)) {
-            return false;
-        }
-
-        return count($posts);
+        return $results;
     }
 
     /**
@@ -612,115 +258,6 @@ class BeesBlogPost extends \ObjectModel
         $sql->where('sbp.`'.self::PRIMARY.'` = '.(int) $idPost);
 
         return \Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql);
-    }
-
-    /**
-     * Get meta data
-     *
-     * @param int      $idPost BeesBlogPost ID
-     * @param int|null $idLang Language ID
-     *
-     * @return bool
-     */
-    public static function getMeta($idPost, $idLang = null)
-    {
-        if ($idLang == null) {
-            $idLang = (int) \Context::getContext()->language->id;
-        }
-
-        $sql = new \DbQuery();
-        $sql->select('sbpl.`meta_title`, sbpl.`meta_description`, sbpl.`meta_keyword`');
-        $sql->from(self::TABLE, 'sbp');
-        $sql->innerJoin(self::LANG_TABLE, 'sbpl', 'sbp.`'.self::PRIMARY.'` = sbpl.`'.self::PRIMARY.'`');
-        $sql->innerJoin(self::SHOP_TABLE, 'sbps', 'sbp.`'.self::PRIMARY.'` = sbps.`'.self::PRIMARY.'`');
-        $sql->where('sbpl.`id_lang` = '.(int) $idLang);
-        $sql->where('sbpl.`lang_active` = 1');
-        $sql->where('sbp.`'.self::PRIMARY.'` = '.(int) $idPost);
-        $sql->where('sbp.`active` = 1');
-
-        // FIXME: detect admin users properly
-//        if (\Context::getContext()->customer->email !== 'info@thirtybees.com') {
-//            $sql->where('sbp.`date_add` < \''.date('Y-m-d H:i:s').'\'');
-//        }
-        if (!$post = \Db::getInstance()->getRow($sql)) {
-            return false;
-        }
-
-        if (empty($post['meta_title'])) {
-            $meta['meta_title'] = \Configuration::get('beesblogmetatitle');
-        } else {
-            $meta['meta_title'] = $post['meta_title'];
-        }
-
-        if (empty($post['meta_description'])) {
-            $meta['meta_description'] = \Configuration::get('beesblogmetadescrip');
-        } else {
-            $meta['meta_description'] = $post['meta_description'];
-        }
-
-        if (empty($post['meta_keyword'])) {
-            $meta['meta_keywords'] = \Configuration::get('beesblogmetakeyword');
-        } else {
-            $meta['meta_keywords'] = $post['meta_keyword'];
-        }
-
-        return $meta;
-    }
-
-    /**
-     * @param int $limit
-     *
-     * @return array|bool
-     */
-    public static function getLatestPostHome($limit)
-    {
-        if ($limit == '' && $limit == null) {
-            $limit = 3;
-        }
-        $idLang = (int) \Context::getContext()->language->id;
-        $idShop = (int) \Context::getContext()->shop->id;
-        $result = [];
-        $sql = new \DbQuery();
-        $sql->select('*');
-        $sql->from(self::TABLE, 'sbp');
-        $sql->innerJoin(self::LANG_TABLE, 'sbpl', 'sbp.`'.self::PRIMARY.'` = sbpl.`'.self::PRIMARY.'`');
-        $sql->innerJoin(self::SHOP_TABLE, 'sbps', 'sbp.`'.self::PRIMARY.'` = sbps.`'.self::PRIMARY.'`');
-        $sql->where('sbpl.`id_lang` = '.(int) $idLang);
-        $sql->where('sbpl.`lang_active` = 1');
-        $sql->where('sbps.`id_shop` = '.(int) $idShop);
-        $sql->where('sbp.`active` = 1');
-
-        // FIXME: detect admin users properly
-//        if (\Context::getContext()->customer->email !== 'info@thirtybees.com') {
-//            $sql->where('sbp.`date_add` < \''.date('Y-m-d H:i:s').'\'');
-//        }
-        $sql->limit((int) $limit);
-        $posts = \Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($sql);
-        if (empty($posts)) {
-            return false;
-        }
-        $i = 0;
-        foreach ($posts as $post) {
-            $result[$i]['id'] = $post['id_bees_blog_post'];
-            $result[$i]['title'] = $post['meta_title'];
-            $result[$i]['meta_description'] = strip_tags($post['meta_description']);
-            $result[$i]['short_description'] = strip_tags($post['short_description']);
-            $result[$i]['content'] = strip_tags($post['content']);
-            $result[$i]['category'] = $post['id_category'];
-            $result[$i]['date_added'] = $post['date_add'];
-            $result[$i]['viewed'] = $post['viewed'];
-            $result[$i]['is_featured'] = $post['is_featured'];
-            $result[$i]['link_rewrite'] = $post['link_rewrite'];
-            if (file_exists(_PS_MODULE_DIR_.'beesblog/images/'.$post['id_bees_blog_post'].'.jpg')) {
-                $image = $post['id_bees_blog_post'];
-                $result[$i]['post_img'] = $image;
-            } else {
-                $result[$i]['post_img'] = 'no';
-            }
-            $i++;
-        }
-
-        return $result;
     }
 
     /**

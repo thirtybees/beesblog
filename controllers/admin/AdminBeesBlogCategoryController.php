@@ -58,6 +58,15 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
         // We are going to use multilang ObjectModels but there is just one language to display
         $this->lang = true;
 
+        // Allow bulk delete
+        $this->bulk_actions = [
+            'delete' => [
+                'text'    => $this->l('Delete selected'),
+                'confirm' => $this->l('Delete selected items?'),
+                'icon'    => 'icon-trash',
+            ],
+        ];
+
         // Set the fields_list to display in fields mode
         $this->fields_list = [
             BeesBlogCategory::PRIMARY => [

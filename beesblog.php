@@ -26,6 +26,7 @@ if (!defined('_TB_VERSION_')) {
 }
 
 require_once __DIR__.'/classes/autoload.php';
+require_once __DIR__.'/widgets/autoload.php';
 
 /**
  * Class BeesBlog
@@ -42,7 +43,6 @@ class BeesBlog extends Module
     const SOCIAL_SHARING = 'BEESBLOG_SOCIAL_SHARING';
     const SHOW_POST_COUNT = 'BEESBLOG_SHOW_VIEWED';
     const SHOW_NO_IMAGE = 'BEESBLOG_SHOW_NO_IMAGE';
-    const SHOW_COLUMN = 'BEESBLOG_SHOW_COLUMN';
     const CUSTOM_CSS = 'BEESBLOG_CUSTOM_CSS';
     const SHOW_CATEGORY_IMAGE = 'BEESBLOG_DISABLE_CATEGORY_IMAGE';
     const HOME_TITLE = 'BEESBLOG_META_TITLE';
@@ -69,12 +69,12 @@ class BeesBlog extends Module
             'live_edit'   => 0,
         ],
     ];
-    protected $beesShopId;
-    protected $secureKey;
     protected $fieldsForm;
 
     /**
      * BeesBlog constructor.
+     *
+     * @since 1.0.0
      */
     public function __construct()
     {
@@ -84,8 +84,6 @@ class BeesBlog extends Module
         $this->author = 'thirty bees';
 
         $this->controllers = ['category', 'post', 'search'];
-        $this->secureKey = Tools::encrypt($this->name);
-        $this->beesShopId = Context::getContext()->shop->id;
         $this->bootstrap = true;
 
         parent::__construct();
@@ -97,6 +95,8 @@ class BeesBlog extends Module
      * Install this module
      *
      * @return bool Whether the module has been successfully installed
+     *
+     * @since 1.0.0
      */
     public function install()
     {
@@ -114,8 +114,6 @@ class BeesBlog extends Module
         Configuration::updateGlobalValue(static::SHOW_POST_COUNT, true);
 
         Configuration::updateGlobalValue(static::SHOW_NO_IMAGE, false);
-        Configuration::updateGlobalValue(static::SHOW_COLUMN, 3);
-        Configuration::updateGlobalValue(static::CUSTOM_CSS, '');
         Configuration::updateGlobalValue(static::SHOW_CATEGORY_IMAGE, false);
         Configuration::updateGlobalValue(static::HOME_TITLE, 'Bees blog title');
         Configuration::updateGlobalValue(static::HOME_KEYWORDS, 'thirty bees blog,thirty bees');
@@ -128,6 +126,11 @@ class BeesBlog extends Module
         ) {
             return false;
         }
+
+//        if (version_compare(_TB_VERSION_, '<', '1.0.2')) {
+//            Db::getInstance()->execute('ALTER TABLE `'..'` DROP position;');
+//            Db::getInstance()->execute('ALTER TABLE `'..'` DROP position;');
+//        }
 
         if (!$this->registerHook('displayHeader')
             || !$this->registerHook('moduleRoutes')
@@ -144,6 +147,8 @@ class BeesBlog extends Module
 
     /**
      * @return bool
+     *
+     * @since 1.0.0
      */
     public function insertBlogHooks()
     {
@@ -171,6 +176,8 @@ class BeesBlog extends Module
      * Create Bees blog tabs
      *
      * @return bool Whether the tabs have been successfully added
+     *
+     * @since 1.0.0
      */
     protected function createBeesBlogTabs()
     {
@@ -225,6 +232,8 @@ class BeesBlog extends Module
      * Uninstall this module
      *
      * @return bool Whether the module has been successfully uninstalled
+     *
+     * @since 1.0.0
      */
     public function uninstall()
     {
@@ -237,9 +246,7 @@ class BeesBlog extends Module
             !Configuration::deleteByName(static::SHOW_POST_COUNT) ||
             !Configuration::deleteByName(static::SHOW_CATEGORY_IMAGE) ||
             !Configuration::deleteByName(static::MAIN_URL_KEY) ||
-            !Configuration::deleteByName(static::SHOW_COLUMN) ||
             !Configuration::deleteByName(static::AUTHOR_STYLE) ||
-            !Configuration::deleteByName(static::CUSTOM_CSS) ||
             !Configuration::deleteByName(static::SHOW_NO_IMAGE) ||
             !Configuration::deleteByName(static::SHOW_AUTHOR) ||
             !Configuration::deleteByName(static::SHOW_DATE) ||
@@ -403,9 +410,9 @@ class BeesBlog extends Module
      * Add links to Google Sitemap
      * Hook provided by gsitemap module
      *
-     * @param array $params Hook parameters
-     *
      * @return array Sitemap links
+     *
+     * @since 11.0.0
      */
     public function hookGSitemapAppendUrls()
     {
@@ -452,6 +459,8 @@ class BeesBlog extends Module
      *
      * @return string URL to item
      * @throws PrestaShopException
+     *
+     * @since 1.0.0
      */
     public static function getBeesBlogLink($rewrite = null, $params = [], $idShop = null, $idLang = null)
     {
@@ -464,12 +473,17 @@ class BeesBlog extends Module
 
     /**
      * Hook display header
+     *
+     * @since 1.0.0
      */
     public function hookDisplayHeader()
     {
         $this->context->controller->addCSS($this->_path.'views/css/beesblogstyle.css', 'all');
     }
 
+    /**
+     * @since 1.0.0
+     */
     public function hookDisplayBackOfficeHeader()
     {
         $this->context->controller->addCSS($this->_path.'views/css/back.css', 'all');
@@ -479,6 +493,8 @@ class BeesBlog extends Module
      * Get module configuration page
      *
      * @return string HTML
+     *
+     * @since 1.0.0
      */
     public function getContent()
     {
@@ -494,6 +510,8 @@ class BeesBlog extends Module
 
     /**
      * Save form data.
+     *
+     * @since 1.0.0
      */
     protected function postProcess()
     {
@@ -509,11 +527,9 @@ class BeesBlog extends Module
             Configuration::updateValue(static::SHOW_DATE, Tools::getValue(static::SHOW_DATE));
             Configuration::updateValue(static::SOCIAL_SHARING, Tools::getValue(static::SOCIAL_SHARING));
             Configuration::updateValue(static::AUTHOR_STYLE, Tools::getValue(static::AUTHOR_STYLE));
-            Configuration::updateValue(static::SHOW_COLUMN, Tools::getValue(static::SHOW_COLUMN));
             Configuration::updateValue(static::MAIN_URL_KEY, Tools::getValue(static::MAIN_URL_KEY));
             Configuration::updateValue(static::USE_HTML, Tools::getValue(static::USE_HTML));
             Configuration::updateValue(static::SHOW_NO_IMAGE, Tools::getValue(static::SHOW_NO_IMAGE));
-            Configuration::updateValue(static::CUSTOM_CSS, Tools::getValue(static::CUSTOM_CSS), true);
         }
 
         if (Tools::isSubmit('submitOptionsconfiguration') || Tools::isSubmit('submitOptions')) {
@@ -680,7 +696,7 @@ class BeesBlog extends Module
                     ],
                 ],
                 [
-                    'type'     => 'switch',
+                    'type'     => 'radio',
                     'label'    => $this->l('Author name style'),
                     'name'     => static::AUTHOR_STYLE,
                     'required' => false,
@@ -703,7 +719,7 @@ class BeesBlog extends Module
                     'name'     => static::SHOW_CATEGORY_IMAGE,
                     'required' => false,
                     'class'    => 't',
-                    'desc'     => 'Show category image and description on every page',
+                    'desc'     => 'Show the category image and description on every category page',
                     'is_bool'  => true,
                     'values'   => [
                         [
@@ -762,6 +778,8 @@ class BeesBlog extends Module
      * Get form values
      *
      * @return array Form values
+     *
+     * @since 1.0.0
      */
     protected function getFormValues()
     {
@@ -774,14 +792,12 @@ class BeesBlog extends Module
                 static::AUTHOR_STYLE,
                 static::MAIN_URL_KEY,
                 static::USE_HTML,
-                static::SHOW_COLUMN,
                 static::HOME_TITLE,
                 static::HOME_KEYWORDS,
                 static::HOME_DESCRIPTION,
                 static::SHOW_POST_COUNT,
                 static::SHOW_POST_COUNT,
                 static::SHOW_CATEGORY_IMAGE,
-                static::CUSTOM_CSS,
                 static::SHOW_NO_IMAGE,
             ]
         );
@@ -791,6 +807,8 @@ class BeesBlog extends Module
      * Render the General options form
      *
      * @return string HTML
+     *
+     * @since 1.0.0
      */
     protected function renderDisqusOptions()
     {
@@ -809,6 +827,8 @@ class BeesBlog extends Module
      * Get available general options
      *
      * @return array General options
+     *
+     * @since 1.0.0
      */
     protected function getDisqusOptions()
     {
@@ -834,11 +854,33 @@ class BeesBlog extends Module
         ];
     }
 
+    /**
+     * Get post image path
+     * Proxy for smarty
+     *
+     * @param int    $id
+     * @param string $type
+     *
+     * @return string
+     *
+     * @since 1.0.0
+     */
     public static function getPostImagePath($id, $type = 'post_default')
     {
         return BeesBlogPost::getImagePath($id, $type);
     }
 
+    /**
+     * Get category image path
+     * Proxy for smarty
+     *
+     * @param int    $id
+     * @param string $type
+     *
+     * @return string
+     *
+     * @since 1.0.0
+     */
     public static function getCategoryImagePath($id, $type = 'category_default')
     {
         return BeesBlogCategory::getImagePath($id, $type);
