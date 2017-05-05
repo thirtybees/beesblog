@@ -34,6 +34,7 @@ class BeesBlogPost extends \ObjectModel
     const LANG_TABLE = 'bees_blog_post_lang';
     const SHOP_TABLE = 'bees_blog_post_shop';
     const IMAGE_TYPE = 'beesblog_post';
+
     public static $definition = [
         'table'          => self::TABLE,
         'primary'        => self::PRIMARY,
@@ -73,8 +74,6 @@ class BeesBlogPost extends \ObjectModel
     public $date_upd;
     /** @var string $published */
     public $published;
-    /** @var string $summary */
-    public $summary;
     /** @var int $viewed */
     public $viewed;
     /** @var bool $comments_enabled */
@@ -95,6 +94,8 @@ class BeesBlogPost extends \ObjectModel
     public $lang_active;
     /** @var bool $is_featured */
     public $is_featured;
+    /** @var array $imageTypes Default image types */
+    public static $imageTypes = ['post_default', 'post_list_item'];
     // @codingStandardsIgnoreEnd
 
     /**
@@ -128,6 +129,7 @@ class BeesBlogPost extends \ObjectModel
         $postCollection = new \Collection('BeesBlogModule\\BeesBlogPost', $idLang);
         $postCollection->setPageSize($limit);
         $postCollection->setPageNumber($page);
+        $postCollection->orderBy('published', 'desc');
 
         if ($count) {
             return $postCollection->count();
@@ -155,138 +157,6 @@ class BeesBlogPost extends \ObjectModel
     }
 
     /**
-     * Get BeesBlogPost count
-     *
-     * @param int|null       $idLang   Language ID
-     * @param \Employee|null $employee Employee object
-     *
-     * @return int BeesBlogPost count
-     */
-    public static function getPostCount($idLang = null, \Employee $employee = null)
-    {
-        if ($idLang == null) {
-            $idLang = (int) \Context::getContext()->language->id;
-        }
-        $idShop = (int) \Context::getContext()->shop->id;
-        $allowedProfiles = json_decode(\Configuration::get(\BeesBlog::ALLOWED_PROFILES), false, 2);
-        if (!is_array($allowedProfiles)) {
-            $allowedProfiles = [];
-        }
-
-        $sql = new \DbQuery();
-        $sql->select('count(*)');
-        $sql->from(self::TABLE, 'sbp');
-        $sql->innerJoin(self::LANG_TABLE, 'sbpl', 'sbp.`'.self::PRIMARY.'` = sbpl.`'.self::PRIMARY.'`');
-        $sql->innerJoin(self::SHOP_TABLE, 'sbps', 'sbp.`'.self::PRIMARY.'` = sbps.`'.self::PRIMARY.'`');
-        $sql->where('sbpl.`id_lang` = '.(int) $idLang);
-        $sql->where('sbpl.`lang_active` = 1');
-        $sql->where('sbps.`id_shop` = '.(int) $idShop);
-        $sql->where('sbp.`active` = 1');
-        if (\Validate::isLoadedObject($employee) && in_array($employee->id_profile, $allowedProfiles)) {
-            $sql->where('sbp.`date_add` < \''.date('Y-m-d H:i:s').'\'');
-        }
-
-        return (int) \Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql);
-    }
-
-    /**
-     * Get BeesBlogPost count by BeesBlogCategory
-     *
-     * @param int      $idBeesBlogCategory BeesBlogCategory ID
-     * @param int|null $idLang             Language ID
-     *
-     * @return bool|int
-     *
-     * @since 1.0.0
-     */
-    public static function getPostCountByCategory($idBeesBlogCategory, $idLang = null)
-    {
-        if ($idLang == null) {
-            $idLang = (int) \Context::getContext()->language->id;
-        }
-        if ($idBeesBlogCategory == null) {
-            $idBeesBlogCategory = 1;
-        }
-        $idShop = (int) \Context::getContext()->shop->id;
-        $sql = new \DbQuery();
-        $sql->select('COUNT(*)');
-        $sql->from(self::TABLE, 'sbp');
-        $sql->innerJoin(self::LANG_TABLE, 'sbpl', 'sbp.`'.self::PRIMARY.'` = sbpl.`'.self::PRIMARY.'`');
-        $sql->innerJoin(self::SHOP_TABLE, 'sbps', 'sbp.`'.self::PRIMARY.'` = sbps.`'.self::PRIMARY.'`');
-        $sql->where('sbpl.`id_lang` = '.(int) $idLang);
-        $sql->where('sbpl.`lang_active` = 1');
-        $sql->where('sbps.`id_shop` = '.(int) $idShop);
-        $sql->where('sbp.`active` = 1');
-        if (\Context::getContext()->customer->email !== 'info@thirtybees.com') {
-            $sql->where('sbp.`date_add` < \''.date('Y-m-d H:i:s').'\'');
-        }
-        $sql->where('sbp.`id_category` = '.(int) $idBeesBlogCategory);
-        if (!$posts = \Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql)) {
-            return false;
-        }
-
-
-        return $posts;
-    }
-
-    /**
-     * Add tags
-     *
-     * @param int      $idPost
-     * @param array    $tagList
-     * @param int|null $idLang
-     * @param string   $separator
-     *
-     * @return bool
-     */
-    public static function addTags($idPost, $tagList, $idLang = null, $separator = ',')
-    {
-        if ($idLang == null) {
-            $idLang = (int) \Context::getContext()->language->id;
-        }
-        if (!\Validate::isUnsignedId($idLang)) {
-            return false;
-        }
-
-        if (!is_array($tagList)) {
-            $tagList = array_filter(array_unique(array_map('trim', preg_split('#\\'.$separator.'#', $tagList, null, PREG_SPLIT_NO_EMPTY))));
-        }
-
-        $list = [];
-        if (is_array($tagList)) {
-            foreach ($tagList as $tag) {
-                $idTag = BeesBlogTag::tagExists($tag, (int) $idLang);
-                if (!$idTag) {
-                    $tagObj = new BeesBlogTag(null, $tag, (int) $idLang);
-                    if (!\Validate::isLoadedObject($tagObj)) {
-                        $tagObj->name = $tag;
-                        $tagObj->id_lang = (int) $idLang;
-                        $tagObj->add();
-                    }
-                    if (!in_array($tagObj->id, $list)) {
-                        $list[] = $tagObj->id;
-                    }
-                } else {
-                    if (!in_array($idTag, $list)) {
-                        $list[] = $idTag;
-                    }
-                }
-
-            }
-        }
-        $data = [];
-        foreach ($list as $tag) {
-            $data[] = [
-                self::TABLE => (int) $tag,
-                'id_post'   => (int) $idPost,
-            ];
-
-        }
-
-        return \Db::getInstance()->insert(self::TABLE, $data);
-    }
-
-    /**
      * Increment view count
      *
      * @param int $idBeesBlogPost BeesBlogPost ID
@@ -298,85 +168,6 @@ class BeesBlogPost extends \ObjectModel
         $sql = 'UPDATE '._DB_PREFIX_.'bees_blog_post as p SET p.viewed = (p.viewed+1) where p.id_bees_blog_post = '.(int) $idBeesBlogPost;
 
         return \Db::getInstance()->execute($sql);
-    }
-
-    /**
-     * Get Tags
-     *
-     * @param $idBeesBlogPost
-     *
-     * @return array|bool|false|null|\PDOStatement
-     */
-    public static function getTags($idBeesBlogPost)
-    {
-        return false;
-//        $idLang = (int) \Context::getContext()->language->id;
-//        $sql = new \DbQuery();
-//        $sql->select('sbt.`name`');
-//        $sql->from('bees_blog_tag', 'sbt');
-//        $sql->leftJoin('bees_blog_post_tag', 'sbpt', 'sbt.`id_tag` = sbpt.`id_tag`');
-//        $sql->where('sbt.`id_lang` = '.(int) $idLang);
-//        $sql->where('sbpt.`id_post` = '.(int) $idBeesBlogPost);
-//        if (!$tmp = \Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($sql)) {
-//            return false;
-//        }
-//
-//        return $tmp;
-    }
-
-    /**
-     * Delete tags
-     *
-     * @param int $idBeesBlogPost
-     *
-     * @return bool
-     */
-    public static function deleteTags($idBeesBlogPost)
-    {
-//        return \Db::getInstance()->delete(
-//            'bees_blog_post_tag',
-//            '`id_post` = '.(int) $idBeesBlogPost
-//        );
-    }
-
-    /**
-     * Get tags with lang restriction
-     *
-     * @param int      $idBeesBlogPost BeesBlogPost ID
-     * @param int|null $idLang         Language ID
-     *
-     * @return bool|string
-     *
-     * @TODO: merge with getTags
-     */
-    public static function getTagsByLang($idBeesBlogPost, $idLang = null)
-    {
-        return false;
-//        if ($idLang == null) {
-//            $idLang = (int) \Context::getContext()->language->id;
-//        }
-//        $tags = '';
-//        $sql = new \DbQuery();
-//        $sql->select('*');
-//        $sql->from('bees_blog_tag', 'sbt');
-//        $sql->leftJoin('bees_blog_post_tag', 'sbpt', 'sbt.`id_tag` = sbpt.`id_tag`');
-//        $sql->where('sbt.`id_lang` = '.(int) $idLang);
-//        $sql->where('sbpt.`id_post` = '.(int) $idBeesBlogPost);
-//
-//        if (!$tmp = \Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($sql)) {
-//            return false;
-//        }
-//        $i = 1;
-//        foreach ($tmp as $val) {
-//            if ($i >= count($tmp)) {
-//                $tags .= $val['name'];
-//            } else {
-//                $tags .= $val['name'].',';
-//            }
-//            $i++;
-//        }
-//
-//        return $tags;
     }
 
     /**
@@ -465,72 +256,6 @@ class BeesBlogPost extends \ObjectModel
         }
 
         return $posts;
-    }
-
-    /**
-     * @param array    $tags
-     * @param null|int $idLang
-     *
-     * @return array|bool
-     */
-    public static function tagsPost($tags, $idLang = null)
-    {
-        return false;
-//        $result = [];
-//        if ($idLang == null) {
-//            $idLang = (int) \Context::getContext()->language->id;
-//        }
-//        $idShop = (int) \Context::getContext()->shop->id;
-//
-//        $sql = new \DbQuery();
-//        $sql->select('*');
-//        $sql->from(self::TABLE, 'sbp');
-//        $sql->innerJoin(self::LANG_TABLE, 'sbpl', 'sbp.`'.self::PRIMARY.'` = sbpl.`'.self::PRIMARY.'`');
-//        $sql->innerJoin(self::SHOP_TABLE, 'sbps', 'sbp.`'.self::PRIMARY.'` = sbps.`'.self::PRIMARY.'`');
-//        $sql->innerJoin('bees_blog_post_tag', 'sbpt', 'sbp.`'.self::PRIMARY.'` = sbpt.`'.self::PRIMARY.'`');
-//        $sql->where('sbpl.`id_lang` = '.(int) $idLang);
-//        $sql->where('sbpl.`lang_active` = 1');
-//
-//        // FIXME: detect admin users properly
-//        if (\Context::getContext()->customer->email !== 'info@thirtybees.com') {
-//            $sql->where('sbp.`date_add` < \''.date('Y-m-d H:i:s').'\'');
-//        }
-//        $sql->where('sbps.`id_shop` = '.(int) $idShop);
-//        $sql->where('sbp.`active` = 1');
-//        if (!$posts = \Db::getInstance()->executeS($sql)) {
-//            return false;
-//        }
-//
-//        $blogCategory = new BeesBlogCategory();
-//        $i = 0;
-//        foreach ($posts as $post) {
-//            $result[$i]['id_post'] = $post['id_bees_blog_post'];
-//            $result[$i]['viewed'] = $post['viewed'];
-//            $result[$i]['is_featured'] = $post['is_featured'];
-//            $result[$i]['meta_title'] = $post['meta_title'];
-//            $result[$i]['short_description'] = $post['short_description'];
-//            $result[$i]['meta_description'] = $post['meta_description'];
-//            $result[$i]['content'] = $post['content'];
-//            $result[$i]['meta_keyword'] = $post['meta_keyword'];
-//            $result[$i]['id_category'] = $post['id_category'];
-//            $result[$i]['link_rewrite'] = $post['link_rewrite'];
-//            $result[$i]['cat_name'] = $blogCategory->getCatName($post['id_category']);
-//            $result[$i]['cat_link_rewrite'] = $blogCategory->getCatLinkRewrite($post['id_category']);
-//            $employee = new \Employee($post['id_employee']);
-//
-//            $result[$i]['lastname'] = $employee->lastname;
-//            $result[$i]['firstname'] = $employee->firstname;
-//            if (file_exists(_PS_MODULE_DIR_.'beesblog/images/'.$post['id_bees_blog_post'].'.jpg')) {
-//                $image = $post['id_bees_blog_post'];
-//                $result[$i]['post_img'] = $image;
-//            } else {
-//                $result[$i]['post_img'] = 'no';
-//            }
-//            $result[$i]['date_add'] = $post['date_add'];
-//            $i++;
-//        }
-//
-//        return $result;
     }
 
     /**
@@ -1065,5 +790,24 @@ class BeesBlogPost extends \ObjectModel
         }
 
         return \Tools::substr(strip_tags($this->content), 0, 512).' [...]';
+    }
+
+    public static function getImageLink($id, $type = 'post_default')
+    {
+        $baseLocation = _PS_IMG_DIR_.'beesblog/posts/';
+
+        if ($type === 'original') {
+            if (file_exists("{$baseLocation}{$id}.png")) {
+                return "{$baseLocation}{$id}.png";
+            } else {
+                return "{$baseLocation}{$id}.jpg";
+            }
+        }
+
+        if (file_exists("{$baseLocation}{$id}-{$type}.png")) {
+            return "{$baseLocation}{$id}-{$type}.png";
+        } else {
+            return "{$baseLocation}{$id}-{$type}.jpg";
+        }
     }
 }

@@ -22,6 +22,7 @@ if (!defined('_TB_VERSION_')) {
 }
 
 use BeesBlogModule\BeesBlogCategory;
+use BeesBlogModule\BeesBlogImageType;
 use BeesBlogModule\BeesBlogPost;
 
 /**
@@ -89,6 +90,11 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
      */
     public function renderForm()
     {
+        $id = (int) \Tools::getValue(BeesBlogCategory::PRIMARY);
+
+        $imageUrl = \ImageManager::thumbnail(BeesBlogCategory::getImageLink($id), $this->table."_{$id}.jpg", 200, 'jpg', true, true);
+        $imageSize = file_exists(BeesBlogCategory::getImageLink($id)) ? filesize(BeesBlogCategory::getImageLink($id)) / 1000 : false;
+
         $this->fields_form = [
             'legend' => [
                 'title' => $this->l('Blog category'),
@@ -105,21 +111,25 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
                 ],
                 [
                     'type'         => 'textarea',
-                    'label'        => $this->l('Summary'),
-                    'name'         => 'summary',
+                    'label'        => $this->l('Description'),
+                    'name'         => 'description',
                     'lang'         => true,
                     'rows'         => 10,
                     'cols'         => 62,
                     'class'        => 'rte',
                     'autoload_rte' => true,
                     'required'     => false,
-                    'desc'         => $this->l('Enter a summary'),
+                    'desc'         => $this->l('Enter a description'),
                 ],
                 [
                     'type'          => 'file',
                     'label'         => $this->l('Category image'),
                     'name'          => 'category_image',
                     'display_image' => true,
+                    'image'         => $imageUrl ? $imageUrl : false,
+                    'size'          => $imageSize,
+                    'delete_url'    => self::$currentIndex.'&'.$this->identifier.'='.\Tools::getValue(BeesBlogCategory::PRIMARY).'&token='.$this->token.'&deleteImage=1',
+                    'hint'          => $this->l('Upload an image from your computer.'),
                 ],
                 [
                     'type'     => 'text',
@@ -200,25 +210,8 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
      */
     public function postProcess()
     {
-        if (\Tools::isSubmit('status'.BeesBlogCategory::TABLE) && \Tools::getValue(BeesBlogCategory::PRIMARY)) {
-            if ($this->tabAccess['edit'] === '1') {
-                if (\Validate::isLoadedObject($object = $this->loadObject())) {
-                    if ($object->toggleStatus()) {
-                        \Hook::exec('actionsbtogglecat', ['BeesBlogCat' => $this->object]);
-                        $identifier = ((int) $object->id_parent ? '&id_bees_blog_category='.(int) $object->id_parent : '');
-                        \Tools::redirectAdmin($this->context->link->getAdminLink('AdminBeesBlogCategory'));
-                    } else {
-                        $this->errors[] = \Tools::displayError('An error occurred while updating the status.');
-                    }
-                } else {
-                    $this->errors[] = \Tools::displayError('An error occurred while updating the status for an object.').' <b>'.$this->table.'</b> '.\Tools::displayError('(cannot load object)');
-                }
-            } else {
-                $this->errors[] = \Tools::displayError('You do not have permission to edit this.');
-            }
-        } elseif (\Tools::isSubmit(BeesBlogCategory::TABLE.'Orderby') && \Tools::isSubmit(BeesBlogCategory::TABLE.'Orderway')) {
-            $this->_defaultOrderBy = \Tools::getValue(BeesBlogCategory::TABLE.'Orderby');
-            $this->_defaultOrderWay = \Tools::getValue(BeesBlogCategory::TABLE.'Orderway');
+        if (\Tools::isSubmit('deleteImage')) {
+               $this->processForceDeleteImage();
         } else {
             parent::postProcess();
         }
@@ -230,49 +223,114 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
      * @param array $files
      * @param int   $id
      *
-     * @return string
+     * @return bool
      */
-    public function processImageCategory($files, $id)
+    public function processImage($files, $id)
     {
-        return true;
-        if (isset($files['category_image']) && isset($files['category_image']['tmp_name']) && !empty($files['category_image']['tmp_name'])) {
-            if ($error = \ImageManager::validateUpload($files['category_image'], 4000000)) {
-                return $this->errors[] = $this->l('Invalid image');
-            } else {
-                $ext = substr($files['category_image']['name'], strrpos($files['category_image']['name'], '.') + 1);
-                $fileName = $id.'.'.$ext;
-                $path = _PS_MODULE_DIR_.'beesblog/images/category/'.$fileName;
-                if (!move_uploaded_file($files['category_image']['tmp_name'], $path)) {
-                    return $this->errors[] = $this->l('An error occurred while attempting to upload the file.');
-                } else {
-                    if (\Configuration::hasContext('category_image', null, Shop::getContext())
-                        && \Configuration::get('BLOCKBANNER_IMG') != $fileName
-                    ) {
-                        @unlink(__DIR__.'/'.\Configuration::get('BLOCKBANNER_IMG'));
-                    }
+        $categoryImageInput = 'category_image';
 
-                    $imageTypes = ImageType::getAllImagesFromType('category');
+        if (isset($files[$categoryImageInput]) && isset($files[$categoryImageInput]['tmp_name']) && !empty($files[$categoryImageInput]['tmp_name'])) {
+            if ($error = \ImageManager::validateUpload($files[$categoryImageInput], 4000000)) {
+                $this->errors[] = $this->l('Invalid image');
+
+                return false;
+            } else {
+                $ext = substr($files[$categoryImageInput]['name'], strrpos($files[$categoryImageInput]['name'], '.') + 1);
+                $path = _PS_IMG_DIR_."beesblog/categories/";
+                if (!file_exists($path)) {
+                    if (!mkdir($path, 0777, true)) {
+                        $this->errors[] = sprintf($this->l('Unable to create image directory: `%s`'), $path);
+                    }
+                }
+                $path .= "$id.$ext";
+                if (!move_uploaded_file($files[$categoryImageInput]['tmp_name'], $path)) {
+                    $this->errors[] = $this->l('An error occurred while attempting to upload the file.');
+
+                    return false;
+                } else {
+                    $imageTypes = BeesBlogImageType::getImagesTypes('categories');
                     foreach ($imageTypes as $imageType) {
-                        $dir = _PS_MODULE_DIR_.'beesblog/images/category/'.$id.'-'.stripslashes($imageType['type_name']).'.jpg';
+                        $dir = _PS_IMG_DIR_."beesblog/categories/{$id}-{$imageType['name']}.{$ext}";
                         if (file_exists($dir)) {
                             unlink($dir);
                         }
-                    }
-                    foreach ($imageTypes as $imageType) {
                         \ImageManager::resize(
                             $path,
-                            _PS_MODULE_DIR_.'beesblog/images/category/'.$id.'-'.stripslashes($imageType['type_name']).'.jpg',
+                            _PS_IMG_DIR_."beesblog/categories/{$id}-{$imageType['name']}.{$ext}",
                             (int) $imageType['width'],
-                            (int) $imageType['height']
+                            (int) $imageType['height'],
+                            $ext,
+                            true
                         );
                     }
                 }
             }
         }
 
-        return '';
+        return true;
     }
 
+    /**
+     * @since 1.0.0
+     */
+    public function processForceDeleteImage()
+    {
+        $blogPost = $this->loadObject(true);
+
+        if (\Validate::isLoadedObject($blogPost)) {
+            $this->deleteImage($blogPost->id);
+        }
+    }
+
+    /**
+     * @param int $idBeesBlogCategory
+     *
+     * @return bool
+     *
+     * @since 1.0.0
+     */
+    public function deleteImage($idBeesBlogCategory)
+    {
+        $deleted = false;
+        // Delete base image
+        foreach (['png', 'jpg'] as $extension) {
+            if (file_exists(_PS_IMG_DIR_."beesblog/categories/{$idBeesBlogCategory}.{$extension}")) {
+                unlink(_PS_IMG_DIR_."beesblog/categories/{$idBeesBlogCategory}.{$extension}");
+            }
+
+            // now we need to delete the image type of post
+
+            $filesToDelete = [];
+
+            // Delete auto-generated images
+            $imageTypes = BeesBlogImageType::getImagesTypes('categories');
+            foreach ($imageTypes as $imageType) {
+                $filesToDelete[] = _PS_IMG_DIR_."beesblog/categories/{$idBeesBlogCategory}-{$imageType['name']}.{$extension}";
+            }
+
+            foreach ($filesToDelete as $file) {
+                if (file_exists($file)) {
+                    @unlink($file);
+                    $deleted = true;
+                }
+            }
+        }
+
+        if ($deleted) {
+            $this->confirmations[] = $this->l('Successfully deleted image');
+        }
+
+        return true;
+    }
+
+
+    /**
+     * Process add
+     *
+     * @return bool
+     *
+     * @since 1.0.0
+     */
     public function processAdd()
     {
         if (Tools::isSubmit(BeesBlogCategory::PRIMARY)) {
@@ -300,56 +358,85 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
         }
         $blogCategory->id_shop = (int) Context::getContext()->shop->id;
 
+        $this->processImage($_FILES, $blogCategory->id);
+
         // TODO: check if link_rewrite is unique
 
-        return $blogCategory->add();
+        if ($blogCategory->add()) {
+            $this->confirmations[] = $this->l('Successfully added a new category');
+
+            return true;
+        }
+
+        $this->errors[] = $this->l('Unable to add new category');
+
+        return false;
     }
 
+    /**
+     * Process update
+     *
+     * @return bool
+     *
+     * @since 1.0.0
+     */
     public function processUpdate()
     {
-        if (Tools::isSubmit(BeesBlogCategory::PRIMARY)) {
+        if (!Tools::isSubmit(BeesBlogCategory::PRIMARY)) {
             return false;
         }
 
         $blogCategory = new BeesBlogCategory((int) Tools::getValue(BeesBlogCategory::PRIMARY));
-        $isRoot = (int) $blogCategory->id_parent === 0;
         $this->copyFromPost($blogCategory, $this->table);
-        $idLangDefault = (int) Configuration::get('PS_LANG_DEFAULT');
-        foreach (BeesBlogCategory::$definition['fields'] as $name => $field) {
-            if (isset($field['lang']) && $field['lang']) {
-                foreach (Language::getLanguages() as $language) {
-                    if ((int) $language['id_lang'] !== $idLangDefault) {
-                        $blogCategory->{$name}[$language['id_lang']] = $blogCategory->{$name}[$idLangDefault];
-                    }
-                }
-            }
-        }
-
-        if ($isRoot) {
+        if (!$blogCategory->id_parent) {
             $blogCategory->id_parent = 0;
         }
+
         if (!$blogCategory->position) {
             $blogCategory->position = 0;
         }
         $blogCategory->id_shop = (int) Context::getContext()->shop->id;
 
+        $this->processImage($_FILES, $blogCategory->id);
+
         // TODO: check if link_rewrite is unique
 
-        return $blogCategory->add();
+        if ($blogCategory->add()) {
+            $this->confirmations[] = $this->l('Successfully updated the category');
+
+            return true;
+        }
+        $this->errors[] = $this->l('Unable to update category');
+
+        return false;
     }
 
+    /**
+     * Process delete
+     *
+     * @return bool
+     *
+     * @since 1.0.0
+     */
     public function processDelete()
     {
         $idLang = (int) \Context::getContext()->language->id;
-        $postCount = (int) BeesBlogPost::getPostCountByCategory($idLang, \Tools::getValue(BeesBlogCategory::PRIMARY));
+        $blogCategory = new BeesBlogCategory((int) \Tools::getValue(BeesBlogCategory::PRIMARY));
+
+        $postCount = (int) $blogCategory->getPostsInCategory($idLang, 0, 0, true);
         if ((int) $postCount != 0) {
             $this->errors[] = $this->l('You need to delete all posts associate with this category .');
+
+            return false;
         } else {
-            $blogCategory = new BeesBlogCategory((int) \Tools::getValue(BeesBlogCategory::PRIMARY));
             if (!$blogCategory->delete()) {
                 $this->errors[] = $this->l('An error occurred while deleting the object.').' <strong>'.$this->table.' ('.\Db::getInstance()->getMsgError().')</strong>';
+
+                return false;
             } else {
                 \Tools::redirectAdmin($this->context->link->getAdminLink('AdminBeesBlogCategory'));
+
+                return true;
             }
         }
     }

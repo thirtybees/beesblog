@@ -30,36 +30,36 @@
         </div>
         <div class="beesblog-post-list-bottom">
             {if $showAuthor}
-            <i class="icon icon-user"></i>&nbsp;
-            <span>
+                <i class="icon icon-user"></i>&nbsp;
                 {l s='Posted by' mod='beesblog'}
                 <span itemprop="author">
-                        {if $authorStyle}
-                            {$post->firstname|escape:'htmlall':'UTF-8'} {$post->lastname|escape:'htmlall':'UTF-8'}
-                        {else}
-                            {$post->lastname|escape:'htmlall':'UTF-8'} {$post->firstname|escape:'htmlall':'UTF-8'}
-                        {/if}
-                    </span>
-                {/if}
-                &nbsp;<i class="icon icon-object-group"></i>&nbsp;
-                <span itemprop="articleSection">
-                    <a href="{BeesBlog::GetBeesBlogLink('beesblog_category', ['cat_rewrite' => $post->category->link_rewrite])}">
-                        {$post->category->title|escape:'htmlall':'UTF-8'}
-                    </a>
+                    {if $authorStyle}
+                        {$post->firstname|escape:'htmlall':'UTF-8'} {$post->lastname|escape:'htmlall':'UTF-8'}
+                    {else}
+                        {$post->lastname|escape:'htmlall':'UTF-8'} {$post->firstname|escape:'htmlall':'UTF-8'}
+                    {/if}
                 </span>
-                {if $showComments}
-                    <span class="beesblog-comment-counter">
-                        <i class="icon icon-comments"></i>&nbsp;
-                        {*<a title="{$post.totalcomment|escape:'htmlall':'UTF-8'} Comments" href="{beesblog::GetBeesBlogLink('beesblog_post', $options)|escape:'htmlall':'UTF-8'}#disqus_thread">*}
-                        {*{$post.totalcomment|escape:'htmlall':'UTF-8'} {l s=' Comments' mod='beesblog'}*}
-                        {*</a>*}
-                    </span>
-                {/if}
-                {if $showViewed}
-                    <i class="icon icon-eye-open"></i>
-                    {l s=' views' mod='beesblog'} ({$post->viewed|escape:'htmlall':'UTF-8'})
-                {/if}
+            {/if}
+            <i class="icon icon-calendar"></i>&nbsp;
+
+            <i class="icon icon-object-group"></i>&nbsp;
+            <span itemprop="articleSection">
+                <a href="{BeesBlog::GetBeesBlogLink('beesblog_category', ['cat_rewrite' => $post->category->link_rewrite])}">
+                    {$post->category->title|escape:'htmlall':'UTF-8'}
+                </a>
             </span>
+            {if $showComments}
+                <span class="beesblog-comment-counter">
+                    <i class="icon icon-comments"></i>&nbsp;
+                    {*<a title="{$post.totalcomment|escape:'htmlall':'UTF-8'} Comments" href="{beesblog::GetBeesBlogLink('beesblog_post', $options)|escape:'htmlall':'UTF-8'}#disqus_thread">*}
+                    {*{$post.totalcomment|escape:'htmlall':'UTF-8'} {l s=' Comments' mod='beesblog'}*}
+                    {*</a>*}
+                </span>
+            {/if}
+            {if $showViewed}
+                <i class="icon icon-eye-open"></i>
+                {l s=' views' mod='beesblog'} ({$post->viewed|escape:'htmlall':'UTF-8'})
+            {/if}
         </div>
     </div>
 </div>

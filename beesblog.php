@@ -18,6 +18,7 @@
  */
 
 use BeesBlogModule\BeesBlogCategory;
+use BeesBlogModule\BeesBlogImageType;
 use BeesBlogModule\BeesBlogPost;
 use BeesBlogModule\BeesBlogTag;
 
@@ -38,6 +39,7 @@ class BeesBlog extends Module
     const USE_HTML = 'BEESBLOG_USE_HTML';
     const ENABLE_COMMENT = 'BEESBLOG_ENABLE_COMMENT';
     const SHOW_AUTHOR = 'BEESBLOG_SHOW_AUTHOR';
+    const SHOW_DATE = 'BEESBLOG_SHOW_DATES';
     const SHOW_POST_COUNT = 'BEESBLOG_SHOW_VIEWED';
     const SHOW_NO_IMAGE = 'BEESBLOG_SHOW_NO_IMAGE';
     const SHOW_COLUMN = 'BEESBLOG_SHOW_COLUMN';
@@ -98,34 +100,39 @@ class BeesBlog extends Module
      */
     public function install()
     {
-        Configuration::updateGlobalValue(static::POSTS_PER_PAGE, '5');
-        Configuration::updateGlobalValue(static::SHOW_AUTHOR, '1');
-        Configuration::updateGlobalValue(static::AUTHOR_STYLE, '1');
-        Configuration::updateGlobalValue(static::MAIN_URL_KEY, 'blog');
-        Configuration::updateGlobalValue(static::USE_HTML, '1');
-        Configuration::updateGlobalValue(static::SHOW_POST_COUNT, '1');
+        if (!parent::install()) {
+            return false;
+        }
 
-        Configuration::updateGlobalValue(static::SHOW_NO_IMAGE, '1');
-        Configuration::updateGlobalValue(static::SHOW_COLUMN, '3');
+        Configuration::updateGlobalValue(static::POSTS_PER_PAGE, 5);
+        Configuration::updateGlobalValue(static::SHOW_AUTHOR, true);
+        Configuration::updateGlobalValue(static::SHOW_DATE, true);
+        Configuration::updateGlobalValue(static::AUTHOR_STYLE, 1);
+        Configuration::updateGlobalValue(static::MAIN_URL_KEY, 'blog');
+        Configuration::updateGlobalValue(static::USE_HTML, true);
+        Configuration::updateGlobalValue(static::SHOW_POST_COUNT, true);
+
+        Configuration::updateGlobalValue(static::SHOW_NO_IMAGE, false);
+        Configuration::updateGlobalValue(static::SHOW_COLUMN, 3);
         Configuration::updateGlobalValue(static::CUSTOM_CSS, '');
-        Configuration::updateGlobalValue(static::DISABLE_CATEGORY_IMAGE, '1');
+        Configuration::updateGlobalValue(static::DISABLE_CATEGORY_IMAGE, false);
         Configuration::updateGlobalValue(static::HOME_TITLE, 'Bees blog title');
         Configuration::updateGlobalValue(static::HOME_KEYWORDS, 'thirty bees blog,thirty bees');
         Configuration::updateGlobalValue(static::HOME_DESCRIPTION, 'The beesiest blog for thirty bees');
         Configuration::updateGlobalValue(static::ALLOWED_PROFILES, json_encode([1]));
 
-        if (!parent::install()
-            || !$this->registerHook('displayHeader')
-            || !$this->registerHook('moduleRoutes')
-            || !$this->registerHook('displayBackOfficeHeader')
-            || !$this->insertBlogHooks()
+        if (!(BeesBlogPost::createDatabase()
+            && BeesBlogCategory::createDatabase()
+            && BeesBlogTag::createDatabase()
+            && BeesBlogImageType::createDatabase())
         ) {
             return false;
         }
 
-        if (!(BeesBlogPost::createDatabase()
-            && BeesBlogCategory::createDatabase()
-            && BeesBlogTag::createDatabase())
+        if (!$this->registerHook('displayHeader')
+            || !$this->registerHook('moduleRoutes')
+            || !$this->registerHook('displayBackOfficeHeader')
+            || !$this->insertBlogHooks()
         ) {
             return false;
         }
@@ -168,13 +175,14 @@ class BeesBlog extends Module
     protected function createBeesBlogTabs()
     {
         $langs = Language::getLanguages();
-        $beesTab = new Tab();
+        $beesTab = new Tab((int) Tab::getIdFromClassName('AdminBeesBlog'));
         $beesTab->class_name = 'AdminBeesBlog';
         $beesTab->module = '';
         $beesTab->id_parent = 0;
         foreach ($langs as $l) {
             $beesTab->name[$l['id_lang']] = $this->l('Blog');
         }
+
         $beesTab->save();
 
         $tabs = [
@@ -190,16 +198,23 @@ class BeesBlog extends Module
                 'module'     => $this->name,
                 'name'       => 'Categories',
             ],
+            [
+                'class_name' => 'AdminBeesBlogImages',
+                'id_parent'  => $beesTab->id,
+                'module'     => $this->name,
+                'name'       => 'Images',
+            ],
         ];
 
         foreach ($tabs as $tab) {
-            $newTab = new Tab();
+            $newTab = new Tab((int) Tab::getIdFromClassName($tab['class_name']));
             $newTab->class_name = $tab['class_name'];
             $newTab->id_parent = $tab['id_parent'];
             $newTab->module = $tab['module'];
             foreach ($langs as $l) {
                 $newTab->name[$l['id_lang']] = $this->l($tab['name']);
             }
+
             $newTab->save();
         }
 
@@ -226,7 +241,8 @@ class BeesBlog extends Module
             !Configuration::deleteByName(static::AUTHOR_STYLE) ||
             !Configuration::deleteByName(static::CUSTOM_CSS) ||
             !Configuration::deleteByName(static::SHOW_NO_IMAGE) ||
-            !Configuration::deleteByName(static::SHOW_AUTHOR)
+            !Configuration::deleteByName(static::SHOW_AUTHOR) ||
+            !Configuration::deleteByName(static::SHOW_DATE)
         ) {
             return false;
         }
@@ -246,7 +262,8 @@ class BeesBlog extends Module
 
         if (!(BeesBlogPost::dropDatabase()
             && BeesBlogCategory::dropDatabase()
-            && BeesBlogTag::dropDatabase())
+            && BeesBlogTag::dropDatabase()
+            && BeesBlogImageType::dropDatabase())
         ) {
             return false;
         }
@@ -491,12 +508,7 @@ class BeesBlog extends Module
                 $link['link'] = BeesBlog::getBeesBlogLink('beesblog_post', ['blog_rewrite' => $result->link_rewrite]);
                 $link['lastmod'] = $result->modified;
                 $link['type'] = 'module';
-
-                if (file_exists(BeesBlogPost::IMAGE_TYPE.(int) $result->id.'.jpg')) {
-                    $link['image'] = ['link' => Media::getMediaPath(static::POST_IMG_DIR.(int) $result->id.'.jpg')];
-                } elseif (file_exists(static::POST_IMG_DIR.(int) $result->id.'.png')) {
-                    $link['image'] = ['link' => Media::getMediaPath(static::POST_IMG_DIR.(int) $result->id.'.png')];
-                }
+                $link['image'] = ['link' => Media::getMediaPath(BeesBlogPost::getImageLink($result->id))];
 
                 $links[] = $link;
             }
@@ -511,12 +523,7 @@ class BeesBlog extends Module
                 $link['link'] = BeesBlog::getBeesBlogLink('beesblog_category', ['cat_rewrite' => $result->link_rewrite]);
                 $link['lastmod'] = $result->modified;
                 $link['type'] = 'module';
-
-                if (file_exists(static::CATEGORY_IMG_DIR.(int) $result->id.'.jpg')) {
-                    $link['image'] = ['link' => Media::getMediaPath(static::CATEGORY_IMG_DIR.(int) $result->id.'.jpg')];
-                } elseif (file_exists(static::CATEGORY_IMG_DIR.(int) $result->id.'.png')) {
-                    $link['image'] = ['link' => Media::getMediaPath(static::CATEGORY_IMG_DIR.(int) $result->id.'.png')];
-                }
+                $link['image'] = ['link' => Media::getMediaPath(BeesBlogCategory::getImageLink($result->id))];
 
                 $links[] = $link;
             }
@@ -561,7 +568,21 @@ class BeesBlog extends Module
     public function getContent()
     {
         $this->postProcess();
+
         $html = '';
+        $helper = $this->getSettingsFormHelper();
+        $html .= $helper->generateForm($this->fieldsForm);
+        $html .= $this->renderDisqusOptions();
+
+        return $html;
+    }
+
+    /**
+     * Save form data.
+     */
+    protected function postProcess()
+    {
+        $output = '';
         if (Tools::isSubmit('submit'.$this->name)) {
             Configuration::updateValue(static::HOME_TITLE, Tools::getValue(static::HOME_TITLE));
             Configuration::updateValue(static::HOME_KEYWORDS, Tools::getValue(static::HOME_KEYWORDS));
@@ -576,26 +597,8 @@ class BeesBlog extends Module
             Configuration::updateValue(static::USE_HTML, Tools::getValue(static::USE_HTML));
             Configuration::updateValue(static::SHOW_NO_IMAGE, Tools::getValue(static::SHOW_NO_IMAGE));
             Configuration::updateValue(static::CUSTOM_CSS, Tools::getValue(static::CUSTOM_CSS), true);
-            $html = $this->displayConfirmation($this->l('The settings have been updated successfully.'));
-            $helper = $this->getSettingsFormHelper();
-            $html .= $helper->generateForm($this->fieldsForm);
-
-            return $html;
-        } else {
-            $helper = $this->getSettingsFormHelper();
-            $html .= $helper->generateForm($this->fieldsForm);
-            $html .= $this->renderDisqusOptions();
-
-            return $html;
         }
-    }
 
-    /**
-     * Save form data.
-     */
-    protected function postProcess()
-    {
-        $output = '';
         if (Tools::isSubmit('submitOptionsconfiguration') || Tools::isSubmit('submitOptions')) {
             $output .= $this->postProcessDisqusOptions();
         }

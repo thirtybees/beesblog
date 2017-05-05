@@ -101,28 +101,14 @@ class BeesBlogCategory extends \ObjectModel
         $postCollection = new \Collection('BeesBlogModule\\BeesBlogPost', $idLang);
         $postCollection->setPageSize($limit);
         $postCollection->setPageNumber($page);
+        $postCollection->orderBy('published', 'desc');
 
         if ($count) {
             return $postCollection->count();
         }
 
         $results = $postCollection->getResults();
-
-        if ($raw) {
-            $newResults = [];
-            foreach ($postCollection as $post) {
-                if (!empty($propertyFilter)) {
-                    $newPost = [];
-                    foreach ($propertyFilter as $filter) {
-                        $newPost[$filter] = $post->{$filter};
-                    }
-                    $newResults[] = $newPost;
-                } else {
-                    $newResults[] = (array) $post;
-                }
-            }
-            $results = $newResults;
-        }
+        static::filterCollectionResults($results, $raw, $propertyFilter);
 
         return $results;
     }
@@ -150,22 +136,7 @@ class BeesBlogCategory extends \ObjectModel
         }
 
         $results = $categoryCollection->getResults();
-
-        if ($raw) {
-            $newResults = [];
-            foreach ($categoryCollection as $post) {
-                if (!empty($propertyFilter)) {
-                    $newPost = [];
-                    foreach ($propertyFilter as $filter) {
-                        $newPost[$filter] = $post->{$filter};
-                    }
-                    $newResults[] = $newPost;
-                } else {
-                    $newResults[] = (array) $post;
-                }
-            }
-            $results = $newResults;
-        }
+        static::filterCollectionResults($results, $raw, $propertyFilter);
 
         return $results;
     }
@@ -218,5 +189,50 @@ class BeesBlogCategory extends \ObjectModel
         $sql->where('sbcl.`link_rewrite` = \''.pSQL($rewrite).'\'');
 
         return \Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql);
+    }
+
+    /**
+     * Filter collection results
+     *
+     * @param array $results
+     * @param bool  $raw
+     * @param array $propertyFilter
+     */
+    protected static function filterCollectionResults(&$results, $raw, $propertyFilter)
+    {
+        if ($raw) {
+            $newResults = [];
+            foreach ($results as $result) {
+                if (!empty($propertyFilter)) {
+                    $newPost = [];
+                    foreach ($propertyFilter as $filter) {
+                        $newPost[$filter] = $result->{$filter};
+                    }
+                    $newResults[] = $newPost;
+                } else {
+                    $newResults[] = (array) $result;
+                }
+            }
+            $results = $newResults;
+        }
+    }
+
+    public static function getImageLink($id, $type = 'category_default')
+    {
+        $baseLocation = _PS_IMG_DIR_.'beesblog/categories/';
+
+        if ($type === 'original') {
+            if (file_exists("{$baseLocation}{$id}.png")) {
+                return "{$baseLocation}{$id}.png";
+            } else {
+                return "{$baseLocation}{$id}.jpg";
+            }
+        }
+
+        if (file_exists("{$baseLocation}{$id}-{$type}.png")) {
+            return "{$baseLocation}{$id}-{$type}.png";
+        } else {
+            return "{$baseLocation}{$id}-{$type}.jpg";
+        }
     }
 }

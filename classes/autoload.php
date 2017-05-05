@@ -25,8 +25,8 @@ spl_autoload_register(
     function ($className) {
         if (!in_array($className, [
             'BeesBlogModule\\BeesBlogCategory',
+            'BeesBlogModule\\BeesBlogImageType',
             'BeesBlogModule\\BeesBlogPost',
-            'BeesBlogModule\\BeesBlogTag',
         ])) {
             return false;
         }
