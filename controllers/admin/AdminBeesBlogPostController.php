@@ -228,8 +228,8 @@ class AdminBeesBlogPostController extends \ModuleAdminController
 
         $id = (int) \Tools::getValue(BeesBlogPost::PRIMARY);
 
-        $imageUrl = \ImageManager::thumbnail(BeesBlogPost::getImageLink($id), $this->table."_{$id}.jpg", 200, 'jpg', true, true);
-        $imageSize = file_exists(BeesBlogPost::getImageLink($id)) ? filesize(BeesBlogPost::getImageLink($id)) / 1000 : false;
+        $imageUrl = \ImageManager::thumbnail(BeesBlogPost::getImagePath($id), $this->table."_{$id}.jpg", 200, 'jpg', true, true);
+        $imageSize = file_exists(BeesBlogPost::getImagePath($id)) ? filesize(BeesBlogPost::getImagePath($id)) / 1000 : false;
 
         $this->fields_form = [
             'legend' => [

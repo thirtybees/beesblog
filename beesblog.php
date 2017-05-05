@@ -20,7 +20,6 @@
 use BeesBlogModule\BeesBlogCategory;
 use BeesBlogModule\BeesBlogImageType;
 use BeesBlogModule\BeesBlogPost;
-use BeesBlogModule\BeesBlogTag;
 
 if (!defined('_TB_VERSION_')) {
     exit;
@@ -39,12 +38,12 @@ class BeesBlog extends Module
     const USE_HTML = 'BEESBLOG_USE_HTML';
     const ENABLE_COMMENT = 'BEESBLOG_ENABLE_COMMENT';
     const SHOW_AUTHOR = 'BEESBLOG_SHOW_AUTHOR';
-    const SHOW_DATE = 'BEESBLOG_SHOW_DATES';
+    const SHOW_DATE = 'BEESBLOG_SHOW_DATE';
     const SHOW_POST_COUNT = 'BEESBLOG_SHOW_VIEWED';
     const SHOW_NO_IMAGE = 'BEESBLOG_SHOW_NO_IMAGE';
     const SHOW_COLUMN = 'BEESBLOG_SHOW_COLUMN';
     const CUSTOM_CSS = 'BEESBLOG_CUSTOM_CSS';
-    const DISABLE_CATEGORY_IMAGE = 'BEESBLOG_DISABLE_CATEGORY_IMAGE';
+    const SHOW_CATEGORY_IMAGE = 'BEESBLOG_DISABLE_CATEGORY_IMAGE';
     const HOME_TITLE = 'BEESBLOG_META_TITLE';
     const HOME_KEYWORDS = 'BEESBLOG_META_KEYWORDS';
     const HOME_DESCRIPTION = 'BEESBLOG_META_DESCRIPTION';
@@ -115,7 +114,7 @@ class BeesBlog extends Module
         Configuration::updateGlobalValue(static::SHOW_NO_IMAGE, false);
         Configuration::updateGlobalValue(static::SHOW_COLUMN, 3);
         Configuration::updateGlobalValue(static::CUSTOM_CSS, '');
-        Configuration::updateGlobalValue(static::DISABLE_CATEGORY_IMAGE, false);
+        Configuration::updateGlobalValue(static::SHOW_CATEGORY_IMAGE, false);
         Configuration::updateGlobalValue(static::HOME_TITLE, 'Bees blog title');
         Configuration::updateGlobalValue(static::HOME_KEYWORDS, 'thirty bees blog,thirty bees');
         Configuration::updateGlobalValue(static::HOME_DESCRIPTION, 'The beesiest blog for thirty bees');
@@ -123,7 +122,6 @@ class BeesBlog extends Module
 
         if (!(BeesBlogPost::createDatabase()
             && BeesBlogCategory::createDatabase()
-            && BeesBlogTag::createDatabase()
             && BeesBlogImageType::createDatabase())
         ) {
             return false;
@@ -235,7 +233,7 @@ class BeesBlog extends Module
             !Configuration::deleteByName(static::POSTS_PER_PAGE) ||
             !Configuration::deleteByName(static::USE_HTML) ||
             !Configuration::deleteByName(static::SHOW_POST_COUNT) ||
-            !Configuration::deleteByName(static::DISABLE_CATEGORY_IMAGE) ||
+            !Configuration::deleteByName(static::SHOW_CATEGORY_IMAGE) ||
             !Configuration::deleteByName(static::MAIN_URL_KEY) ||
             !Configuration::deleteByName(static::SHOW_COLUMN) ||
             !Configuration::deleteByName(static::AUTHOR_STYLE) ||
@@ -262,7 +260,6 @@ class BeesBlog extends Module
 
         if (!(BeesBlogPost::dropDatabase()
             && BeesBlogCategory::dropDatabase()
-            && BeesBlogTag::dropDatabase()
             && BeesBlogImageType::dropDatabase())
         ) {
             return false;
@@ -396,96 +393,6 @@ class BeesBlog extends Module
                     'module' => $this->name,
                 ],
             ],
-            'beesblog_tag'                 => [
-                'controller' => 'tagpost',
-                'rule'       => "{$alias}/tag/{tag}",
-                'keywords'   => [
-                    'tag' => ['regexp' => '[_a-zA-Z0-9-\pL\+\s\-]*', 'param' => 'tag'],
-                ],
-                'params'     => [
-                    'fc'     => 'module',
-                    'module' => $this->name,
-                ],
-            ],
-            'beesblog_search_pagination'   => [
-                'controller' => 'search',
-                'rule'       => "{$alias}/search/page/{page}",
-                'keywords'   => [
-                    'page' => ['regexp' => '[_a-zA-Z0-9-\pL]*', 'param' => 'page'],
-                ],
-                'params'     => [
-                    'fc'     => 'module',
-                    'module' => $this->name,
-                ],
-            ],
-            'beesblog_archive'             => [
-                'controller' => 'archive',
-                'rule'       => "{$alias}/archive",
-                'keywords'   => [],
-                'params'     => [
-                    'fc'     => 'module',
-                    'module' => $this->name,
-                ],
-            ],
-            'beesblog_archive_pagination'  => [
-                'controller' => 'archive',
-                'rule'       => "{$alias}/archive/page/{page}",
-                'keywords'   => [
-                    'page' => ['regexp' => '[_a-zA-Z0-9-\pL]*', 'param' => 'page'],
-                ],
-                'params'     => [
-                    'fc'     => 'module',
-                    'module' => $this->name,
-                ],
-            ],
-            'beesblog_month'               => [
-                'controller' => 'archive',
-                'rule'       => "{$alias}/archive/{year}/{month}",
-                'keywords'   => [
-                    'year'  => ['regexp' => '[_a-zA-Z0-9-\pL]*', 'param' => 'year'],
-                    'month' => ['regexp' => '[_a-zA-Z0-9-\pL]*', 'param' => 'month'],
-                ],
-                'params'     => [
-                    'fc'     => 'module',
-                    'module' => $this->name,
-                ],
-            ],
-            'beesblog_month_pagination'    => [
-                'controller' => 'archive',
-                'rule'       => "{$alias}/archive/{year}/{month}/page/{page}",
-                'keywords'   => [
-                    'year'  => ['regexp' => '[_a-zA-Z0-9-\pL]*', 'param' => 'year'],
-                    'month' => ['regexp' => '[_a-zA-Z0-9-\pL]*', 'param' => 'month'],
-                    'page'  => ['regexp' => '[_a-zA-Z0-9-\pL]*', 'param' => 'page'],
-                ],
-                'params'     => [
-                    'fc'     => 'module',
-                    'module' => $this->name,
-                ],
-            ],
-            'beesblog_year'                => [
-                'controller' => 'archive',
-                'rule'       => "{$alias}/archive/{year}",
-                'keywords'   => [
-                    'year' => ['regexp' => '[_a-zA-Z0-9-\pL]*', 'param' => 'year'],
-                ],
-                'params'     => [
-                    'fc'     => 'module',
-                    'module' => $this->name,
-                ],
-            ],
-            'beesblog_year_pagination'     => [
-                'controller' => 'archive',
-                'rule'       => "{$alias}/archive/{year}/page/{page}",
-                'keywords'   => [
-                    'year' => ['regexp' => '[_a-zA-Z0-9-\pL]*', 'param' => 'year'],
-                    'page' => ['regexp' => '[_a-zA-Z0-9-\pL]*', 'param' => 'page'],
-                ],
-                'params'     => [
-                    'fc'     => 'module',
-                    'module' => $this->name,
-                ],
-            ],
         ];
     }
 
@@ -499,16 +406,17 @@ class BeesBlog extends Module
      */
     public function hookGSitemapAppendUrls()
     {
+        $links = [];
+
         // Blog posts
         $results = (new Collection('BeesBlogModule\\BeesBlogPost'))->getResults();
-        $links = [];
         if (!empty($results)) {
             foreach ($results as $result) {
                 $link = [];
                 $link['link'] = BeesBlog::getBeesBlogLink('beesblog_post', ['blog_rewrite' => $result->link_rewrite]);
                 $link['lastmod'] = $result->modified;
                 $link['type'] = 'module';
-                $link['image'] = ['link' => Media::getMediaPath(BeesBlogPost::getImageLink($result->id))];
+                $link['image'] = ['link' => Media::getMediaPath(BeesBlogPost::getImagePath($result->id))];
 
                 $links[] = $link;
             }
@@ -516,14 +424,13 @@ class BeesBlog extends Module
 
         // Categories
         $results = (new Collection('BeesBlogModule\\BeesBlogCategory'))->getResults();
-
         if (!empty($results)) {
             foreach ($results as $result) {
                 $link = [];
                 $link['link'] = BeesBlog::getBeesBlogLink('beesblog_category', ['cat_rewrite' => $result->link_rewrite]);
                 $link['lastmod'] = $result->modified;
                 $link['type'] = 'module';
-                $link['image'] = ['link' => Media::getMediaPath(BeesBlogCategory::getImageLink($result->id))];
+                $link['image'] = ['link' => Media::getMediaPath(BeesBlogCategory::getImagePath($result->id))];
 
                 $links[] = $link;
             }
@@ -589,8 +496,9 @@ class BeesBlog extends Module
             Configuration::updateValue(static::HOME_DESCRIPTION, Tools::getValue(static::HOME_DESCRIPTION));
             Configuration::updateValue(static::POSTS_PER_PAGE, Tools::getValue(static::POSTS_PER_PAGE));
             Configuration::updateValue(static::SHOW_POST_COUNT, Tools::getValue(static::SHOW_POST_COUNT));
-            Configuration::updateValue(static::DISABLE_CATEGORY_IMAGE, Tools::getValue(static::DISABLE_CATEGORY_IMAGE));
+            Configuration::updateValue(static::SHOW_CATEGORY_IMAGE, Tools::getValue(static::SHOW_CATEGORY_IMAGE));
             Configuration::updateValue(static::SHOW_AUTHOR, Tools::getValue(static::SHOW_AUTHOR));
+            Configuration::updateValue(static::SHOW_DATE, Tools::getValue(static::SHOW_DATE));
             Configuration::updateValue(static::AUTHOR_STYLE, Tools::getValue(static::AUTHOR_STYLE));
             Configuration::updateValue(static::SHOW_COLUMN, Tools::getValue(static::SHOW_COLUMN));
             Configuration::updateValue(static::MAIN_URL_KEY, Tools::getValue(static::MAIN_URL_KEY));
@@ -611,47 +519,8 @@ class BeesBlog extends Module
      */
     protected function postProcessDisqusOptions()
     {
-        $idShop = (int) $this->context->shop->id;
-
         $username = Tools::getValue(static::DISQUS_USERNAME);
-
-        if (Configuration::get('PS_MULTISHOP_FEATURE_ACTIVE')) {
-            if (Shop::getContext() == Shop::CONTEXT_ALL) {
-                $this->updateAllValue(static::DISQUS_USERNAME, $username);
-            } elseif (is_array(Tools::getValue('multishopOverrideOption'))) {
-                $idShopGroup = (int) Shop::getGroupFromShop($idShop, true);
-                $multishopOverride = Tools::getValue('multishopOverrideOption');
-                if (Shop::getContext() == Shop::CONTEXT_GROUP) {
-                    foreach (Shop::getShops(false, $idShop) as $idShop) {
-                        if ($multishopOverride[static::DISQUS_USERNAME]) {
-                            Configuration::updateValue(static::DISQUS_USERNAME, $username, false, $idShopGroup, $idShop);
-                        }
-                    }
-                } else {
-                    $idShop = (int) $idShop;
-                    if ($multishopOverride[static::DISQUS_USERNAME]) {
-                        Configuration::updateValue(static::DISQUS_USERNAME, $username, false, $idShopGroup, $idShop);
-                    }
-                }
-            }
-        } else {
-            Configuration::updateValue(static::DISQUS_USERNAME, $username);
-        }
-    }
-
-    /**
-     * Update configuration value in ALL contexts
-     *
-     * @param string $key    Configuration key
-     * @param mixed  $values Configuration values, can be string or array with id_lang as key
-     * @param bool   $html   Contains HTML
-     */
-    public function updateAllValue($key, $values, $html = false)
-    {
-        foreach (Shop::getShops() as $shop) {
-            Configuration::updateValue($key, $values, $html, $shop['id_shop_group'], $shop['id_shop']);
-        }
-        Configuration::updateGlobalValue($key, $values, $html);
+        Configuration::updateValue(static::DISQUS_USERNAME, $username);
     }
 
     /**
@@ -745,6 +614,26 @@ class BeesBlog extends Module
                 ],
                 [
                     'type'     => 'switch',
+                    'label'    => $this->l('Show dates'),
+                    'name'     => static::SHOW_DATE,
+                    'required' => false,
+                    'class'    => 't',
+                    'is_bool'  => true,
+                    'values'   => [
+                        [
+                            'id'    => 'active_on',
+                            'value' => 1,
+                            'label' => $this->l('Enabled'),
+                        ],
+                        [
+                            'id'    => 'active_off',
+                            'value' => 0,
+                            'label' => $this->l('Disabled'),
+                        ],
+                    ],
+                ],
+                [
+                    'type'     => 'switch',
                     'label'    => $this->l('Show post count'),
                     'name'     => static::SHOW_POST_COUNT,
                     'required' => false,
@@ -782,7 +671,7 @@ class BeesBlog extends Module
                 [
                     'type'     => 'switch',
                     'label'    => $this->l('Show category image'),
-                    'name'     => static::DISABLE_CATEGORY_IMAGE,
+                    'name'     => static::SHOW_CATEGORY_IMAGE,
                     'required' => false,
                     'class'    => 't',
                     'desc'     => 'Show category image and description on every page',
@@ -847,10 +736,11 @@ class BeesBlog extends Module
      */
     protected function getFormValues()
     {
-        $configuration = Configuration::getMultiple(
+        return Configuration::getMultiple(
             [
                 static::POSTS_PER_PAGE,
                 static::SHOW_AUTHOR,
+                static::SHOW_DATE,
                 static::AUTHOR_STYLE,
                 static::MAIN_URL_KEY,
                 static::USE_HTML,
@@ -860,13 +750,11 @@ class BeesBlog extends Module
                 static::HOME_DESCRIPTION,
                 static::SHOW_POST_COUNT,
                 static::SHOW_POST_COUNT,
-                static::DISABLE_CATEGORY_IMAGE,
+                static::SHOW_CATEGORY_IMAGE,
                 static::CUSTOM_CSS,
                 static::SHOW_NO_IMAGE,
             ]
         );
-
-        return $configuration;
     }
 
     /**
@@ -916,64 +804,13 @@ class BeesBlog extends Module
         ];
     }
 
-    /**
-     * Generate images
-     */
-    public static function generateBlogImage()
+    public static function getPostImagePath($id, $type = 'post_default')
     {
-        $getBlogImage = BeesBlogPost::getBlogImage();
-        $getCategoryImage = BeesBlogCategory::getCatImage();
-        $categoryTypes = static::getImagesTypes('blog_category');
-        $postTypes = BeesBlogImageType::getImagesTypes('blog_post');
-
-        foreach ($categoryTypes as $imageType) {
-            foreach ($getCategoryImage as $categoryImage) {
-                $path = _PS_IMG_DIR_.\BeesBlog::CATEGORY_IMG_DIR.$categoryImage['id_bees_blog_category'].'.jpg';
-                \ImageManager::resize(
-                    $path,
-                    _PS_IMG_DIR_.\BeesBlog::CATEGORY_IMG_DIR.$categoryImage['id_bees_blog_category'].'-'.stripslashes($imageType['type_name']).'.jpg',
-                    (int) $imageType['width'],
-                    (int) $imageType['height']
-                );
-            }
-        }
-        foreach ($postTypes as $imageType) {
-            foreach ($getBlogImage as $blogImage) {
-                $path = _PS_IMG_DIR_.\BeesBlog::POST_IMG_DIR.$blogImage['id_bees_blog_post'].'.jpg';
-                \ImageManager::resize(
-                    $path,
-                    _PS_IMG_DIR_.\BeesBlog::POST_IMG_DIR.$blogImage['id_bees_blog_post'].'-'.stripslashes($imageType['type_name']).'.jpg',
-                    (int) $imageType['width'],
-                    (int) $imageType['height']
-                );
-            }
-        }
+        return BeesBlogPost::getImagePath($id, $type);
     }
 
-    /**
-     * Delete images
-     */
-    public static function deleteBlogImage()
+    public static function getCategoryImagePath($id, $type = 'category_default')
     {
-        $getBlogImage = BeesBlogPost::getBlogImage();
-        $getCategoryImage = BeesBlogCategory::getCatImage();
-        $categoryTypes = ImageType::getImagesTypes('beesblog_category');
-        $postTypes = ImageType::getImagesTypes('beesblog_post');
-        foreach ($categoryTypes as $imageType) {
-            foreach ($getCategoryImage as $categoryImage) {
-                $dir = _PS_IMG_DIR_.\BeesBlog::CATEGORY_IMG_DIR.$categoryImage['id_bees_blog_category'].'-'.stripslashes($imageType['type_name']).'.jpg';
-                if (file_exists($dir)) {
-                    unlink($dir);
-                }
-            }
-        }
-        foreach ($postTypes as $imageType) {
-            foreach ($getBlogImage as $blogImage) {
-                $dir = _PS_IMG_DIR_.\BeesBlog::POST_IMG_DIR.$blogImage['id_bees_blog_post'].'-'.stripslashes($imageType['type_name']).'.jpg';
-                if (file_exists($dir)) {
-                    unlink($dir);
-                }
-            }
-        }
+        return BeesBlogCategory::getImagePath($id, $type);
     }
 }

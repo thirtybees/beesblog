@@ -28,29 +28,23 @@
 {if $totalPostsOnThisPage <= 0}
 	<p class="error">{l s='No posts' mod='beesblog'}</p>
 {else}
-	{if isset($beesdisablecatimg)}
-		{assign var="activeimgincat" value='0'}
-		{$activeimgincat = $beesshownoimg}
-		{if $title_category != ''}
-			{foreach from=$categoryinfo item=category}
-				<div>
-					{if ($cat_image != "no" && $activeimgincat == 0) || $activeimgincat == 1}
-						<img alt="{$category.meta_title|escape:'htmlall':'UTF-8'}"
-							 src="{$img_dir|escape:'htmlall':'UTF-8'}/beesblog/beesblog_category/{$category->id|intval}-home-default.jpg"
-						>
-					{/if}
-					{$category.description}
-				</div>
-			{/foreach}
-		{/if}
+	{if isset($showCategoryImage) && $showCategoryImage && isset($categoryImageUrl) && $categoryImageUrl}
+		<div>
+			<img class="img-responsive" alt="{$category->title|escape:'htmlall':'UTF-8'}" src="{$categoryImageUrl|escape:'htmlall':'UTF-8'}">
+			<em>{$category->description}</em>
+			<br />
+			<br />
+			<br />
+			<br />
+		</div>
 	{/if}
-	<div id="beesblogcat" class="block">
+	<div id="beesblog-category-list" class="block">
 		{foreach from=$posts item=post}
 			{include file="./post_list_item.tpl" post=$post}
 		{/foreach}
 	</div>
 	{if $totalPages}
-		<div class="beesblog-category-list row">
+		<div class="beesblog-category-pagination row">
 			<div class="col-md-6 col-sm-6">
 				<ul class="pagination">
 					{for $k = 1 to $totalPages}

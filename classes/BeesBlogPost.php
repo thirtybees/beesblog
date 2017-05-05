@@ -792,7 +792,15 @@ class BeesBlogPost extends \ObjectModel
         return \Tools::substr(strip_tags($this->content), 0, 512).' [...]';
     }
 
-    public static function getImageLink($id, $type = 'post_default')
+    /**
+     * Get local image path
+     *
+     * @param int    $id
+     * @param string $type
+     *
+     * @return string
+     */
+    public static function getImagePath($id, $type = 'post_default')
     {
         $baseLocation = _PS_IMG_DIR_.'beesblog/posts/';
 

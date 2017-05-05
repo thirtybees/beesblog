@@ -26,30 +26,15 @@
 		</div>
 		<div class="row">
 			<h4 class="title_block">{$post->title|escape:'htmlall':'UTF-8'}</h4>
+            {assign var=imagePath value=Media::getMediaPath(BeesBlog::getPostImagePath($post->id))}
+            {if ($imagePath)}
+				<img class="img-responsive" alt="{$post->title|escape:'htmlall':'UTF-8'}" src="{$imagePath|escape:'htmlall':'UTF-8'}">
+            {/if}
 		</div>
 		<div class="row">
             {$post->content}
 		</div>
-		<div class="row">
-			<span>
-				{if $showAuthor}
-                    {l s='Posted by' mod='beesblog'}&nbsp;
-					<i class="icon icon-user"></i>
-					<span itemprop="author">
-						{if $authorStyle}
-							{$post->firstname|escape:'htmlall':'UTF-8'} {$post->lastname|escape:'htmlall':'UTF-8'}
-						{else}
-							{$post->lastname|escape:'htmlall':'UTF-8'} {$post->firstname|escape:'htmlall':'UTF-8'}
-						{/if}
-					</span>&nbsp;
-					<i class="icon icon-calendar"></i>&nbsp;
-					<span itemprop="dateCreated">{$post->published|date_format}</span>
-				{/if}
-				{if $showComments}
-				<i class="icon icon-comments"></i>&nbsp;
-                {/if}
-			</span>
-		</div>
+		{include file="./post_info.tpl"}
 		<div id="beesblog-after-post" class="row">
 			{$displayBeesBlogAfterPost}
 		</div>

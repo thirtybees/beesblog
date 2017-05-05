@@ -92,8 +92,8 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
     {
         $id = (int) \Tools::getValue(BeesBlogCategory::PRIMARY);
 
-        $imageUrl = \ImageManager::thumbnail(BeesBlogCategory::getImageLink($id), $this->table."_{$id}.jpg", 200, 'jpg', true, true);
-        $imageSize = file_exists(BeesBlogCategory::getImageLink($id)) ? filesize(BeesBlogCategory::getImageLink($id)) / 1000 : false;
+        $imageUrl = \ImageManager::thumbnail(BeesBlogCategory::getImagePath($id), $this->table."_{$id}.jpg", 200, 'jpg', true, true);
+        $imageSize = file_exists(BeesBlogCategory::getImagePath($id)) ? filesize(BeesBlogCategory::getImagePath($id)) / 1000 : false;
 
         $this->fields_form = [
             'legend' => [

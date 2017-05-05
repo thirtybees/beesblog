@@ -53,6 +53,7 @@ class BeesBlogPostModuleFrontController extends \ModuleFrontController
 
         $post = new BeesBlogPost($this->idPost, $this->context->language->id);
         $category = new BeesBlogCategory($post->id_category, $this->context->language->id);
+        $post->category = $category;
 
 //        if (file_exists(_PS_MODULE_DIR_.'beesblog/images/'.(int) $this->idPost.'.jpg')
 //            || file_exists(_PS_MODULE_DIR_.'beesblog/images/'.(int) $this->idPost.'.jpg')) {
@@ -61,9 +62,7 @@ class BeesBlogPostModuleFrontController extends \ModuleFrontController
 //            $postImage = 'no';
 //        }
 
-        $employee = new Employee($post->id_employee);
-        $post->firstname = $employee->firstname;
-        $post->lastname = $employee->lastname;
+        $post->employee = new Employee($post->id_employee);
 
         BeesBlogPost::viewed($this->idPost);
 
@@ -76,11 +75,11 @@ class BeesBlogPostModuleFrontController extends \ModuleFrontController
         $postProperties = [
             'blogHome'             => \BeesBlog::getBeesBlogLink(),
             'post'                 => $post,
-            'category'             => $category,
             'authorStyle'          => Configuration::get(BeesBlog::AUTHOR_STYLE),
             'showAuthor'           => (bool) Configuration::get(BeesBlog::SHOW_AUTHOR),
+            'showDate'             => (bool) Configuration::get(BeesBlog::SHOW_DATE),
             'customCss'            => (bool) Configuration::get(BeesBlog::CUSTOM_CSS),
-            'disableCategoryImage' => (bool) Configuration::get(BeesBlog::DISABLE_CATEGORY_IMAGE),
+            'disableCategoryImage' => (bool) Configuration::get(BeesBlog::SHOW_CATEGORY_IMAGE),
             'showViewed'           => (bool) Configuration::get(BeesBlog::SHOW_POST_COUNT),
             'showNoImage'          => (bool) Configuration::get(BeesBlog::SHOW_NO_IMAGE),
             'showComments'         => (bool) Configuration::get(\BeesBlog::DISQUS_USERNAME),
