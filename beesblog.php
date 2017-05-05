@@ -585,13 +585,6 @@ class BeesBlog extends Module
                     'required' => true,
                 ],
                 [
-                    'type'     => 'tags',
-                    'label'    => $this->l('Meta keywords'),
-                    'name'     => static::HOME_KEYWORDS,
-                    'size'     => 70,
-                    'required' => true,
-                ],
-                [
                     'type'     => 'textarea',
                     'label'    => $this->l('Meta Description'),
                     'name'     => static::HOME_DESCRIPTION,

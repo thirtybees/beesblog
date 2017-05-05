@@ -142,15 +142,6 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
                 ],
                 [
                     'type'     => 'text',
-                    'label'    => $this->l('Keywords'),
-                    'name'     => 'keywords',
-                    'lang'     => true,
-                    'size'     => 60,
-                    'required' => false,
-                    'desc'     => $this->l('Enter your category`s keywords. Separated by commas (,)'),
-                ],
-                [
-                    'type'     => 'text',
                     'label'    => $this->l('URL rewrite'),
                     'name'     => 'link_rewrite',
                     'size'     => 60,
