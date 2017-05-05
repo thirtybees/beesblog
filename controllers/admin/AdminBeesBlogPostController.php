@@ -300,7 +300,7 @@ class AdminBeesBlogPostController extends \ModuleAdminController
                 [
                     'type'     => 'switch',
                     'label'    => $this->l('Comment Status'),
-                    'name'     => 'comment_status',
+                    'name'     => 'comments_enabled',
                     'required' => false,
                     'class'    => 't',
                     'is_bool'  => true,
