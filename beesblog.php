@@ -39,6 +39,7 @@ class BeesBlog extends Module
     const ENABLE_COMMENT = 'BEESBLOG_ENABLE_COMMENT';
     const SHOW_AUTHOR = 'BEESBLOG_SHOW_AUTHOR';
     const SHOW_DATE = 'BEESBLOG_SHOW_DATE';
+    const SOCIAL_SHARING = 'BEESBLOG_SOCIAL_SHARING';
     const SHOW_POST_COUNT = 'BEESBLOG_SHOW_VIEWED';
     const SHOW_NO_IMAGE = 'BEESBLOG_SHOW_NO_IMAGE';
     const SHOW_COLUMN = 'BEESBLOG_SHOW_COLUMN';
@@ -106,6 +107,7 @@ class BeesBlog extends Module
         Configuration::updateGlobalValue(static::POSTS_PER_PAGE, 5);
         Configuration::updateGlobalValue(static::SHOW_AUTHOR, true);
         Configuration::updateGlobalValue(static::SHOW_DATE, true);
+        Configuration::updateGlobalValue(static::SOCIAL_SHARING, true);
         Configuration::updateGlobalValue(static::AUTHOR_STYLE, 1);
         Configuration::updateGlobalValue(static::MAIN_URL_KEY, 'blog');
         Configuration::updateGlobalValue(static::USE_HTML, true);
@@ -240,7 +242,8 @@ class BeesBlog extends Module
             !Configuration::deleteByName(static::CUSTOM_CSS) ||
             !Configuration::deleteByName(static::SHOW_NO_IMAGE) ||
             !Configuration::deleteByName(static::SHOW_AUTHOR) ||
-            !Configuration::deleteByName(static::SHOW_DATE)
+            !Configuration::deleteByName(static::SHOW_DATE) ||
+            !Configuration::deleteByName(static::SOCIAL_SHARING)
         ) {
             return false;
         }
@@ -464,6 +467,13 @@ class BeesBlog extends Module
      */
     public function hookDisplayHeader()
     {
+        if (Configuration::get(static::SOCIAL_SHARING)) {
+            if (file_exists(_PS_ROOT_DIR_._THEME_CSS_DIR_.'modules/socialsharing/socialsharing.css')) {
+                $this->context->controller->addCSS(_PS_ROOT_DIR_._THEME_CSS_DIR_.'modules/socialsharing/socialsharing.css', 'all');
+            } else {
+                $this->context->controller->addCSS(_PS_MODULE_DIR_.'socialsharing/views/css/socialsharing.css', 'all');
+            }
+        }
         $this->context->controller->addCSS($this->_path.'views/css/beesblogstyle.css', 'all');
     }
 
@@ -499,6 +509,7 @@ class BeesBlog extends Module
             Configuration::updateValue(static::SHOW_CATEGORY_IMAGE, Tools::getValue(static::SHOW_CATEGORY_IMAGE));
             Configuration::updateValue(static::SHOW_AUTHOR, Tools::getValue(static::SHOW_AUTHOR));
             Configuration::updateValue(static::SHOW_DATE, Tools::getValue(static::SHOW_DATE));
+            Configuration::updateValue(static::SOCIAL_SHARING, Tools::getValue(static::SOCIAL_SHARING));
             Configuration::updateValue(static::AUTHOR_STYLE, Tools::getValue(static::AUTHOR_STYLE));
             Configuration::updateValue(static::SHOW_COLUMN, Tools::getValue(static::SHOW_COLUMN));
             Configuration::updateValue(static::MAIN_URL_KEY, Tools::getValue(static::MAIN_URL_KEY));
@@ -652,6 +663,26 @@ class BeesBlog extends Module
                 ],
                 [
                     'type'     => 'switch',
+                    'label'    => $this->l('Social media buttons'),
+                    'name'     => static::SOCIAL_SHARING,
+                    'required' => false,
+                    'class'    => 't',
+                    'is_bool'  => true,
+                    'values'   => [
+                        [
+                            'id'    => 'active_on',
+                            'value' => 1,
+                            'label' => $this->l('Enabled'),
+                        ],
+                        [
+                            'id'    => 'active_off',
+                            'value' => 0,
+                            'label' => $this->l('Disabled'),
+                        ],
+                    ],
+                ],
+                [
+                    'type'     => 'switch',
                     'label'    => $this->l('Author name style'),
                     'name'     => static::AUTHOR_STYLE,
                     'required' => false,
@@ -741,6 +772,7 @@ class BeesBlog extends Module
                 static::POSTS_PER_PAGE,
                 static::SHOW_AUTHOR,
                 static::SHOW_DATE,
+                static::SOCIAL_SHARING,
                 static::AUTHOR_STYLE,
                 static::MAIN_URL_KEY,
                 static::USE_HTML,
