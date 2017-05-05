@@ -2,7 +2,7 @@
     {if isset($showAuthor) && $showAuthor}
         <i class="icon icon-user"></i>&nbsp;
         {l s='Posted by' mod='beesblog'}
-        <span itemprop="author">
+        <span>
             {if $authorStyle}
                 {$post->employee->firstname|escape:'htmlall':'UTF-8'} {$post->employee->lastname|escape:'htmlall':'UTF-8'}
             {else}
@@ -16,7 +16,7 @@
     {/if}
 
     <i class="icon icon-object-group"></i>&nbsp;
-    <span itemprop="articleSection">
+    <span>
         <a href="{BeesBlog::GetBeesBlogLink('beesblog_category', ['cat_rewrite' => $post->category->link_rewrite])}">
             {$post->category->title|escape:'htmlall':'UTF-8'}
         </a>
@@ -24,9 +24,12 @@
     {if isset($showComments) && $showComments}
         <span class="beesblog-comment-counter">
             <i class="icon icon-comments"></i>&nbsp;
-            {*<a title="{$post.totalcomment|escape:'htmlall':'UTF-8'} Comments" href="{beesblog::GetBeesBlogLink('beesblog_post', $options)|escape:'htmlall':'UTF-8'}#disqus_thread">*}
-            {*{$post.totalcomment|escape:'htmlall':'UTF-8'} {l s=' Comments' mod='beesblog'}*}
-            {*</a>*}
+            <a title="{l s='0 Comments' mod='beesblog'}"
+               href="{$postPath|escape:'htmlall':'UTF-8'}#disqus_thread"
+               data-disqus-identifier="{'blog-'|cat:Context::getContext()->language->iso_code|strtolower|cat:'-'|cat:$post->id|intval}"
+            >
+                {l s='0 Comments' mod='beesblog'}
+            </a>
         </span>
     {/if}
     {if isset($showViewed) && $showViewed}
