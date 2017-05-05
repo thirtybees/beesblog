@@ -111,11 +111,11 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
             'input'  => [
                 [
                     'type'     => 'text',
-                    'label'    => $this->l('Title'),
+                    'label'    => $this->l('Name'),
                     'name'     => 'title',
                     'size'     => 60,
                     'required' => true,
-                    'desc'     => $this->l('Enter Your Category Name'),
+                    'desc'     => $this->l('Enter your category name'),
                     'lang'     => true,
                 ],
                 [
@@ -358,11 +358,10 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
         }
         $blogCategory->id_shop = (int) Context::getContext()->shop->id;
 
-        $this->processImage($_FILES, $blogCategory->id);
-
         // TODO: check if link_rewrite is unique
 
         if ($blogCategory->add()) {
+            $this->processImage($_FILES, $blogCategory->id);
             $this->confirmations[] = $this->l('Successfully added a new category');
 
             return true;
@@ -401,7 +400,7 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
 
         // TODO: check if link_rewrite is unique
 
-        if ($blogCategory->add()) {
+        if ($blogCategory->update()) {
             $this->confirmations[] = $this->l('Successfully updated the category');
 
             return true;
@@ -434,6 +433,8 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
 
                 return false;
             } else {
+                $this->deleteImage($blogCategory->id);
+
                 \Tools::redirectAdmin($this->context->link->getAdminLink('AdminBeesBlogCategory'));
 
                 return true;

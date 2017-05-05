@@ -49,7 +49,6 @@ class BeesBlogPost extends \ObjectModel
             'id_category'       => ['type' => self::TYPE_INT,                    'validate' => 'isUnsignedInt', 'required' => true,                                      'db_type' => 'INT(11) UNSIGNED'],
             'id_employee'       => ['type' => self::TYPE_INT,                    'validate' => 'isUnsignedInt', 'required' => true,                                      'db_type' => 'INT(11) UNSIGNED'],
             'image'             => ['type' => self::TYPE_STRING,                 'validate' => 'isString',      'required' => false,                                     'db_type' => 'VARCHAR(255)'],
-            'is_featured'       => ['type' => self::TYPE_INT,                    'validate' => 'isUnsignedInt', 'required' => true,  'default' => '0',                   'db_type' => 'TINYINT(1) UNSIGNED'],
             'position'          => ['type' => self::TYPE_INT,                    'validate' => 'isUnsignedInt', 'required' => true,  'default' => '1',                   'db_type' => 'INT(11) UNSIGNED'],
             'post_type'         => ['type' => self::TYPE_STRING,                 'validate' => 'isString',      'required' => true,                                      'db_type' => 'VARCHAR(45)',  'size' => 45],
             'viewed'            => ['type' => self::TYPE_INT,                    'validate' => 'isUnsignedInt', 'required' => true,  'default' => '0',                   'db_type' => 'INT(20) UNSIGNED'],
@@ -89,8 +88,6 @@ class BeesBlogPost extends \ObjectModel
     public $link_rewrite;
     /** @var array $lang_active */
     public $lang_active;
-    /** @var bool $is_featured */
-    public $is_featured;
     /** @var array $imageTypes Default image types */
     public static $imageTypes = ['post_default', 'post_list_item'];
     // @codingStandardsIgnoreEnd

@@ -64,11 +64,11 @@ class BeesBlogImageType extends \ObjectModel
         'primary'   => self::PRIMARY,
         'multishop' => true,
         'fields'    => [
-            'name'       => ['type' => self::TYPE_STRING, 'validate' => 'isImageTypeName', 'required' => true,                   'size' => 64, 'db_type' => 'VARCHAR(64)'],
-            'width'      => ['type' => self::TYPE_INT,    'validate' => 'isImageSize',     'required' => true,                                 'db_type' => 'INT(11) UNSIGNED'],
-            'height'     => ['type' => self::TYPE_INT,    'validate' => 'isImageSize',     'required' => true,                                 'db_type' => 'INT(11) UNSIGNED'],
-            'posts'      => ['type' => self::TYPE_BOOL,   'validate' => 'isBool',          'required' => true,                                 'db_type' => 'TINYINT(1)'],
-            'categories' => ['type' => self::TYPE_BOOL,   'validate' => 'isBool',          'required' => true,                                 'db_type' => 'TINYINT(1)'],
+            'name'       => ['type' => self::TYPE_STRING, 'validate' => 'isImageTypeName', 'required' => true, 'size' => 64, 'db_type' => 'VARCHAR(64)'],
+            'width'      => ['type' => self::TYPE_INT,    'validate' => 'isImageSize',     'required' => true,               'db_type' => 'INT(11) UNSIGNED'],
+            'height'     => ['type' => self::TYPE_INT,    'validate' => 'isImageSize',     'required' => true,               'db_type' => 'INT(11) UNSIGNED'],
+            'posts'      => ['type' => self::TYPE_BOOL,   'validate' => 'isBool',          'required' => true,               'db_type' => 'TINYINT(1)'],
+            'categories' => ['type' => self::TYPE_BOOL,   'validate' => 'isBool',          'required' => true,               'db_type' => 'TINYINT(1)'],
         ],
     ];
 

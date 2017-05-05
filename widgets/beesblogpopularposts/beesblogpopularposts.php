@@ -38,6 +38,10 @@ class BeesBlogPopularPosts extends Module
      */
     public function hookDisplayLeftColumn()
     {
+        if (!Module::isEnabled('beesblog')) {
+            return '';
+        }
+
         $popularPosts = BeesBlogPost::getPopularPosts($this->context->language->id, 0, 5);
         if (is_array($popularPosts)) {
             foreach ($popularPosts as &$recentPost) {

@@ -360,26 +360,6 @@ class AdminBeesBlogPostController extends \ModuleAdminController
                     'label' => $this->l('Publish date'),
                     'name' => 'date_add',
                 ],
-                [
-                    'type' => 'switch',
-                    'label' => $this->l('Featured'),
-                    'name' => 'is_featured',
-                    'required' => false,
-                    'class' => 't',
-                    'is_bool' => true,
-                    'values' => [
-                        [
-                            'id' => 'is_featured',
-                            'value' => 1,
-                            'label' => $this->l('Enabled'),
-                        ],
-                        [
-                            'id' => 'is_featured',
-                            'value' => 0,
-                            'label' => $this->l('Disabled'),
-                        ],
-                    ],
-                ],
             ],
             'submit' => [
                 'title' => $this->l('Save'),
@@ -578,5 +558,29 @@ class AdminBeesBlogPostController extends \ModuleAdminController
         $this->errors[] = $this->l('Unable to update post');
 
         return false;
+    }
+
+    /**
+     * Process delete
+     *
+     * @return bool
+     *
+     * @since 1.0.0
+     */
+    public function processDelete()
+    {
+        $blogPost = new BeesBlogPost((int) \Tools::getValue(BeesBlogPost::PRIMARY));
+
+        if (!$blogPost->delete()) {
+            $this->errors[] = $this->l('An error occurred while deleting the object.').' <strong>'.$this->table.' ('.\Db::getInstance()->getMsgError().')</strong>';
+
+            return false;
+        } else {
+            $this->deleteImage($blogPost->id);
+
+            \Tools::redirectAdmin($this->context->link->getAdminLink('AdminBeesBlogCategory'));
+
+            return true;
+        }
     }
 }

@@ -1,7 +1,6 @@
 <?php
 
 use BeesBlogModule\BeesBlogCategory;
-use BeesBlogModule\BeesBlogPost;
 
 if (!defined('_TB_VERSION_')) {
     exit;
@@ -39,6 +38,10 @@ class BeesBlogCategories extends Module
      */
     public function hookDisplayLeftColumn()
     {
+        if (!Module::isEnabled('beesblog')) {
+            return '';
+        }
+
         $categories = BeesBlogCategory::getCategories($this->context->language->id);
         if (is_array($categories)) {
             foreach ($categories as &$recentPost) {

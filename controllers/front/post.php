@@ -58,12 +58,14 @@ class BeesBlogPostModuleFrontController extends \ModuleFrontController
 
         BeesBlogPost::viewed($this->idPost);
         if (Configuration::get(BeesBlog::SOCIAL_SHARING)) {
-            if (file_exists(_PS_ROOT_DIR_._THEME_CSS_DIR_.'modules/socialsharing/socialsharing.css')) {
-                $this->context->controller->addCSS(_PS_ROOT_DIR_._THEME_CSS_DIR_.'modules/socialsharing/socialsharing.css', 'all');
-            } else {
-                $this->context->controller->addCSS(_PS_MODULE_DIR_.'socialsharing/views/css/socialsharing.css', 'all');
-            }
+            $this->context->controller->addCSS(_PS_MODULE_DIR_.'beesblog/views/css/socialmedia.css', 'all');
+            $this->context->controller->addJS(_PS_MODULE_DIR_.'beesblog/views/js/socialmedia.js');
         }
+        \Media::addJsDef([
+            'sharing_name' => addcslashes($post->title, "'"),
+            'sharing_url' => addcslashes(\Tools::getHttpHost(true).$_SERVER['REQUEST_URI'], "'"),
+            'sharing_img' => addcslashes(\Tools::getHttpHost(true).'/modules/beesblog/images/'.(int) $post->id.'.jpg', "'"),
+        ]);
 
         $postProperties = [
             'blogHome'             => \BeesBlog::getBeesBlogLink(),

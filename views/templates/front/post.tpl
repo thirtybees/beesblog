@@ -42,7 +42,7 @@
 	</div>
 	{if isset($socialSharing) && $socialSharing}
 		<br />
-		<p class="socialsharing_product hidden-print">
+		<p class="socialsharing_beesblog hidden-print">
 			<button data-type="twitter" type="button" class="btn btn-xs btn-twitter">
 				<i class="icon-twitter"></i> Tweet
 			</button>

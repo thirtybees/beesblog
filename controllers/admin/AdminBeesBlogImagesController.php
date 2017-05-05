@@ -63,6 +63,9 @@ class AdminBeesBlogImagesController extends ModuleAdminController
         $this->addRowAction('edit');
         $this->addRowAction('delete');
 
+        // Refresh/restore basic image types
+        BeesBlogImageType::installBasics();
+
         // Disable delete button for mandatory types
         $this->list_skip_actions['delete'] = BeesBlogImageType::getBasicTypeIds();
 

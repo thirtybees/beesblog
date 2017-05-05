@@ -83,7 +83,7 @@ class BeesBlog extends Module
         $this->version = '1.0.0';
         $this->author = 'thirty bees';
 
-        $this->controllers = ['category', 'post', 'search'];
+        $this->controllers = ['category', 'post'];
         $this->bootstrap = true;
 
         parent::__construct();
@@ -127,10 +127,15 @@ class BeesBlog extends Module
             return false;
         }
 
-//        if (version_compare(_TB_VERSION_, '<', '1.0.2')) {
-//            Db::getInstance()->execute('ALTER TABLE `'..'` DROP position;');
-//            Db::getInstance()->execute('ALTER TABLE `'..'` DROP position;');
-//        }
+        if (version_compare(_TB_VERSION_, '1.0.2', '<')) {
+            Db::getInstance()->execute('ALTER TABLE `'._DB_PREFIX_.bqSQL(BeesBlogPost::$definition['table']).'` DROP title');
+            Db::getInstance()->execute('ALTER TABLE `'._DB_PREFIX_.bqSQL(BeesBlogPost::$definition['table']).'` DROP content');
+            Db::getInstance()->execute('ALTER TABLE `'._DB_PREFIX_.bqSQL(BeesBlogPost::$definition['table']).'` DROP link_rewrite');
+            Db::getInstance()->execute('ALTER TABLE `'._DB_PREFIX_.bqSQL(BeesBlogPost::$definition['table']).'` DROP lang_active');
+            Db::getInstance()->execute('ALTER TABLE `'._DB_PREFIX_.bqSQL(BeesBlogCategory::$definition['table']).'` DROP title');
+            Db::getInstance()->execute('ALTER TABLE `'._DB_PREFIX_.bqSQL(BeesBlogCategory::$definition['table']).'` DROP description');
+            Db::getInstance()->execute('ALTER TABLE `'._DB_PREFIX_.bqSQL(BeesBlogCategory::$definition['table']).'` DROP link_rewrite');
+        }
 
         if (!$this->registerHook('displayHeader')
             || !$this->registerHook('moduleRoutes')
@@ -141,6 +146,7 @@ class BeesBlog extends Module
         }
 
         $this->createBeesBlogTabs();
+        BeesBlogImageType::installBasics();
 
         return true;
     }
