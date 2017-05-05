@@ -21,7 +21,7 @@
             {$post->category->title|escape:'htmlall':'UTF-8'}
         </a>
     </span>
-    {if isset($showComments) && $showComments}
+    {if isset($showComments) && $showComments && $post->comments_enabled}
         <span class="beesblog-comment-counter">
             <i class="icon icon-comments"></i>&nbsp;
             <a title="{l s='0 Comments' mod='beesblog'}"

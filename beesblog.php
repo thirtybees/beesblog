@@ -51,7 +51,6 @@ class BeesBlog extends Module
     const DISQUS_USERNAME = 'BEESBLOG_DISQUS_USERNAME';
     const MAX_POSTS_PER_PAGE = 20;
     const MAX_CATEGORIES_PER_PAGE = 20;
-    const ALLOWED_PROFILES = 'BEESBLOG_ALLOWED_PROFILES';
 
     public $blogHooks = [
         [
@@ -118,7 +117,6 @@ class BeesBlog extends Module
         Configuration::updateGlobalValue(static::HOME_TITLE, 'Bees blog title');
         Configuration::updateGlobalValue(static::HOME_KEYWORDS, 'thirty bees blog,thirty bees');
         Configuration::updateGlobalValue(static::HOME_DESCRIPTION, 'The beesiest blog for thirty bees');
-        Configuration::updateGlobalValue(static::ALLOWED_PROFILES, json_encode([1]));
 
         if (!(BeesBlogPost::createDatabase()
             && BeesBlogCategory::createDatabase()
@@ -580,7 +578,8 @@ class BeesBlog extends Module
         $defaultLang = (int) Configuration::get('PS_LANG_DEFAULT');
         $this->fieldsForm[0]['form'] = [
             'legend' => [
-                'title' => $this->l('Setting'),
+                'title' => $this->l('Settings'),
+                'icon'  => 'icon-cogs',
             ],
             'input'  => [
                 [

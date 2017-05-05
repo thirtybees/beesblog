@@ -12,9 +12,9 @@
  * obtain it through the world-wide-web, please send an email
  * to license@thirtybees.com so we can send you a copy immediately.
  *
- *  @author    thirty bees <modules@thirtybees.com>
- *  @copyright 2017 thirty bees
- *  @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
+ * @author    thirty bees <modules@thirtybees.com>
+ * @copyright 2017 thirty bees
+ * @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
  */
 
 if (!defined('_TB_VERSION_')) {
@@ -64,49 +64,49 @@ class AdminBeesBlogPostController extends \ModuleAdminController
 
         $this->fields_list = [
             BeesBlogPost::PRIMARY => [
-                'title' => $this->l('ID'),
-                'width' => 50,
-                'type' => 'text',
+                'title'   => $this->l('ID'),
+                'width'   => 50,
+                'type'    => 'text',
                 'orderby' => true,
-                'filter' => true,
-                'search' => true,
+                'filter'  => true,
+                'search'  => true,
             ],
-            'viewed' => [
-                'title' => $this->l('View'),
-                'width' => 50,
-                'type' => 'text',
-                'lang' => true,
+            'viewed'              => [
+                'title'   => $this->l('View'),
+                'width'   => 50,
+                'type'    => 'text',
+                'lang'    => true,
                 'orderby' => true,
-                'filter' => false,
-                'search' => false,
+                'filter'  => false,
+                'search'  => false,
             ],
-            'title' => [
-                'title' => $this->l('Title'),
-                'width' => 440,
-                'type' => 'text',
-                'lang' => true,
+            'title'               => [
+                'title'   => $this->l('Title'),
+                'width'   => 440,
+                'type'    => 'text',
+                'lang'    => true,
                 'orderby' => true,
-                'filter' => true,
-                'search' => true,
+                'filter'  => true,
+                'search'  => true,
             ],
-            'date_add' => [
-                'title' => $this->l('Posted Date'),
-                'width' => 100,
-                'type' => 'date',
-                'lang' => true,
+            'published'            => [
+                'title'   => $this->l('Posted Date'),
+                'width'   => 100,
+                'type'    => 'date',
+                'lang'    => true,
                 'orderby' => true,
-                'filter' => true,
-                'search' => true,
+                'filter'  => true,
+                'search'  => true,
             ],
-            'active' => [
-                'title' => $this->l('Status'),
-                'width' => '70',
-                'align' => 'center',
-                'active' => 'status',
-                'type' => 'bool',
+            'active'              => [
+                'title'   => $this->l('Status'),
+                'width'   => '70',
+                'align'   => 'center',
+                'active'  => 'status',
+                'type'    => 'bool',
                 'orderby' => true,
-                'filter' => true,
-                'search' => true,
+                'filter'  => true,
+                'search'  => true,
             ],
         ];
 
@@ -235,130 +235,130 @@ class AdminBeesBlogPostController extends \ModuleAdminController
             'legend' => [
                 'title' => $this->l('Blog Post'),
             ],
-            'input' => [
+            'input'  => [
                 [
-                    'type' => 'hidden',
-                    'name' => 'post_type',
+                    'type'          => 'hidden',
+                    'name'          => 'post_type',
                     'default_value' => 0,
                 ],
                 [
-                    'type' => 'text',
-                    'label' => $this->l('Blog title'),
-                    'name' => 'title',
-                    'id' => 'name',
-                    'class' => 'copyMeta2friendlyURL',
-                    'size' => 60,
+                    'type'     => 'text',
+                    'label'    => $this->l('Blog title'),
+                    'name'     => 'title',
+                    'id'       => 'name',
+                    'class'    => 'copyMeta2friendlyURL',
+                    'size'     => 60,
                     'required' => true,
-                    'desc' => $this->l('Enter the title of your blog post'),
-                    'lang' => true,
+                    'desc'     => $this->l('Enter the title of your blog post'),
+                    'lang'     => true,
                 ],
                 [
-                    'type' => 'textarea',
-                    'label' => $this->l('Content'),
-                    'name' => 'content',
-                    'lang' => true,
-                    'rows' => 10,
-                    'cols' => 62,
-                    'class' => 'rte',
+                    'type'         => 'textarea',
+                    'label'        => $this->l('Content'),
+                    'name'         => 'content',
+                    'lang'         => true,
+                    'rows'         => 10,
+                    'cols'         => 62,
+                    'class'        => 'rte',
                     'autoload_rte' => true,
-                    'required' => true,
-                    'hint' => [
+                    'required'     => true,
+                    'hint'         => [
                         $this->l('Enter the content of your post'),
                         $this->l('Invalid characters:').' <>;=#{}',
                     ],
                 ],
                 [
-                    'type' => 'file',
-                    'label' => $this->l('Image'),
-                    'name' => 'post_image',
+                    'type'          => 'file',
+                    'label'         => $this->l('Image'),
+                    'name'          => 'post_image',
                     'display_image' => true,
-                    'image' => $imageUrl ? $imageUrl : false,
-                    'size' => $imageSize,
-                    'delete_url' => self::$currentIndex.'&'.$this->identifier.'='.\Tools::getValue(BeesBlogPost::PRIMARY).'&token='.$this->token.'&deleteImage=1',
-                    'hint' => $this->l('Upload an image from your computer.'),
+                    'image'         => $imageUrl ? $imageUrl : false,
+                    'size'          => $imageSize,
+                    'delete_url'    => self::$currentIndex.'&'.$this->identifier.'='.\Tools::getValue(BeesBlogPost::PRIMARY).'&token='.$this->token.'&deleteImage=1',
+                    'hint'          => $this->l('Upload an image from your computer.'),
                 ],
                 [
-                    'type' => 'select',
-                    'label' => $this->l('Blog Category'),
-                    'name' => 'id_category',
+                    'type'    => 'select',
+                    'label'   => $this->l('Blog Category'),
+                    'name'    => 'id_category',
                     'options' => [
                         'query' => BeesBlogCategory::getCategories($this->context->language->id, 0, 0, false, true, ['id', 'title']),
-                        'id' => 'id',
-                        'name' => 'title',
+                        'id'    => 'id',
+                        'name'  => 'title',
                     ],
-                    'desc' => $this->l('Select Your Parent Category'),
+                    'desc'    => $this->l('Select Your Parent Category'),
                 ],
                 [
-                    'type' => 'text',
-                    'label' => $this->l('Link Rewrite'),
-                    'name' => 'link_rewrite',
-                    'size' => 60,
-                    'lang' => true,
+                    'type'     => 'text',
+                    'label'    => $this->l('Link Rewrite'),
+                    'name'     => 'link_rewrite',
+                    'size'     => 60,
+                    'lang'     => true,
                     'required' => false,
-                    'hint' => $this->l('Only letters and the hyphen (-) character are allowed.'),
+                    'hint'     => $this->l('Only letters and the hyphen (-) character are allowed.'),
                 ],
                 [
-                    'type' => 'switch',
-                    'label' => $this->l('Comment Status'),
-                    'name' => 'comment_status',
+                    'type'     => 'switch',
+                    'label'    => $this->l('Comment Status'),
+                    'name'     => 'comment_status',
                     'required' => false,
-                    'class' => 't',
-                    'is_bool' => true,
-                    'values' => [
+                    'class'    => 't',
+                    'is_bool'  => true,
+                    'values'   => [
                         [
-                            'id' => 'active',
+                            'id'    => 'active',
                             'value' => 1,
                             'label' => $this->l('Enabled'),
                         ],
                         [
-                            'id' => 'active',
+                            'id'    => 'active',
                             'value' => 0,
                             'label' => $this->l('Disabled'),
                         ],
                     ],
-                    'desc' => $this->l('You can enable or disable comments'),
+                    'desc'     => $this->l('You can enable or disable comments'),
                 ],
                 [
-                    'type' => 'switch',
-                    'label' => $this->l('Status'),
-                    'name' => 'active',
+                    'type'     => 'switch',
+                    'label'    => $this->l('Status'),
+                    'name'     => 'active',
                     'required' => false,
-                    'class' => 't',
-                    'is_bool' => true,
-                    'values' => [
+                    'class'    => 't',
+                    'is_bool'  => true,
+                    'values'   => [
                         [
-                            'id' => 'active',
+                            'id'    => 'active',
                             'value' => 1,
                             'label' => $this->l('Enabled'),
                         ],
                         [
-                            'id' => 'active',
+                            'id'    => 'active',
                             'value' => 0,
                             'label' => $this->l('Disabled'),
                         ],
                     ],
                 ],
                 [
-                    'type' => 'checkbox',
-                    'label' => $this->l('Available for these languages'),
-                    'name' => 'lang_active',
+                    'type'     => 'checkbox',
+                    'label'    => $this->l('Available for these languages'),
+                    'name'     => 'lang_active',
                     'multiple' => true,
-                    'values' => [
+                    'values'   => [
                         'query' => \Language::getLanguages(false),
-                        'id' => 'id_lang',
-                        'name' => 'name',
+                        'id'    => 'id_lang',
+                        'name'  => 'name',
                     ],
-                    'expand' => (count(\Language::getLanguages(false)) > 10) ? [
+                    'expand'   => (count(\Language::getLanguages(false)) > 10) ? [
                         'print_total' => count(\Language::getLanguages(false)),
-                        'default' => 'show',
-                        'show' => ['text' => $this->l('Show'), 'icon' => 'plus-sign-alt'],
-                        'hide' => ['text' => $this->l('Hide'), 'icon' => 'minus-sign-alt'],
+                        'default'     => 'show',
+                        'show'        => ['text' => $this->l('Show'), 'icon' => 'plus-sign-alt'],
+                        'hide'        => ['text' => $this->l('Hide'), 'icon' => 'minus-sign-alt'],
                     ] : null,
                 ],
                 [
-                    'type' => 'datetime',
+                    'type'  => 'datetime',
                     'label' => $this->l('Publish date'),
-                    'name' => 'date_add',
+                    'name'  => 'published',
                 ],
             ],
             'submit' => [
@@ -373,6 +373,20 @@ class AdminBeesBlogPostController extends \ModuleAdminController
         $this->tpl_form_vars['PS_ALLOW_ACCENTED_CHARS_URL'] = (int) \Configuration::get('PS_ALLOW_ACCENTED_CHARS_URL');
 
         return parent::renderForm();
+    }
+
+    /**
+     * Set media
+     *
+     * @return void
+     *
+     * @since 1.0.0
+     */
+    public function setMedia()
+    {
+        parent::setMedia();
+        $this->addJqueryUI('ui.widget');
+        $this->addJqueryPlugin('tagify');
     }
 
     /**
@@ -426,20 +440,6 @@ class AdminBeesBlogPostController extends \ModuleAdminController
         }
 
         return true;
-    }
-
-    /**
-     * Set media
-     *
-     * @return void
-     *
-     * @since 1.0.0
-     */
-    public function setMedia()
-    {
-        parent::setMedia();
-        $this->addJqueryUI('ui.widget');
-        $this->addJqueryPlugin('tagify');
     }
 
     /**
@@ -504,13 +504,18 @@ class AdminBeesBlogPostController extends \ModuleAdminController
         }
         $blogPost->id_employee = $this->context->employee->id;
         $blogPost->viewed = 0;
-        foreach ($blogPost->lang_active as &$active) {
+        foreach ($blogPost->lang_active as $idLang => &$active) {
             $active = ($active === 'on' ? true : false);
+            if (!Tools::isSubmit('lang_active_'.$idLang)) {
+                $active = false;
+            }
         }
+        $langActive = $blogPost->lang_active;
         $blogPost->id_shop = (int) Context::getContext()->shop->id;
 
-
         if ($blogPost->add()) {
+            // TODO: check why this is necessary
+            BeesBlogPost::setLangActive($blogPost->id, $langActive);
             $this->processImage($_FILES, $blogPost->id);
             $this->confirmations[] = $this->l('Successfully added post');
 
@@ -542,14 +547,19 @@ class AdminBeesBlogPostController extends \ModuleAdminController
         if (!$blogPost->published) {
             $blogPost->published = date('Y-m-d H:i:s');
         }
-        foreach ($blogPost->lang_active as &$active) {
+        foreach ($blogPost->lang_active as $idLang => &$active) {
             $active = ($active === 'on' ? true : false);
+            if (!Tools::isSubmit('lang_active_'.$idLang)) {
+                $active = false;
+            }
         }
+        $langActive = $blogPost->lang_active;
         $blogPost->id_employee = $this->context->employee->id;
         $blogPost->id_shop = (int) Context::getContext()->shop->id;
         $this->processImage($_FILES, $blogPost->id);
-
         if ($blogPost->update()) {
+            // TODO: check why this is necessary
+            BeesBlogPost::setLangActive($blogPost->id, $langActive);
             $this->confirmations[] = $this->l('Successfully updated post');
 
             return true;

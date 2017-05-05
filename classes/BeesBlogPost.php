@@ -124,6 +124,54 @@ class BeesBlogPost extends \ObjectModel
         $postCollection->setPageSize($limit);
         $postCollection->setPageNumber($page);
         $postCollection->orderBy('published', 'desc');
+        $postCollection->where('published', '<=', date('Y-m-d H:i:s'));
+        $postCollection->sqlWhere('lang_active = \'1\'');
+
+        if ($count) {
+            return $postCollection->count();
+        }
+
+        $results = $postCollection->getResults();
+
+        if ($raw) {
+            $newResults = [];
+            foreach ($postCollection as $post) {
+                if (!empty($propertyFilter)) {
+                    $newPost = [];
+                    foreach ($propertyFilter as $filter) {
+                        $newPost[$filter] = $post->{$filter};
+                    }
+                    $newResults[] = $newPost;
+                } else {
+                    $newResults[] = (array) $post;
+                }
+            }
+            $results = $newResults;
+        }
+
+        return $results;
+    }
+
+    /**
+     * Get posts by popularity
+     *
+     * @param int|null $idLang
+     * @param int      $page
+     * @param int      $limit
+     * @param bool     $count
+     * @param bool     $raw
+     * @param array    $propertyFilter
+     *
+     * @return array|int
+     */
+    public static function getPopularPosts($idLang = null, $page = 0, $limit = 0, $count = false, $raw = false, $propertyFilter = [])
+    {
+        $postCollection = new \Collection('BeesBlogModule\\BeesBlogPost', $idLang);
+        $postCollection->setPageSize($limit);
+        $postCollection->setPageNumber($page);
+        $postCollection->orderBy('viewed', 'desc');
+        $postCollection->where('published', '<=', date('Y-m-d H:i:s'));
+        $postCollection->sqlWhere('lang_active = \'1\'');
 
         if ($count) {
             return $postCollection->count();
@@ -165,50 +213,6 @@ class BeesBlogPost extends \ObjectModel
     }
 
     /**
-     * Get posts by popularity
-     *
-     * @param int|null $idLang
-     * @param int      $page
-     * @param int      $limit
-     * @param bool     $count
-     * @param bool     $raw
-     * @param array    $propertyFilter
-     *
-     * @return array|int
-     */
-    public static function getPopularPosts($idLang = null, $page = 0, $limit = 0, $count = false, $raw = false, $propertyFilter = [])
-    {
-        $postCollection = new \Collection('BeesBlogModule\\BeesBlogPost', $idLang);
-        $postCollection->setPageSize($limit);
-        $postCollection->setPageNumber($page);
-        $postCollection->orderBy('viewed', 'desc');
-
-        if ($count) {
-            return $postCollection->count();
-        }
-
-        $results = $postCollection->getResults();
-
-        if ($raw) {
-            $newResults = [];
-            foreach ($postCollection as $post) {
-                if (!empty($propertyFilter)) {
-                    $newPost = [];
-                    foreach ($propertyFilter as $filter) {
-                        $newPost[$filter] = $post->{$filter};
-                    }
-                    $newResults[] = $newPost;
-                } else {
-                    $newResults[] = (array) $post;
-                }
-            }
-            $results = $newResults;
-        }
-
-        return $results;
-    }
-
-    /**
      * Get blog image
      *
      * @return false|null|string
@@ -246,9 +250,6 @@ class BeesBlogPost extends \ObjectModel
         $sql->where('sbpl.`lang_active` = 1');
         $sql->where('sbps.`id_shop` = '.(int) $idShop);
         $sql->where('sbp.`active` = 1');
-//        if (\Context::getContext()->customer->email !== 'info@thirtybees.com') {
-//            $sql->where('sbp.`date_add` < \''.date('Y-m-d H:i:s').'\'');
-//        }
         $sql->where('sbp.`'.self::PRIMARY.'` = '.(int) $idPost);
 
         return \Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql);
@@ -284,8 +285,6 @@ class BeesBlogPost extends \ObjectModel
         $sql->where('sbps.`id_shop` = '.(int) $idShop);
         $sql->where('sbp.`active` = '.(int) $active);
         $sql->where('sbpl.`link_rewrite` = \''.pSQL($rewrite).'\'');
-//        ddd($sql->build());
-//        ddd(\Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql));
 
         return \Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql);
     }
@@ -305,6 +304,29 @@ class BeesBlogPost extends \ObjectModel
         $sql->where('sbpl.`id_lang` = '.(int) $idLang);
 
         return \Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql);
+    }
+
+    /**
+     * @param int   $idBeesBlogPost BeesBlogPost ID
+     * @param array $langActive
+     *
+     * @return void
+     */
+    public static function setLangActive($idBeesBlogPost, $langActive)
+    {
+        if (!is_array($langActive)) {
+            return;
+        }
+
+        foreach ($langActive as $idLang => $active) {
+            \Db::getInstance(_PS_USE_SQL_SLAVE_)->update(
+                static::LANG_TABLE,
+                [
+                    'lang_active' => $active,
+                ],
+                static::PRIMARY.' = '.(int) $idBeesBlogPost.' AND id_lang = '.(int) $idLang
+            );
+        }
     }
 
     /**

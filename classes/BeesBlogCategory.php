@@ -99,6 +99,8 @@ class BeesBlogCategory extends \ObjectModel
         $postCollection->setPageSize($limit);
         $postCollection->setPageNumber($page);
         $postCollection->orderBy('published', 'desc');
+        $postCollection->where('published', '<=', date('Y-m-d H:i:s'));
+        $postCollection->sqlWhere('lang_active = \'1\'');
 
         if ($count) {
             return $postCollection->count();

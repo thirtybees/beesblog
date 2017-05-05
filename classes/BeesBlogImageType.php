@@ -257,6 +257,13 @@ class BeesBlogImageType extends \ObjectModel
                             'categories' => substr($basicType, 0, 4) !== 'post',
                         ]
                     );
+                    \Db::getInstance()->insert(
+                        static::SHOP_TABLE,
+                        [
+                            static::PRIMARY => (int) \Db::getInstance()->Insert_ID(),
+                            'id_shop'       => (int) $idShop,
+                        ]
+                    );
                 }
             }
         }
