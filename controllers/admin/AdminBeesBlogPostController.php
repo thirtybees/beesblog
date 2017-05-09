@@ -403,7 +403,7 @@ class AdminBeesBlogPostController extends \ModuleAdminController
 
         if (isset($files[$postImageInput]) && isset($files[$postImageInput]['tmp_name']) && !empty($files[$postImageInput]['tmp_name'])) {
             if ($error = \ImageManager::validateUpload($files[$postImageInput], 4000000)) {
-                $this->errors[] = $this->l('Invalid image');
+                $this->errors[] = $error;
 
                 return false;
             } else {
@@ -460,8 +460,8 @@ class AdminBeesBlogPostController extends \ModuleAdminController
         $idLangDefault = (int) Configuration::get('PS_LANG_DEFAULT');
         foreach (BeesBlogPost::$definition['fields'] as $name => $field) {
             if (isset($field['lang']) && $field['lang']) {
-                foreach (Language::getLanguages() as $language) {
-                    if ((int) $language['id_lang'] !== $idLangDefault) {
+                foreach (Language::getLanguages(false, false, true) as $idLang) {
+                    if ((int) $idLang !== $idLangDefault) {
                         $defaultValue = '';
                         switch (BeesBlogPost::$definition['fields'][$name]['type']) {
                             case ObjectModel::TYPE_INT:
@@ -493,7 +493,7 @@ class AdminBeesBlogPostController extends \ModuleAdminController
                             $blogPost->$name[$idLangDefault] = $defaultValue;
                         }
 
-                        $blogPost->$name[$language['id_lang']] = $blogPost->$name[$idLangDefault];
+                        $blogPost->$name[$idLang] = $blogPost->$name[$idLangDefault];
                     }
                 }
             }
@@ -512,6 +512,11 @@ class AdminBeesBlogPostController extends \ModuleAdminController
         }
         $langActive = $blogPost->lang_active;
         $blogPost->id_shop = (int) Context::getContext()->shop->id;
+        foreach (Language::getLanguages(false, false, true) as $idLang) {
+            if (!$blogPost->link_rewrite[$idLang]) {
+                $blogPost->link_rewrite[$idLang] = Tools::link_rewrite($blogPost->title[$idLang]);
+            }
+        }
 
         if ($blogPost->add()) {
             // TODO: check why this is necessary

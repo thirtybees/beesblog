@@ -231,7 +231,7 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
 
         if (isset($files[$categoryImageInput]) && isset($files[$categoryImageInput]['tmp_name']) && !empty($files[$categoryImageInput]['tmp_name'])) {
             if ($error = \ImageManager::validateUpload($files[$categoryImageInput], 4000000)) {
-                $this->errors[] = $this->l('Invalid image');
+                $this->errors[] = $error;
 
                 return false;
             } else {
@@ -342,9 +342,40 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
         $idLangDefault = (int) Configuration::get('PS_LANG_DEFAULT');
         foreach (BeesBlogCategory::$definition['fields'] as $name => $field) {
             if (isset($field['lang']) && $field['lang']) {
-                foreach (Language::getLanguages() as $language) {
-                    if ((int) $language['id_lang'] !== $idLangDefault) {
-                        $blogCategory->{$name}[$language['id_lang']] = $blogCategory->{$name}[$idLangDefault];
+                foreach (Language::getLanguages(false, false, true) as $idLang) {
+                    if ((int) $idLang !== $idLangDefault) {
+                        $defaultValue = '';
+                        switch (BeesBlogCategory::$definition['fields'][$name]['type']) {
+                            case ObjectModel::TYPE_INT:
+                            case ObjectModel::TYPE_FLOAT:
+                                $defaultValue = 0;
+                                break;
+                            case ObjectModel::TYPE_BOOL:
+                                $defaultValue = false;
+                                break;
+                            case ObjectModel::TYPE_STRING:
+                            case ObjectModel::TYPE_HTML:
+                            case ObjectModel::TYPE_SQL:
+                                $defaultValue = '';
+                                break;
+                            case ObjectModel::TYPE_DATE:
+                                $defaultValue = '1970-01-01 00:00:00';
+                                break;
+                            case ObjectModel::TYPE_NOTHING:
+                                $defaultValue = null;
+                                break;
+                            default:
+                                break;
+                        }
+                        if (!is_array($blogCategory->{$name})) {
+                            $blogCategory->$name = [
+                                $idLangDefault => $defaultValue,
+                            ];
+                        } elseif (!isset($blogCategory->$name[$idLangDefault])) {
+                            $blogCategory->$name[$idLangDefault] = $defaultValue;
+                        }
+
+                        $blogCategory->$name[$idLang] = $blogCategory->$name[$idLangDefault];
                     }
                 }
             }
@@ -357,9 +388,13 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
             $blogCategory->position = 0;
         }
         $blogCategory->id_shop = (int) Context::getContext()->shop->id;
+        foreach (Language::getLanguages(false, false, true) as $idLang) {
+            if (!$blogCategory->link_rewrite[$idLang]) {
+                $blogCategory->link_rewrite[$idLang] = Tools::link_rewrite($blogCategory->title[$idLang]);
+            }
+        }
 
         // TODO: check if link_rewrite is unique
-
         if ($blogCategory->add()) {
             $this->processImage($_FILES, $blogCategory->id);
             $this->confirmations[] = $this->l('Successfully added a new category');

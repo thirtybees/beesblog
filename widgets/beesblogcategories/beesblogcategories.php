@@ -18,7 +18,7 @@ class BeesBlogCategories extends Module
     {
         $this->name = 'beesblogcategories';
         $this->tab = 'front_office_features';
-        $this->version = '1.0.0';
+        $this->version = '1.0.1';
         $this->author = 'thirty bees';
 
         $this->bootstrap = true;
@@ -44,8 +44,8 @@ class BeesBlogCategories extends Module
 
         $categories = BeesBlogCategory::getCategories($this->context->language->id);
         if (is_array($categories)) {
-            foreach ($categories as &$recentPost) {
-                $recentPost->link = BeesBlog::GetBeesBlogLink('beesblog_post', ['blog_rewrite' => $recentPost->link_rewrite]);
+            foreach ($categories as &$category) {
+                $category->link = BeesBlog::GetBeesBlogLink('beesblog_category', ['cat_rewrite' => $category->link_rewrite]);
             }
         }
 

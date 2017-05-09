@@ -6,6 +6,7 @@ FILES+=("logo.png")
 FILES+=("${CWD_BASENAME}.php")
 FILES+=("classes/**")
 FILES+=("controllers/**")
+FILES+=("upgrade/**")
 FILES+=("views/**")
 FILES+=("widgets/**")
 
