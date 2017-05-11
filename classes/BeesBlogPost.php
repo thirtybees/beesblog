@@ -41,7 +41,7 @@ class BeesBlogPost extends \ObjectModel
         'multilang'      => true,
         'multishop'      => true,
         'fields'         => [
-            'active'            => ['type' => self::TYPE_BOOL,                   'validate' => 'isBool',        'required' => true,  'default' => '1',                   'db_type' => 'TINYINT(1) UNSIGNED'],
+            'active'            => ['type' => self::TYPE_BOOL,                   'validate' => 'isBool',        'required' => true,                                      'db_type' => 'TINYINT(1) UNSIGNED'],
             'comments_enabled'  => ['type' => self::TYPE_BOOL,                   'validate' => 'isBool',        'required' => true,                                      'db_type' => 'TINYINT(1) UNSIGNED'],
             'date_add'          => ['type' => self::TYPE_DATE,                   'validate' => 'isDate',        'required' => true,  'default' => '1970-01-01 00:00:00', 'db_type' => 'DATETIME'],
             'date_upd'          => ['type' => self::TYPE_DATE,                   'validate' => 'isDate',        'required' => true,  'default' => '1970-01-01 00:00:00', 'db_type' => 'DATETIME'],
@@ -55,7 +55,7 @@ class BeesBlogPost extends \ObjectModel
             'title'             => ['type' => self::TYPE_STRING, 'lang' => true, 'validate' => 'isString',      'required' => false,                                     'db_type' => 'VARCHAR(255)'],
             'content'           => ['type' => self::TYPE_HTML,   'lang' => true, 'validate' => 'isString',      'required' => false,                                     'db_type' => 'TEXT'],
             'link_rewrite'      => ['type' => self::TYPE_STRING, 'lang' => true, 'validate' => 'isString',      'required' => true,                                      'db_type' => 'VARCHAR(255)'],
-            'lang_active'       => ['type' => self::TYPE_BOOL,   'lang' => true, 'validate' => 'isBool',        'required' => true,  'default' => '1',                   'db_type' => 'TINYINT(1) UNSIGNED'],
+            'lang_active'       => ['type' => self::TYPE_BOOL,   'lang' => true, 'validate' => 'isBool',        'required' => true,                                      'db_type' => 'TINYINT(1) UNSIGNED'],
         ],
     ];
     /** @var bool $active */

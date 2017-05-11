@@ -504,23 +504,26 @@ class AdminBeesBlogPostController extends \ModuleAdminController
         }
         $blogPost->id_employee = $this->context->employee->id;
         $blogPost->viewed = 0;
-        foreach ($blogPost->lang_active as $idLang => &$active) {
-            $active = ($active === 'on' ? true : false);
-            if (!Tools::isSubmit('lang_active_'.$idLang)) {
-                $active = false;
-            }
-        }
-        $langActive = $blogPost->lang_active;
         $blogPost->id_shop = (int) Context::getContext()->shop->id;
         foreach (Language::getLanguages(false, false, true) as $idLang) {
             if (!$blogPost->link_rewrite[$idLang]) {
                 $blogPost->link_rewrite[$idLang] = Tools::link_rewrite($blogPost->title[$idLang]);
             }
+            // Manage `lang_active`
+            if (!is_array($blogPost->lang_active)) {
+                $blogPost->lang_active = [];
+            }
+            if (!isset($blogPost->lang_active[$idLang])) {
+                $blogPost->lang_active[$idLang] = false;
+            } else {
+                $blogPost->lang_active[$idLang] = ($blogPost->lang_active[$idLang] === 'on' ? true : false);
+                if (!Tools::isSubmit('lang_active_'.$idLang)) {
+                    $blogPost->lang_active[$idLang] = false;
+                }
+            }
         }
 
         if ($blogPost->add()) {
-            // TODO: check why this is necessary
-            BeesBlogPost::setLangActive($blogPost->id, $langActive);
             $this->processImage($_FILES, $blogPost->id);
             $this->confirmations[] = $this->l('Successfully added post');
 
@@ -552,19 +555,25 @@ class AdminBeesBlogPostController extends \ModuleAdminController
         if (!$blogPost->published) {
             $blogPost->published = date('Y-m-d H:i:s');
         }
-        foreach ($blogPost->lang_active as $idLang => &$active) {
-            $active = ($active === 'on' ? true : false);
-            if (!Tools::isSubmit('lang_active_'.$idLang)) {
-                $active = false;
+
+        // Manage `lang_active`
+        foreach (Language::getLanguages(false, false, true) as $idLang) {
+            if (!is_array($blogPost->lang_active)) {
+                $blogPost->lang_active = [];
+            }
+            if (!isset($blogPost->lang_active[$idLang])) {
+                $blogPost->lang_active[$idLang] = false;
+            } else {
+                $blogPost->lang_active[$idLang] = ($blogPost->lang_active[$idLang] === 'on' ? true : false);
+                if (!Tools::isSubmit('lang_active_'.$idLang)) {
+                    $blogPost->lang_active[$idLang] = false;
+                }
             }
         }
-        $langActive = $blogPost->lang_active;
         $blogPost->id_employee = $this->context->employee->id;
         $blogPost->id_shop = (int) Context::getContext()->shop->id;
         $this->processImage($_FILES, $blogPost->id);
         if ($blogPost->update()) {
-            // TODO: check why this is necessary
-            BeesBlogPost::setLangActive($blogPost->id, $langActive);
             $this->confirmations[] = $this->l('Successfully updated post');
 
             return true;

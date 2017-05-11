@@ -79,11 +79,12 @@ class BeesBlog extends Module
     {
         $this->name = 'beesblog';
         $this->tab = 'front_office_features';
-        $this->version = '1.0.1';
+        $this->version = '1.0.3';
         $this->author = 'thirty bees';
 
         $this->controllers = ['category', 'post'];
         $this->bootstrap = true;
+        $this->badges = ['beta'];
 
         parent::__construct();
         $this->displayName = $this->l('Bees Blog');
@@ -126,13 +127,21 @@ class BeesBlog extends Module
         }
 
         if (version_compare(_TB_VERSION_, '1.0.2', '<')) {
-            Db::getInstance()->execute('ALTER TABLE `'._DB_PREFIX_.bqSQL(BeesBlogPost::$definition['table']).'` DROP title');
-            Db::getInstance()->execute('ALTER TABLE `'._DB_PREFIX_.bqSQL(BeesBlogPost::$definition['table']).'` DROP content');
-            Db::getInstance()->execute('ALTER TABLE `'._DB_PREFIX_.bqSQL(BeesBlogPost::$definition['table']).'` DROP link_rewrite');
-            Db::getInstance()->execute('ALTER TABLE `'._DB_PREFIX_.bqSQL(BeesBlogPost::$definition['table']).'` DROP lang_active');
-            Db::getInstance()->execute('ALTER TABLE `'._DB_PREFIX_.bqSQL(BeesBlogCategory::$definition['table']).'` DROP title');
-            Db::getInstance()->execute('ALTER TABLE `'._DB_PREFIX_.bqSQL(BeesBlogCategory::$definition['table']).'` DROP description');
-            Db::getInstance()->execute('ALTER TABLE `'._DB_PREFIX_.bqSQL(BeesBlogCategory::$definition['table']).'` DROP link_rewrite');
+            $queries = [];
+            $queries[] = 'ALTER TABLE `'._DB_PREFIX_.bqSQL(BeesBlogPost::$definition['table']).'` DROP title';
+            $queries[] = 'ALTER TABLE `'._DB_PREFIX_.bqSQL(BeesBlogPost::$definition['table']).'` DROP content';
+            $queries[] = 'ALTER TABLE `'._DB_PREFIX_.bqSQL(BeesBlogPost::$definition['table']).'` DROP link_rewrite';
+            $queries[] = 'ALTER TABLE `'._DB_PREFIX_.bqSQL(BeesBlogPost::$definition['table']).'` DROP lang_active';
+            $queries[] = 'ALTER TABLE `'._DB_PREFIX_.bqSQL(BeesBlogCategory::$definition['table']).'` DROP title';
+            $queries[] = 'ALTER TABLE `'._DB_PREFIX_.bqSQL(BeesBlogCategory::$definition['table']).'` DROP description';
+            $queries[] = 'ALTER TABLE `'._DB_PREFIX_.bqSQL(BeesBlogCategory::$definition['table']).'` DROP link_rewrite';
+
+            foreach ($queries as $sql) {
+                try {
+                    Db::getInstance()->execute($sql);
+                } catch (Exception $e) {
+                }
+            }
         }
 
         if (!$this->registerHook('displayHeader')

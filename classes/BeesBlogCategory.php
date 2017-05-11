@@ -43,7 +43,7 @@ class BeesBlogCategory extends \ObjectModel
         'fields' => [
             'id_parent'         => ['type' => self::TYPE_INT,                    'validate' => 'isUnsignedInt', 'required' => true,  'default' => '0',                   'db_type' => 'INT(11) UNSIGNED'],
             'position'          => ['type' => self::TYPE_INT,                    'validate' => 'isUnsignedInt', 'required' => true,  'default' => '1',                   'db_type' => 'INT(11) UNSIGNED'],
-            'active'            => ['type' => self::TYPE_BOOL,                   'validate' => 'isBool',        'required' => true,  'default' => '1',                   'db_type' => 'TINYINT(1)'],
+            'active'            => ['type' => self::TYPE_BOOL,                   'validate' => 'isBool',        'required' => true,                                      'db_type' => 'TINYINT(1)'],
             'date_add'          => ['type' => self::TYPE_DATE,                   'validate' => 'isString',      'required' => true,  'default' => '1970-01-01 00:00:00', 'db_type' => 'DATETIME'],
             'date_upd'          => ['type' => self::TYPE_DATE,                   'validate' => 'isString',      'required' => true,  'default' => '1970-01-01 00:00:00', 'db_type' => 'DATETIME'],
             'title'             => ['type' => self::TYPE_STRING, 'lang' => true, 'validate' => 'isString',      'required' => true,                                      'db_type' => 'VARCHAR(255)'],
@@ -100,6 +100,7 @@ class BeesBlogCategory extends \ObjectModel
         $postCollection->setPageNumber($page);
         $postCollection->orderBy('published', 'desc');
         $postCollection->where('published', '<=', date('Y-m-d H:i:s'));
+        $postCollection->where('id_category', '=', $this->id);
         $postCollection->sqlWhere('lang_active = \'1\'');
 
         if ($count) {

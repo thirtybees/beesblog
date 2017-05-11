@@ -40,6 +40,13 @@ foreach (scandir(__DIR__) as $module) {
             opcache_invalidate(_PS_MODULE_DIR_."$module/$module.php");
         }
 
+        // Wait a moment on slow servers
+        $wait = 10;
+        while (!file_exists(_PS_MODULE_DIR_."$module/$module.php") && $wait > 0) {
+            $wait--;
+            // Wait half a second
+            usleep(500000);
+        }
         require_once _PS_MODULE_DIR_."$module/$module.php";
 
         /** @var Module $mod */

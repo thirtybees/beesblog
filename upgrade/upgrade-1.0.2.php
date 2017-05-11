@@ -21,7 +21,7 @@ if (!defined('_TB_VERSION_')) {
     exit;
 }
 
-function upgrade_module_1_0_1()
+function upgrade_module_1_0_2()
 {
     $widgetDir = __DIR__.'/../widgets';
 
