@@ -17,24 +17,29 @@
 *}
 {assign var=imagePath value=Media::getMediaPath(BeesBlog::getPostImagePath($post->id))}
 {assign var=postPath value=BeesBlog::GetBeesBlogLink('beesblog_post', ['blog_rewrite' => $post->link_rewrite])}
-<div itemtype="#" itemscope="" class="clearfix beesblog-post-list-item">
-    <div id="beesblog-post-{$post->id|intval}">
-        <h4 class="title_block">
-            <a title="{$post->title|escape:'htmlall':'UTF-8'}" href="{$postPath|escape:'htmlall':'UTF-8'}">{$post->title|escape:'htmlall':'UTF-8'}</a>
-        </h4>
-        <div class="beesblog-post-list-summary">
-            {if ($imagePath)}
-                <a title="{$post->title|escape:'htmlall':'UTF-8'}" href="{$postPath|escape:'htmlall':'UTF-8'}">
-                    <img class="img-responsive" alt="{$post->title|escape:'htmlall':'UTF-8'}" src="{$imagePath|escape:'htmlall':'UTF-8'}">
-                </a>
-            {/if}
-            <span class="clearfix">
+<article>
+    <div itemtype="#" itemscope="" class="clearfix beesblog-post-list-item">
+        <div id="beesblog-post-{$post->id|intval}">
+            <h4 class="title_block">
+                <a title="{$post->title|escape:'htmlall':'UTF-8'}"
+                   href="{$postPath|escape:'htmlall':'UTF-8'}">{$post->title|escape:'htmlall':'UTF-8'}</a>
+            </h4>
+            <div class="beesblog-post-list-summary">
+                {if ($imagePath)}
+                    <a title="{$post->title|escape:'htmlall':'UTF-8'}" href="{$postPath|escape:'htmlall':'UTF-8'}">
+                        <img class="img-responsive" alt="{$post->title|escape:'htmlall':'UTF-8'}"
+                             src="{$imagePath|escape:'htmlall':'UTF-8'}">
+                    </a>
+                {/if}
+                <span class="clearfix">
                 {$post->getSummary()|escape:'htmlall':'UTF-8'}&nbsp;
-              </span>
-            <a title="{$post->title|escape:'htmlall':'UTF-8'}" href="{$postPath|escape:'htmlall':'UTF-8'}" class="beesblog-read-more-link">
-                {l s='Read more' mod='beesblog'} {'>'|escape:'htmlall':'UTF-8'}
-            </a>
+                </span>
+                <a title="{$post->title|escape:'htmlall':'UTF-8'}" href="{$postPath|escape:'htmlall':'UTF-8'}"
+                   class="beesblog-read-more-link">
+                    {l s='Read more' mod='beesblog'} {'>'|escape:'htmlall':'UTF-8'}
+                </a>
+            </div>
+            {include file="./post_info.tpl"}
         </div>
-        {include file="./post_info.tpl"}
     </div>
-</div>
+</article>

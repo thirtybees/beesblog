@@ -42,6 +42,7 @@
     </div>
     {if isset($socialSharing) && $socialSharing}
         <br/>
+        <section>
         <p class="socialsharing_beesblog hidden-print">
             <button data-type="twitter" type="button" class="btn btn-xs btn-twitter">
                 <i class="icon-twitter"></i> Tweet
@@ -56,6 +57,7 @@
                 <i class="icon-pinterest"></i> Pinterest
             </button>
         </p>
+            </section>
     {/if}
     {if $showComments && $post->comments_enabled}
         {include "./disqus.tpl"}

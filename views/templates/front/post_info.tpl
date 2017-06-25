@@ -1,18 +1,22 @@
 <div class="beesblog-post-info">
     {if isset($showAuthor) && $showAuthor}
-        <i class="icon icon-user"></i>&nbsp;
+        <i class="icon icon-user"></i>
+        &nbsp;
         {l s='Posted by' mod='beesblog'}
         <span>
             {if $authorStyle}
                 {$post->employee->firstname|escape:'htmlall':'UTF-8'} {$post->employee->lastname|escape:'htmlall':'UTF-8'}
             {else}
-                 {$post->employee->lastname|escape:'htmlall':'UTF-8'} {$post->employee->firstname|escape:'htmlall':'UTF-8'}
+                {$post->employee->lastname|escape:'htmlall':'UTF-8'} {$post->employee->firstname|escape:'htmlall':'UTF-8'}
             {/if}
         </span>
     {/if}
     {if isset($showDate) && $showDate}
-        <i class="icon icon-calendar"></i>&nbsp;
-        {$post->published|date_format}
+        <i class="icon icon-calendar"></i>
+        &nbsp;
+        <time>
+            {$post->published|date_format}
+        </time
     {/if}
 
     <i class="icon icon-object-group"></i>&nbsp;
