@@ -1,5 +1,4 @@
 {if !empty($beesblogRecentPostsPosts)}
-
     <div id="beesblog_column" class="block">
         <h4 class="title_block">
             <a href="{$beesblogRecentPostsBlogUrl|escape:'htmlall':'UTF-8'}" title="{l s='Recent posts' mod='beesblogrecentposts'}">{l s='Recent posts' mod='beesblogrecentposts'}</a>

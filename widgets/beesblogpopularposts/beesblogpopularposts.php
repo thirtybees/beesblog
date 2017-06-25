@@ -68,4 +68,58 @@ class BeesBlogPopularPosts extends Module
     {
         return $this->hookDisplayLeftColumn();
     }
+    /**
+     * Display in home page
+     *
+     * @return string
+     *
+     * @since 1.0.3
+     */
+    public function hookDisplayHome()
+    {
+        if (!Module::isEnabled('beesblog')) {
+            return '';
+        }
+
+        $popularPosts = BeesBlogPost::getPopularPosts($this->context->language->id, 0, 5);
+        if (is_array($popularPosts)) {
+            foreach ($popularPosts as &$recentPost) {
+                $recentPost->link = BeesBlog::GetBeesBlogLink('beesblog_post', ['blog_rewrite' => $recentPost->link_rewrite]);
+            }
+        }
+
+        $this->context->smarty->assign([
+            'beesblogPopularPostsPosts' => $popularPosts,
+            'beesblogPopularPostsBlogUrl' => BeesBlog::getBeesBlogLink(),
+        ]);
+
+        return $this->display(__FILE__, 'views/templates/hooks/home.tpl');
+    }
+    /**
+     * Display in product page
+     *
+     * @return string
+     *
+     * @since 1.0.3
+     */
+    public function hookProductFooter()
+    {
+        if (!Module::isEnabled('beesblog')) {
+            return '';
+        }
+
+        $popularPosts = BeesBlogPost::getPopularPosts($this->context->language->id, 0, 5);
+        if (is_array($popularPosts)) {
+            foreach ($popularPosts as &$recentPost) {
+                $recentPost->link = BeesBlog::GetBeesBlogLink('beesblog_post', ['blog_rewrite' => $recentPost->link_rewrite]);
+            }
+        }
+
+        $this->context->smarty->assign([
+            'beesblogPopularPostsPosts' => $popularPosts,
+            'beesblogPopularPostsBlogUrl' => BeesBlog::getBeesBlogLink(),
+        ]);
+
+        return $this->display(__FILE__, 'views/templates/hooks/product.tpl');
+    }
 }
