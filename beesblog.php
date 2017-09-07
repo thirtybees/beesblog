@@ -479,12 +479,12 @@ class BeesBlog extends Module
     /**
      * Get link to BeesBlog item
      *
-     *Becare full at the duplicate content, don't know how to measure this thing
-     *2 differents ways for the same page
+     *  Becare full at the duplicate content, don't know how to measure this thing
+     *  2 differents ways for the same page
      *
-     *Tools::p( Context::getContext()->link->getBaseLink().Context::getContext()->link->getLangLink().Dispatcher::getInstance()->createUrl($rewrite, $idLang, $params, false, '', $idShop));
-     *Tools::d( Context::getContext()->link->getModuleLink( $rewrite , 'post', $params, false, $idLang , $idShop) );
-     *(something wrong with the second URL generator, the right duplicated  URL is http://thirtybees/module/beesblog/Post?blog_rewrite=XXXXX)
+     *  Context::getContext()->link->getBaseLink().Context::getContext()->link->getLangLink().Dispatcher::getInstance()->createUrl($rewrite, $idLang, $params, false, '', $idShop);
+     *  Context::getContext()->link->getModuleLink( $rewrite , 'post', $params, false, $idLang , $idShop);
+     *  (something wrong with the second URL generator, the right duplicated  URL is http://thirtybees/module/beesblog/Post?blog_rewrite=XXXXX)
      *
      * @param string $rewrite Rewrite
      * @param array  $params  Parameters
@@ -502,7 +502,7 @@ class BeesBlog extends Module
         if (!$rewrite) {
             $rewrite = 'beesblog';
         }
-        
+
         return Context::getContext()->link->getBaseLink().Context::getContext()->link->getLangLink().Dispatcher::getInstance()->createUrl($rewrite, $idLang, $params, false, '', $idShop);
     }
 
