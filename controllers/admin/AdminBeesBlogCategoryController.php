@@ -20,10 +20,12 @@
 if (!defined('_TB_VERSION_')) {
     exit;
 }
-
+include_once(dirname(__FILE__).'/../../classes/AutoLoad.php');
 use BeesBlogModule\BeesBlogCategory;
 use BeesBlogModule\BeesBlogImageType;
 use BeesBlogModule\BeesBlogPost;
+
+
 
 /**
  * Class AdminBeesBlogCategoryController
@@ -38,7 +40,7 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
     public function __construct()
     {
         // This is the main table we are going to use for this controller
-        $this->table = BeesBlogCategory::TABLE;
+        $this->table = 'bees_blog_category';
 
         // This is the main class we are going to use for this AdminController
         $this->className = 'BeesBlogModule\\BeesBlogCategory';
@@ -53,10 +55,10 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
         $this->multishop_context = Shop::CONTEXT_SHOP;
 
         // Make sure that when we save the `BeesBlogCategory` ObjectModel, the `_shop` table is set, too (primary => id_shop relation)
-        Shop::addTableAssociation(BeesBlogCategory::TABLE, ['type' => 'shop']);
 
         // We are going to use multilang ObjectModels but there is just one language to display
         $this->lang = true;
+
 
         // Allow bulk delete
         $this->bulk_actions = [

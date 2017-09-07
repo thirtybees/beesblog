@@ -41,7 +41,6 @@ class BeesBlogRecentPosts extends Module
         }
 
         $this->registerHook('displayLeftColumn');
-        $this->registerHook('displayHome');
 
         return true;
     }
@@ -84,57 +83,5 @@ class BeesBlogRecentPosts extends Module
     public function hookDisplayRightColumn()
     {
         return $this->hookDisplayLeftColumn();
-    }
-    /**
-     * Display in home page
-     *
-     * @return string
-     *
-     * @since 1.0.3
-     */
-    public function hookDisplayHome()
-    {
-        if (!Module::isEnabled('beesblog')) {
-            return '';
-        }
-
-        $recentPosts = BeesBlogPost::getPosts($this->context->language->id, 0, 5);
-        if (is_array($recentPosts)) {
-            foreach ($recentPosts as &$recentPost) {
-                $recentPost->link = BeesBlog::GetBeesBlogLink('beesblog_post', ['blog_rewrite' => $recentPost->link_rewrite]);
-            }
-        }
-        $this->context->smarty->assign([
-            'beesblogRecentPostsPosts' => $recentPosts,
-            'beesblogRecentPostsBlogUrl' => BeesBlog::getBeesBlogLink(),
-        ]);
-
-        return $this->display(__FILE__, 'views/templates/hooks/home.tpl');
-    }
-    /**
-     * Display in product page
-     *
-     * @return string
-     *
-     * @since 1.0.3
-     */
-    public function hookProductFooter($params)
-    {
-        if (!Module::isEnabled('beesblog')) {
-            return '';
-        }
-
-        $recentPosts = BeesBlogPost::getPosts($this->context->language->id, 0, 5);
-        if (is_array($recentPosts)) {
-            foreach ($recentPosts as &$recentPost) {
-                $recentPost->link = BeesBlog::GetBeesBlogLink('beesblog_post', ['blog_rewrite' => $recentPost->link_rewrite]);
-            }
-        }
-        $this->context->smarty->assign([
-            'beesblogRecentPostsPosts' => $recentPosts,
-            'beesblogRecentPostsBlogUrl' => BeesBlog::getBeesBlogLink(),
-        ]);
-
-        return $this->display(__FILE__, 'views/templates/hooks/product.tpl');
     }
 }

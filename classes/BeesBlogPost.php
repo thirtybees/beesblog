@@ -30,18 +30,16 @@ class BeesBlogPost extends \ObjectModel
 {
     // @codingStandardsIgnoreStart
     const PRIMARY = 'id_bees_blog_post';
-    const TABLE = 'bees_blog_post';
+    const TABLE =   'bees_blog_post';
     const LANG_TABLE = 'bees_blog_post_lang';
-    const SHOP_TABLE = 'bees_blog_post_shop';
     const IMAGE_TYPE = 'beesblog_post';
 
     public static $definition = [
         'table'          => self::TABLE,
         'primary'        => self::PRIMARY,
         'multilang'      => true,
-        'multishop'      => true,
         'fields'         => [
-            'active'            => ['type' => self::TYPE_BOOL,                   'validate' => 'isBool',        'required' => true,                                      'db_type' => 'TINYINT(1) UNSIGNED'],
+            'active'            => ['type' => self::TYPE_BOOL, 'validate' => 'isBool',        'required' => true,                                      'db_type' => 'TINYINT(1) UNSIGNED'],
             'comments_enabled'  => ['type' => self::TYPE_BOOL,                   'validate' => 'isBool',        'required' => true,                                      'db_type' => 'TINYINT(1) UNSIGNED'],
             'date_add'          => ['type' => self::TYPE_DATE,                   'validate' => 'isDate',        'required' => true,  'default' => '1970-01-01 00:00:00', 'db_type' => 'DATETIME'],
             'date_upd'          => ['type' => self::TYPE_DATE,                   'validate' => 'isDate',        'required' => true,  'default' => '1970-01-01 00:00:00', 'db_type' => 'DATETIME'],

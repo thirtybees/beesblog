@@ -17,16 +17,11 @@
  * @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
  */
 
-use BeesBlogModule\BeesBlogCategory;
-use BeesBlogModule\BeesBlogImageType;
-use BeesBlogModule\BeesBlogPost;
-
 if (!defined('_TB_VERSION_')) {
     exit;
 }
 
-require_once __DIR__.'/classes/autoload.php';
-require_once __DIR__.'/widgets/autoload.php';
+
 
 /**
  * Class BeesBlog
@@ -119,13 +114,15 @@ class BeesBlog extends Module
         Configuration::updateGlobalValue(static::HOME_KEYWORDS, 'thirty bees blog,thirty bees');
         Configuration::updateGlobalValue(static::HOME_DESCRIPTION, 'The beesiest blog for thirty bees');
 
+
+
         if (!(BeesBlogPost::createDatabase()
             && BeesBlogCategory::createDatabase()
             && BeesBlogImageType::createDatabase())
         ) {
             return false;
         }
-
+  Tools::d('BeesBlogPost');
         if (version_compare(_TB_VERSION_, '1.0.2', '<')) {
             $queries = [];
             $queries[] = 'ALTER TABLE `'._DB_PREFIX_.bqSQL(BeesBlogPost::$definition['table']).'` DROP title';
@@ -281,15 +278,41 @@ class BeesBlog extends Module
             }
         }
 
-        if (!(BeesBlogPost::dropDatabase()
-            && BeesBlogCategory::dropDatabase()
-            && BeesBlogImageType::dropDatabase())
-        ) {
+        if ( !$this->_installTab() ) {
             return false;
         }
 
         $this->deleteBlogHooks();
 
+        return true;
+    }
+
+
+    protected function _installSql()
+    {
+
+        $inputFile = dirname(__FILE__).'/../data/install.sql';
+        $query = '';
+
+        // Open & read input
+        if (($fdi = fopen($inputFile, 'r')) === false)
+            return false;
+        while (($line = fgets($fdi)) !== false)
+            $query .= $line;
+
+        // Replace DB prefix
+        $query = str_replace('_DB_PREFIX_', _DB_PREFIX_, $query);
+        $queries = preg_split('#;\s*[\r\n]+#', $query);
+
+        // Execute SQL request
+        foreach ($queries as $query)
+        {
+            $query = trim($query);
+            if (!$query)
+                continue;
+            if (!Db::getInstance()->Execute($query))
+                return false;
+        }
         return true;
     }
 

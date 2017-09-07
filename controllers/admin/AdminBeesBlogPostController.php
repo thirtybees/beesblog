@@ -20,10 +20,11 @@
 if (!defined('_TB_VERSION_')) {
     exit;
 }
-
+include_once(dirname(__FILE__).'/../../classes/AutoLoad.php');
 use BeesBlogModule\BeesBlogCategory;
 use BeesBlogModule\BeesBlogImageType;
 use BeesBlogModule\BeesBlogPost;
+
 
 /**
  * Class AdminBeesBlogPostController
@@ -420,6 +421,7 @@ class AdminBeesBlogPostController extends \ModuleAdminController
 
                     return false;
                 } else {
+
                     $imageTypes = BeesBlogImageType::getImagesTypes('posts');
                     foreach ($imageTypes as $imageType) {
                         $dir = _PS_IMG_DIR_."beesblog/posts/$id-{$imageType['name']}.$ext";
@@ -435,6 +437,7 @@ class AdminBeesBlogPostController extends \ModuleAdminController
                             true
                         );
                     }
+
                 }
             }
         }
@@ -522,6 +525,7 @@ class AdminBeesBlogPostController extends \ModuleAdminController
                 }
             }
         }
+
 
         if ($blogPost->add()) {
             $this->processImage($_FILES, $blogPost->id);
