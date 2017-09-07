@@ -146,7 +146,6 @@ class BeesBlog extends Module
         }
 
         $this->createBeesBlogTabs();
-        BeesBlogImageType::installBasics();
 
         return true;
     }
