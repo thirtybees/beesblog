@@ -116,13 +116,8 @@ class BeesBlog extends Module
         Configuration::updateGlobalValue(static::HOME_DESCRIPTION, 'The beesiest blog for thirty bees');
 
 
-
-        if (!(BeesBlogPost::createDatabase()
-            && BeesBlogCategory::createDatabase()
-            && BeesBlogImageType::createDatabase())
-        ) {
+        if ($this->_installSql() !== true)
             return false;
-        }
 
         if (version_compare(_TB_VERSION_, '1.0.2', '<')) {
             $queries = [];
@@ -279,10 +274,6 @@ class BeesBlog extends Module
             }
         }
 
-        if ( !$this->_installTab() ) {
-            return false;
-        }
-
         $this->deleteBlogHooks();
 
         return true;
@@ -291,8 +282,7 @@ class BeesBlog extends Module
 
     protected function _installSql()
     {
-
-        $inputFile = dirname(__FILE__).'/../data/install.sql';
+        $inputFile = dirname(__FILE__).'/data/install.sql';
         $query = '';
 
         // Open & read input
