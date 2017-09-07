@@ -30,6 +30,7 @@ class BeesBlogPost extends \ObjectModel
     const PRIMARY = 'id_bees_blog_post';
     const TABLE =   'bees_blog_post';
     const LANG_TABLE = 'bees_blog_post_lang';
+    const SHOP_TABLE = 'bees_blog_post_shop';
     const IMAGE_TYPE = 'beesblog_post';
 
     public static $definition = [
@@ -116,12 +117,15 @@ class BeesBlogPost extends \ObjectModel
      */
     public static function getPosts($idLang = null, $page = 0, $limit = 0, $count = false, $raw = false, $propertyFilter = [])
     {
+      if ($idLang == null)
+          $idLang = (int)Context::getContext()->language->id;
+
         $postCollection = new \Collection('BeesBlogPost', $idLang);
         $postCollection->setPageSize($limit);
         $postCollection->setPageNumber($page);
         $postCollection->orderBy('published', 'desc');
         $postCollection->where('published', '<=', date('Y-m-d H:i:s'));
-        $postCollection->sqlWhere('lang_active = \'1\'');
+        $postCollection->sqlWhere('id_lang = \''.$idLang.'\'');
 
         if ($count) {
             return $postCollection->count();
@@ -167,7 +171,7 @@ class BeesBlogPost extends \ObjectModel
         $postCollection->setPageNumber($page);
         $postCollection->orderBy('viewed', 'desc');
         $postCollection->where('published', '<=', date('Y-m-d H:i:s'));
-        $postCollection->sqlWhere('lang_active = \'1\'');
+        $postCollection->sqlWhere('id_lang = \'1\'');
 
         if ($count) {
             return $postCollection->count();

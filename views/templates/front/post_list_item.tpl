@@ -16,6 +16,7 @@
  *  @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
 *}
 {assign var=imagePath value=Media::getMediaPath(BeesBlog::getPostImagePath($post->id))}
+
 {assign var=postPath value=BeesBlog::GetBeesBlogLink('beesblog_post', ['blog_rewrite' => $post->link_rewrite])}
 <div itemtype="#" itemscope="" class="clearfix beesblog-post-list-item">
     <div id="beesblog-post-{$post->id|intval}">
