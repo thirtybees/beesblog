@@ -17,27 +17,34 @@
  *  @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
  */
 
-if (!defined('_TB_VERSION_')) {
-    exit;
-}
+ class AutoLoad
+ {
+     protected static $instance = null;
 
-spl_autoload_register(
-    function ($className) {
-        if (!in_array($className, [
-            'BeesBlogModule\\BeesBlogCategory',
-            'BeesBlogModule\\BeesBlogImageType',
-            'BeesBlogModule\\BeesBlogPost',
-        ])) {
-            return false;
-        }
+     public static function getInstance() {
 
-        if (strpos($className, 'BeesBlogModule\\') === false) {
-            return false;
-        }
+         if (self::$instance === null)
+             self::$instance = new AutoLoad();
+         return self::$instance;
+     }
 
-        $className = str_replace('BeesBlogModule\\', '', $className);
-        require $className.'.php';
+     public function load($classname) {
 
-        return true;
-    }
-);
+         $currentDir = dirname(__FILE__);
+         $path = array(
+             $currentDir.'/..', /* root */
+             $currentDir, /* classes */
+             $currentDir.'/../controllers/admin/',
+             $currentDir.'/../controllers/front/'
+         );
+
+         foreach ($path as $dir) {
+
+             if (file_exists($dir.'/'.$classname.'.php'))
+                 require_once($dir.'/'.$classname.'.php');
+             elseif (file_exists($dir.'/'.strtolower($classname).'.php'))
+                 require_once($dir.'/'.strtolower($classname).'.php');
+         }
+
+     }
+ }

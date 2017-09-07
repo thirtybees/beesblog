@@ -17,8 +17,6 @@
  *  @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
  */
 
-namespace BeesBlogModule;
-
 if (!defined('_TB_VERSION_')) {
     exit;
 }
@@ -95,7 +93,7 @@ class BeesBlogCategory extends \ObjectModel
      */
     public function getPostsInCategory($idLang = null, $page = 0, $limit = 0, $count = false, $raw = false, $propertyFilter = [])
     {
-        $postCollection = new \Collection('BeesBlogModule\\BeesBlogPost', $idLang);
+        $postCollection = new \Collection('BeesBlogPost', $idLang);
         $postCollection->setPageSize($limit);
         $postCollection->setPageNumber($page);
         $postCollection->orderBy('published', 'desc');
@@ -127,7 +125,7 @@ class BeesBlogCategory extends \ObjectModel
      */
     public static function getCategories($idLang = null, $page = 0, $limit = 0, $count = false, $raw = false, $propertyFilter = [])
     {
-        $categoryCollection = new \Collection('BeesBlogModule\\BeesBlogCategory', $idLang);
+        $categoryCollection = new \Collection('BeesBlogCategory', $idLang);
         $categoryCollection->setPageSize($limit);
         $categoryCollection->setPageNumber($page);
 
@@ -152,7 +150,7 @@ class BeesBlogCategory extends \ObjectModel
             $idLang = (int) \Context::getContext()->language->id;
         }
 
-        $categoryCollection = new \Collection('BeesBlogModule\\BeesBlogCategory', $idLang);
+        $categoryCollection = new \Collection('BeesBlogCategory', $idLang);
         $categoryCollection->where('id_parent', '=', 0);
 
         return $categoryCollection->getFirst();

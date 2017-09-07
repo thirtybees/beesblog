@@ -17,12 +17,14 @@
  *  @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
  */
 
-use BeesBlogModule\BeesBlogCategory;
-use BeesBlogModule\BeesBlogPost;
 
 if (!defined('_TB_VERSION_')) {
     exit;
 }
+
+include_once(dirname(__FILE__).'/../../classes/AutoLoad.php');
+spl_autoload_register(array(AutoLoad::getInstance(), 'load'));
+
 
 /**
  * Class BeesBlogCategoryModuleFrontController
@@ -43,10 +45,10 @@ class BeesBlogCategoryModuleFrontController extends ModuleFrontController
         parent::initContent();
 
         $totalPages = 0;
-        $postsPerPage = Configuration::get(\BeesBlog::POSTS_PER_PAGE);
+        $postsPerPage = Configuration::get(BeesBlog::POSTS_PER_PAGE);
         $limit = $postsPerPage;
 
-        $this->idCategory = BeesBlogCategory::getIdByRewrite(\Tools::getValue('cat_rewrite'));
+        $this->idCategory = BeesBlogCategory::getIdByRewrite(Tools::getValue('cat_rewrite'));
         if ($this->idCategory) {
             $category = new BeesBlogCategory($this->idCategory, $this->context->language->id);
         } else {
@@ -86,14 +88,14 @@ class BeesBlogCategoryModuleFrontController extends ModuleFrontController
             'posts'                => $posts,
             'category'             => $category,
             'categoryImageUrl'     => Media::getMediaPath(BeesBlogCategory::getImagePath($category->id)),
-            'authorStyle'          => (bool) Configuration::get(\BeesBlog::AUTHOR_STYLE),
-            'showAuthor'           => (bool) Configuration::get(\BeesBlog::SHOW_AUTHOR),
-            'showDate'             => (bool) Configuration::get(\BeesBlog::SHOW_DATE),
-            'showCategoryImage'    => (bool) Configuration::get(\BeesBlog::SHOW_CATEGORY_IMAGE),
-            'showViewed'           => (bool) Configuration::get(\BeesBlog::SHOW_POST_COUNT),
-            'showNoImage'          => (bool) Configuration::get(\BeesBlog::SHOW_NO_IMAGE),
-            'showComments'         => (bool) Configuration::get(\BeesBlog::DISQUS_USERNAME),
-            'disqusUsername'       => Configuration::get(\BeesBlog::DISQUS_USERNAME),
+            'authorStyle'          => (bool) Configuration::get(BeesBlog::AUTHOR_STYLE),
+            'showAuthor'           => (bool) Configuration::get(BeesBlog::SHOW_AUTHOR),
+            'showDate'             => (bool) Configuration::get(BeesBlog::SHOW_DATE),
+            'showCategoryImage'    => (bool) Configuration::get(BeesBlog::SHOW_CATEGORY_IMAGE),
+            'showViewed'           => (bool) Configuration::get(BeesBlog::SHOW_POST_COUNT),
+            'showNoImage'          => (bool) Configuration::get(BeesBlog::SHOW_NO_IMAGE),
+            'showComments'         => (bool) Configuration::get(BeesBlog::DISQUS_USERNAME),
+            'disqusUsername'       => Configuration::get(BeesBlog::DISQUS_USERNAME),
             'start'                => (int) $start = (($page - 1) * $limit) + 1,
             'postsPerPage'         => (int) $limit,
             'totalPosts'           => (int) $totalPosts,

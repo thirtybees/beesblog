@@ -17,11 +17,12 @@
  *  @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
  */
 
-use BeesBlogModule\BeesBlogImageType;
-
 if (!defined('_TB_VERSION_')) {
     exit;
 }
+
+include_once(dirname(__FILE__).'/../../classes/AutoLoad.php');
+spl_autoload_register(array(AutoLoad::getInstance(), 'load'));
 
 /**
  * Class AdminBeesBlogImagesController
@@ -48,11 +49,11 @@ class AdminBeesBlogImagesController extends ModuleAdminController
     {
         $this->bootstrap = true;
         $this->table = BeesBlogImageType::TABLE;
-        $this->className = 'BeesBlogModule\\BeesBlogImageType';
+        $this->className = 'BeesBlogImageType';
         $this->lang = false;
 
         // Retrieve the context from a static context, just because
-        $this->context = \Context::getContext();
+        $this->context = Context::getContext();
 
         // Only display this page in single store context
         $this->multishop_context = Shop::CONTEXT_SHOP;

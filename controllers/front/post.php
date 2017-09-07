@@ -17,24 +17,25 @@
  *  @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
  */
 
-use BeesBlogModule\BeesBlogCategory;
-use BeesBlogModule\BeesBlogPost;
-
 if (!defined('_TB_VERSION_')) {
     exit;
 }
 
+include_once(dirname(__FILE__).'/../../classes/AutoLoad.php');
+spl_autoload_register(array(AutoLoad::getInstance(), 'load'));
+
+
 /**
  * Class BeesBlogDetailsModuleFrontController
  */
-class BeesBlogPostModuleFrontController extends \ModuleFrontController
+class BeesBlogPostModuleFrontController extends ModuleFrontController
 {
     public $report = '';
 
     /** @var int $idPost */
     protected $idPost;
 
-    /** @var \BeesBlog $module */
+    /** @var BeesBlog $module */
     public $module;
 
     /**
@@ -45,7 +46,7 @@ class BeesBlogPostModuleFrontController extends \ModuleFrontController
     public function initContent()
     {
         parent::initContent();
-        $this->idPost = (int) BeesBlogPost::getIdByRewrite(\Tools::getValue('blog_rewrite'));
+        $this->idPost = (int) BeesBlogPost::getIdByRewrite(Tools::getValue('blog_rewrite'));
 
         if (empty($this->idPost)) {
             return;
@@ -61,23 +62,23 @@ class BeesBlogPostModuleFrontController extends \ModuleFrontController
             $this->context->controller->addCSS(_PS_MODULE_DIR_.'beesblog/views/css/socialmedia.css', 'all');
             $this->context->controller->addJS(_PS_MODULE_DIR_.'beesblog/views/js/socialmedia.js');
         }
-        \Media::addJsDef([
+        Media::addJsDef([
             'sharing_name' => addcslashes($post->title, "'"),
-            'sharing_url' => addcslashes(\Tools::getHttpHost(true).$_SERVER['REQUEST_URI'], "'"),
-            'sharing_img' => addcslashes(\Tools::getHttpHost(true).'/modules/beesblog/images/'.(int) $post->id.'.jpg', "'"),
+            'sharing_url' => addcslashes(Tools::getHttpHost(true).$_SERVER['REQUEST_URI'], "'"),
+            'sharing_img' => addcslashes(Tools::getHttpHost(true).'/modules/beesblog/images/'.(int) $post->id.'.jpg', "'"),
         ]);
 
         $postProperties = [
-            'blogHome'             => \BeesBlog::getBeesBlogLink(),
+            'blogHome'             => BeesBlog::getBeesBlogLink(),
             'post'                 => $post,
             'authorStyle'          => Configuration::get(BeesBlog::AUTHOR_STYLE),
             'showAuthor'           => (bool) Configuration::get(BeesBlog::SHOW_AUTHOR),
             'showDate'             => (bool) Configuration::get(BeesBlog::SHOW_DATE),
             'socialSharing'        => (bool) Configuration::get(BeesBlog::SOCIAL_SHARING) && Module::isEnabled('socialsharing'),
-            'disableCategoryImage' => (bool) Configuration::get(BeesBlog::SHOW_CATEGORY_IMAGE),
+            'disableCategoryImage' > (bool) Configuration::get(BeesBlog::SHOW_CATEGORY_IMAGE),
             'showViewed'           => (bool) Configuration::get(BeesBlog::SHOW_POST_COUNT),
             'showNoImage'          => (bool) Configuration::get(BeesBlog::SHOW_NO_IMAGE),
-            'showComments'         => (bool) Configuration::get(\BeesBlog::DISQUS_USERNAME),
+            'showComments'         => (bool) Configuration::get(BeesBlog::DISQUS_USERNAME),
             'disqusUsername'       => Configuration::get(BeesBlog::DISQUS_USERNAME),
             'PS_SC_TWITTER'        => Configuration::get('PS_SC_TWITTER'),
             'PS_SC_GOOGLE'         => Configuration::get('PS_SC_GOOGLE'),
@@ -85,8 +86,8 @@ class BeesBlogPostModuleFrontController extends \ModuleFrontController
             'PS_SC_PINTEREST'      => Configuration::get('PS_SC_PINTEREST'),
         ];
         $postProperties = array_merge($postProperties, [
-            'displayBeesBlogBeforePost' => \Hook::exec('displayBeesBlogBeforePost', $postProperties),
-            'displayBeesBlogAfterPost' => \Hook::exec('displayBeesBlogAfterPost', $postProperties),
+            'displayBeesBlogBeforePost' => Hook::exec('displayBeesBlogBeforePost', $postProperties),
+            'displayBeesBlogAfterPost' => Hook::exec('displayBeesBlogAfterPost', $postProperties),
         ]);
 
         $this->context->smarty->assign($postProperties);

@@ -41,10 +41,6 @@ CREATE TABLE IF NOT EXISTS `tb_bees_blog_post` (
   `position`           INT(10) NULL,
   `post_type`          VARCHAR(255) NULL,
   `viewed`             INT(20) NULL,
-  `title`              VARCHAR(255) NULL,
-  `content`            TEXT NULL,
-  `link_rewrite`       VARCHAR(255) NULL,
-  `lang_active`        INT(10) NULL,
   PRIMARY KEY (`id_bees_blog_post`))
 ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 

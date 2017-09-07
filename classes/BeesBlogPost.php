@@ -17,8 +17,6 @@
  *  @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
  */
 
-namespace BeesBlogModule;
-
 if (!defined('_TB_VERSION_')) {
     exit;
 }
@@ -118,7 +116,7 @@ class BeesBlogPost extends \ObjectModel
      */
     public static function getPosts($idLang = null, $page = 0, $limit = 0, $count = false, $raw = false, $propertyFilter = [])
     {
-        $postCollection = new \Collection('BeesBlogModule\\BeesBlogPost', $idLang);
+        $postCollection = new \Collection('BeesBlogPost', $idLang);
         $postCollection->setPageSize($limit);
         $postCollection->setPageNumber($page);
         $postCollection->orderBy('published', 'desc');
@@ -164,7 +162,7 @@ class BeesBlogPost extends \ObjectModel
      */
     public static function getPopularPosts($idLang = null, $page = 0, $limit = 0, $count = false, $raw = false, $propertyFilter = [])
     {
-        $postCollection = new \Collection('BeesBlogModule\\BeesBlogPost', $idLang);
+        $postCollection = new \Collection('BeesBlogPost', $idLang);
         $postCollection->setPageSize($limit);
         $postCollection->setPageNumber($page);
         $postCollection->orderBy('viewed', 'desc');

@@ -21,7 +21,8 @@ if (!defined('_TB_VERSION_')) {
     exit;
 }
 
-
+include_once(dirname(__FILE__).'/classes/AutoLoad.php');
+spl_autoload_register(array(AutoLoad::getInstance(), 'load'));
 
 /**
  * Class BeesBlog
@@ -122,7 +123,7 @@ class BeesBlog extends Module
         ) {
             return false;
         }
-  Tools::d('BeesBlogPost');
+
         if (version_compare(_TB_VERSION_, '1.0.2', '<')) {
             $queries = [];
             $queries[] = 'ALTER TABLE `'._DB_PREFIX_.bqSQL(BeesBlogPost::$definition['table']).'` DROP title';
@@ -455,7 +456,7 @@ class BeesBlog extends Module
         $links = [];
 
         // Blog posts
-        $results = (new Collection('BeesBlogModule\\BeesBlogPost'))->getResults();
+        $results = (new Collection('BeesBlogPost'))->getResults();
         if (!empty($results)) {
             foreach ($results as $result) {
                 $link = [];
@@ -469,7 +470,7 @@ class BeesBlog extends Module
         }
 
         // Categories
-        $results = (new Collection('BeesBlogModule\\BeesBlogCategory'))->getResults();
+        $results = (new Collection('BeesBlogCategory'))->getResults();
         if (!empty($results)) {
             foreach ($results as $result) {
                 $link = [];

@@ -17,7 +17,9 @@
  *  @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
  */
 
-namespace BeesBlogModule;
+if (!defined('_TB_VERSION_')) {
+   exit;
+}
 
 /**
  * Class BeesBlogImageType

@@ -1,7 +1,5 @@
 <?php
 
-use BeesBlogModule\BeesBlogCategory;
-
 if (!defined('_TB_VERSION_')) {
     exit;
 }
