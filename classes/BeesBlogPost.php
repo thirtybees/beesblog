@@ -125,6 +125,7 @@ class BeesBlogPost extends \ObjectModel
         $postCollection->setPageNumber($page);
         $postCollection->orderBy('published', 'desc');
         $postCollection->where('published', '<=', date('Y-m-d H:i:s'));
+        $postCollection->where('active', '=', '1');
         $postCollection->sqlWhere('lang_active = \'1\'');
 
         if ($count) {
