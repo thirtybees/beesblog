@@ -116,7 +116,11 @@ class BeesBlog extends Module
         Configuration::updateGlobalValue(static::HOME_DESCRIPTION, 'The beesiest blog for thirty bees');
 
 
-        if ($this->_installSql() !== true)
+
+
+        if (!BeesBlogPost::createDatabase() ||
+            !BeesBlogCategory::createDatabase() ||
+            !BeesBlogImageType::createDatabase())
             return false;
 
         if (version_compare(_TB_VERSION_, '1.0.2', '<')) {

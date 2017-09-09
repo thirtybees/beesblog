@@ -37,6 +37,7 @@ class BeesBlogPost extends \ObjectModel
         'table'          => self::TABLE,
         'primary'        => self::PRIMARY,
         'multilang'      => true,
+        'multishop'      => true,
         'fields'         => [
             'active'            => ['type' => self::TYPE_BOOL, 'validate' => 'isBool',        'required' => true,                                      'db_type' => 'TINYINT(1) UNSIGNED'],
             'comments_enabled'  => ['type' => self::TYPE_BOOL,                   'validate' => 'isBool',        'required' => true,                                      'db_type' => 'TINYINT(1) UNSIGNED'],
