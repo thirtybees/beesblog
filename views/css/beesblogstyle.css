@@ -14,3 +14,6 @@
 .beesblog-post-list-bottom {
 	margin-bottom: 10px;
 }
+.beesblog-post-info span {
+    display: inline-block;
+}
