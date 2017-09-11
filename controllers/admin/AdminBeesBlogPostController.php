@@ -80,6 +80,16 @@ class AdminBeesBlogPostController extends \ModuleAdminController
                 'filter'  => false,
                 'search'  => false,
             ],
+            'id_category'              => [
+                'title'   => $this->l('Category'),
+                'width'   => 50,
+                'type'    => 'text',
+                'lang'    => true,
+                'orderby' => true,
+                'filter'  => true,
+                'search'  => true,
+                'callback' => 'getCategoryTitleById',
+            ],
             'title'               => [
                 'title'   => $this->l('Title'),
                 'width'   => 440,
@@ -603,7 +613,7 @@ class AdminBeesBlogPostController extends \ModuleAdminController
     }
 
     /**
-     * Initialize page header toolbar with a neew add button 
+     * Initialize page header toolbar with a new add button
      *
      * @return void
      *
@@ -644,5 +654,16 @@ class AdminBeesBlogPostController extends \ModuleAdminController
 
             return true;
         }
+    }
+
+    /**
+     * Return category title by Id (list admin controller)
+     *
+     * @return string
+     *
+     */
+    static public function getCategoryTitleById($id) {
+
+        return BeesBlogCategory::getNameById($id);
     }
 }
