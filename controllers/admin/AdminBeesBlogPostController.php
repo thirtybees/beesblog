@@ -603,6 +603,26 @@ class AdminBeesBlogPostController extends \ModuleAdminController
     }
 
     /**
+     * Initialize page header toolbar with a neew add button 
+     *
+     * @return void
+     *
+     * @since 1.0.0
+     */
+    public function initPageHeaderToolbar()
+    {
+        if (empty($this->display)) {
+            $this->page_header_toolbar_btn['new_image_type'] = [
+                'href' => static::$currentIndex.'&add'.BeesBlogPost::TABLE.'&token='.$this->token,
+                'desc' => $this->l('Add new post', null, null, false),
+                'icon' => 'process-icon-new',
+            ];
+        }
+
+        parent::initPageHeaderToolbar();
+    }
+
+    /**
      * Process delete
      *
      * @return bool
