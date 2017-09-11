@@ -69,7 +69,7 @@
 				</ul>
 			</div>
 			<div class="col-md-6 col-sm-6">
-				<div class="beesblog-results">{l s='Showing' mod='beesblog'} {if $start !== 0}{$start}{else}1{/if} {l s='to' mod='beesblog'} {if $start + $postsPerPage >= $totalPosts}{$totalPosts|intval}{else}{$start + $postsPerPage|intval}{/if} {l s='of' mod="beesblog"} {$totalPosts|intval}
+				<div class="beesblog-results">{l s='Showing' mod='beesblog'} {if $start !== 0}{$start}{else}1{/if} {l s='to' mod='beesblog'} {if $start + $postsPerPage >= $totalPosts}{$totalPosts|intval}{else}{$start + $postsPerPage|intval}{/if} {l s='of' mod='beesblog'} {$totalPosts|intval}
 					({$totalPages|intval} {if intval($totalPages) === 1}{l s='Page' mod='beesblog'}{else}{l s='Pages' mod='beesblog'}{/if})</div>
 			</div>
 		</div>
