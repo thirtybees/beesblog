@@ -51,6 +51,8 @@ class BeesBlogCategory extends \ObjectModel
             'link_rewrite'      => ['type' => self::TYPE_STRING, 'lang' => true, 'validate' => 'isString',      'required' => true,                                      'db_type' => 'VARCHAR(256)'],
         ],
     ];
+    /** @var int $id_bees_blog_category */
+    public $id_bees_blog_category;
     /** @var int $id_parent */
     public $id_parent;
     /** @var int $position */

@@ -80,6 +80,12 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
                 'type'  => 'text',
                 'lang'  => true,
             ],
+            'id_parent'              => [
+                'title'   => $this->l('Parent'),
+                'width'   => 200,
+                'type'    => 'text',
+                'callback' => 'getParentTitleById',
+            ],
             'active'                  => [
                 'title'   => $this->l('Status'),
                 'width'   => '70',
@@ -154,8 +160,8 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
                     'label'   => $this->l('Parent Category'),
                     'name'    => 'id_parent',
                     'options' => [
-                        'query' => BeesBlogCategory::getCategories($this->context->language->id, 0, 0, false, true, [BeesBlogCategory::PRIMARY, 'title']),
-                        'id'    => BeesBlogCategory::PRIMARY,
+                        'query' => self::getCategoriesName(),
+                        'id'    => 'id_bees_blog_category',
                         'name'  => 'title',
                     ],
                     'desc'    => $this->l('Select your parent category'),
@@ -475,5 +481,29 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
                 return true;
             }
         }
+    }
+
+    /**
+     * Return category title by Id (list admin controller)
+     *
+     * @return string
+     *
+     */
+    static public function getParentTitleById($id) {
+
+        return BeesBlogCategory::getNameById($id);
+    }
+
+    public static function getCategoriesName() {
+
+      $ResultTab = array(0 => ['id_bees_blog_category' => '0', 'title' =>  'Root']);
+
+      $context = Context::getContext();
+      $ResultQuery = BeesBlogCategory::getCategories($context->language->id, 0, 0, false, true, [BeesBlogCategory::PRIMARY, 'title']);
+
+      foreach ( $ResultQuery  as $key => $value)
+        array_push($ResultTab, $value);
+
+      return $ResultTab;
     }
 }
