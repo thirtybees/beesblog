@@ -8,5 +8,5 @@ See [CONTRIBUTING.md](CONTRIBUTING.md)
 
 Contributors **must** follow the following rules:
 
-* **Make your Pull Request on the "dev" branch**, NOT the "master" branch.
+* **Make your Pull Request on the "master" branch**
 * Do not update the module's version number.
