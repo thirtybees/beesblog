@@ -16,8 +16,9 @@
  *  @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
 *}
 {if !empty($beesblogRecentPostsPosts)}
-    <section>
-        <div id="beesblog_column" class="col-xs-12 col-sm-12">
+    <section class="block">
+    <div class="col-xs-12 col-sm-12">
+        <div id="beesblog_column">
             <h2 class="title_block">
                 <a href="{$beesblogRecentPostsBlogUrl|escape:'htmlall':'UTF-8'}"
                    title="{l s='Recent posts' mod='beesblogrecentposts'}">{l s='Recent posts' mod='beesblogrecentposts'}</a>
@@ -29,6 +30,10 @@
                             <h3 class="post-name">
                                 <a class="beesblogrecentposts-title" href="{$post->link|escape:'htmlall':'UTF-8'}"
                                    title="{$post->title|escape:'htmlall':'UTF-8'}">
+                                   {assign var=imagePath value=Media::getMediaPath(BeesBlog::getPostImagePath($post->id))}
+                                   {if ($imagePath)}
+                                     <img class="img-responsive" src="{$imagePath|escape:'htmlall':'UTF-8'}" title="{$post->title|escape:'htmlall':'UTF-8'}" />
+                                   {/if}
                                     {$post->title|truncate:'20'|escape:'htmlall':'UTF-8'}
                                 </a>
                             </h3>
@@ -42,4 +47,5 @@
             {/foreach}
         </div>
     </section>
+    </div>
 {/if}
