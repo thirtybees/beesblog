@@ -47,8 +47,7 @@
             <i class="icon icon-comments"></i>&nbsp;
             <a title="{l s='0 Comments' mod='beesblog'}"
                href="{$postPath|escape:'htmlall':'UTF-8'}#disqus_thread"
-               data-disqus-identifier="{'blog-'|cat:Context::getContext()->language->iso_code|strtolower|cat:'-'|cat:$post->id|intval}"
-            >
+               data-disqus-identifier="{'blog-'|cat:Context::getContext()->language->iso_code|strtolower|cat:'-'|cat:$post->id|intval}">
                 {l s='0 Comments' mod='beesblog'}
             </a>
         </span>
