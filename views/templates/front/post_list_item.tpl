@@ -35,7 +35,7 @@
                 {$post->getSummary()|escape:'htmlall':'UTF-8'}&nbsp;
                 </span>
                 <a title="{$post->title|escape:'htmlall':'UTF-8'}" href="{$postPath|escape:'htmlall':'UTF-8'}"
-                   class="beesblog-read-more-link">
+                   class="beesblog-read-more-link btn btn-primary">
                     {l s='Read more' mod='beesblog'} {'>'|escape:'htmlall':'UTF-8'}
                 </a>
             </div>
