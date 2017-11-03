@@ -31,11 +31,11 @@ class BeesBlogImageType extends \ObjectModel
     const LANG_TABLE = 'bees_blog_image_type_lang';
     const SHOP_TABLE = 'bees_blog_image_type_shop';
 
-    const POST_LIST_ITEM_WIDTH = 800;
+    const POST_LIST_ITEM_WIDTH = 848;
     const POST_LIST_ITEM_HEIGHT = 400;
-    const POST_DEFAULT_WIDTH = 800;
+    const POST_DEFAULT_WIDTH = 848;
     const POST_DEFAULT_HEIGHT = 400;
-    const CATEGORY_DEFAULT_WIDTH = 800;
+    const CATEGORY_DEFAULT_WIDTH = 848;
     const CATEGORY_DEFAULT_HEIGHT = 400;
 
     // @codingStandardsIgnoreStart
