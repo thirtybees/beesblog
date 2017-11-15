@@ -49,7 +49,7 @@
 				<ul class="pagination">
 					{for $k = 1 to $totalPages}
 						{if $k === $pageNumber}
-							<li><span class="page-active">{$k|intval}</span></li>
+							<li class="active current"><span>{$k|intval}</span></li>
 						{else}
 							{if Validate::isLoadedObject($category)}
 								<li>
