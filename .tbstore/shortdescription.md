@@ -1,0 +1,1 @@
+bees blog is the official thirty bees blog module that comes standard with all thirty bees installations allowing you to make blog posts from your shop.
