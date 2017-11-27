@@ -432,11 +432,11 @@ class BeesBlog extends Module
         $links = [];
 
         // Blog posts
-        $results = (new Collection('BeesBlogModule\\BeesBlogPost'))->getResults();
+        $results = (new \Collection('BeesBlogModule\\BeesBlogPost'))->getResults();
         if (!empty($results)) {
             foreach ($results as $result) {
                 $link = [];
-                $link['link'] = BeesBlog::getBeesBlogLink('beesblog_post', ['blog_rewrite' => $result->link_rewrite]);
+                $link['link'] = BeesBlog::getBeesBlogLink('beesblog_post', ['blog_rewrite' => $result->link_rewrite[1]]);
                 $link['lastmod'] = $result->modified;
                 $link['type'] = 'module';
                 $link['image'] = ['link' => Media::getMediaPath(BeesBlogPost::getImagePath($result->id))];
@@ -446,11 +446,11 @@ class BeesBlog extends Module
         }
 
         // Categories
-        $results = (new Collection('BeesBlogModule\\BeesBlogCategory'))->getResults();
+        $results = (new \Collection('BeesBlogModule\\BeesBlogCategory'))->getResults();
         if (!empty($results)) {
             foreach ($results as $result) {
                 $link = [];
-                $link['link'] = BeesBlog::getBeesBlogLink('beesblog_category', ['cat_rewrite' => $result->link_rewrite]);
+                $link['link'] = BeesBlog::getBeesBlogLink('beesblog_category', ['cat_rewrite' => $result->link_rewrite[1]]);
                 $link['lastmod'] = $result->modified;
                 $link['type'] = 'module';
                 $link['image'] = ['link' => Media::getMediaPath(BeesBlogCategory::getImagePath($result->id))];
