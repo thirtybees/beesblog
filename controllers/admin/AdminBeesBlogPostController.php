@@ -80,6 +80,16 @@ class AdminBeesBlogPostController extends \ModuleAdminController
                 'filter'  => false,
                 'search'  => false,
             ],
+            'id_category'              => [
+                'title'   => $this->l('Category'),
+                'width'   => 50,
+                'type'    => 'text',
+                'lang'    => true,
+                'orderby' => true,
+                'filter'  => true,
+                'search'  => true,
+                'callback' => 'getCategoryTitleById',
+            ],
             'title'               => [
                 'title'   => $this->l('Title'),
                 'width'   => 440,
@@ -97,6 +107,7 @@ class AdminBeesBlogPostController extends \ModuleAdminController
                 'orderby' => true,
                 'filter'  => true,
                 'search'  => true,
+                'callback' => 'colorDateIssue',
             ],
             'active'              => [
                 'title'   => $this->l('Status'),
@@ -585,6 +596,43 @@ class AdminBeesBlogPostController extends \ModuleAdminController
     }
 
     /**
+     * Color the date in admin controller view
+     *
+     * @return HTML strinf
+     */
+    static public function colorDateIssue($dateIssue) {
+
+        $today = strtotime(date('Y-m-d H:i:s'));
+        $dateIssueStr = strtotime($dateIssue);
+
+        if ($today - $dateIssueStr < 0)
+            $color = '#eab3b7';
+        else
+            $color = '#92d097';
+        return "<span style='background-color:".$color."; color:white; border-radius:3px 3px 3px 3px; font-size:11px; padding: 2px 5px'>".$dateIssue."</span>";
+    }
+
+    /**
+     * Initialize page header toolbar with a new add button
+     *
+     * @return void
+     *
+     * @since 1.0.0
+     */
+    public function initPageHeaderToolbar()
+    {
+        if (empty($this->display)) {
+            $this->page_header_toolbar_btn['new_image_type'] = [
+                'href' => static::$currentIndex.'&add'.BeesBlogPost::TABLE.'&token='.$this->token,
+                'desc' => $this->l('Add new post', null, null, false),
+                'icon' => 'process-icon-new',
+            ];
+        }
+
+        parent::initPageHeaderToolbar();
+    }
+
+    /**
      * Process delete
      *
      * @return bool
@@ -606,5 +654,16 @@ class AdminBeesBlogPostController extends \ModuleAdminController
 
             return true;
         }
+    }
+
+    /**
+     * Return category title by Id (list admin controller)
+     *
+     * @return string
+     *
+     */
+    static public function getCategoryTitleById($id) {
+
+        return BeesBlogCategory::getNameById($id);
     }
 }

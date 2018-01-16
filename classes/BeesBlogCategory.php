@@ -51,6 +51,8 @@ class BeesBlogCategory extends \ObjectModel
             'link_rewrite'      => ['type' => self::TYPE_STRING, 'lang' => true, 'validate' => 'isString',      'required' => true,                                      'db_type' => 'VARCHAR(256)'],
         ],
     ];
+    /** @var int $id_bees_blog_category */
+    public $id_bees_blog_category;
     /** @var int $id_parent */
     public $id_parent;
     /** @var int $position */
@@ -244,5 +246,28 @@ class BeesBlogCategory extends \ObjectModel
             }
             $results = $newResults;
         }
+    }
+
+    /**
+     * Return the category title by id
+     *
+     * @param string $id
+     * @return single array string (title of category)
+     */
+    public static function getNameById( $id, $id_lang = null)
+    {
+        if (empty($idLang)) {
+            $idLang = (int) \Context::getContext()->language->id;
+        }
+
+        $sql = new \DbQuery();
+        $sql->select('sbcl.`title`');
+        $sql->from(static::TABLE, 'sbc');
+        $sql->innerJoin(static::LANG_TABLE, 'sbcl', 'sbc.`'.static::PRIMARY.'` = sbcl.`'.static::PRIMARY.'`');
+        $sql->innerJoin(static::SHOP_TABLE, 'sbcs', 'sbc.`'.static::PRIMARY.'` = sbcs.`'.static::PRIMARY.'`');
+        $sql->where('sbcl.`id_lang` = '.(int) $idLang);
+        $sql->where('sbcl.`'.static::PRIMARY.'` = \''.pSQL($id).'\'');
+
+        return \Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql);
     }
 }

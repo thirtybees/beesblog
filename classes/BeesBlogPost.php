@@ -29,8 +29,8 @@ if (!defined('_TB_VERSION_')) {
 class BeesBlogPost extends \ObjectModel
 {
     // @codingStandardsIgnoreStart
-    const PRIMARY = 'id_bees_blog_post';
-    const TABLE = 'bees_blog_post';
+    const PRIMARY    = 'id_bees_blog_post';
+    const TABLE      = 'bees_blog_post';
     const LANG_TABLE = 'bees_blog_post_lang';
     const SHOP_TABLE = 'bees_blog_post_shop';
     const IMAGE_TYPE = 'beesblog_post';
