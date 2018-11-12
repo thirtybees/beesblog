@@ -49,6 +49,9 @@ class BeesBlogCategory extends \ObjectModel
             'title'             => ['type' => self::TYPE_STRING, 'lang' => true, 'validate' => 'isString',      'required' => true,                                      'db_type' => 'VARCHAR(255)'],
             'description'       => ['type' => self::TYPE_STRING, 'lang' => true, 'validate' => 'isString',      'required' => false,                                     'db_type' => 'VARCHAR(512)'],
             'link_rewrite'      => ['type' => self::TYPE_STRING, 'lang' => true, 'validate' => 'isString',      'required' => true,                                      'db_type' => 'VARCHAR(256)'],
+            'meta_title'        => ['type' => self::TYPE_STRING, 'lang' => true, 'validate' => 'isGenericName', 'required' => false,                                     'db_type' => 'VARCHAR(128)'],
+            'meta_description'  => ['type' => self::TYPE_STRING, 'lang' => true, 'validate' => 'isGenericName', 'required' => false,                                     'db_type' => 'VARCHAR(255)'],
+            'meta_keywords'     => ['type' => self::TYPE_STRING, 'lang' => true, 'validate' => 'isGenericName', 'required' => false,                                     'db_type' => 'VARCHAR(255)'],
         ],
     ];
     /** @var int $id_bees_blog_category */
@@ -69,6 +72,12 @@ class BeesBlogCategory extends \ObjectModel
     public $description;
     /** @var array $link_rewrite */
     public $link_rewrite;
+    /** @var string $meta_title */
+    public $meta_title;
+    /** @var string $meta_description */
+    public $meta_description;
+    /** @var string $meta_keywords */
+    public $meta_keywords;
     // @codingStandardsIgnoreEnd
 
     /**

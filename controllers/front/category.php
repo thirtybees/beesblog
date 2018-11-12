@@ -82,6 +82,9 @@ class BeesBlogCategoryModuleFrontController extends ModuleFrontController
         }
 
         $this->context->smarty->assign([
+            'meta_title'           => $category->meta_title.' - '.Configuration::get('PS_SHOP_NAME'),
+            'meta_description'     => $category->meta_description,
+            'meta_keywords'        => $category->meta_keywords,
             'blogHome'             => BeesBlog::getBeesBlogLink(),
             'posts'                => $posts,
             'category'             => $category,

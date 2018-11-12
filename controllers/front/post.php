@@ -68,6 +68,9 @@ class BeesBlogPostModuleFrontController extends \ModuleFrontController
         ]);
 
         $postProperties = [
+            'meta_title'           => $post->meta_title.' - '.Configuration::get('PS_SHOP_NAME'),
+            'meta_description'     => $post->meta_description,
+            'meta_keywords'        => $post->meta_keywords,
             'blogHome'             => \BeesBlog::getBeesBlogLink(),
             'post'                 => $post,
             'authorStyle'          => Configuration::get(BeesBlog::AUTHOR_STYLE),
