@@ -68,3 +68,6 @@
 		{include "./disqus.tpl"}
 	{/if}
 </article>
+{if isset($disqusUsername) && $disqusUsername && $showComments}
+	<script id="dsq-count-scr" src="//{$disqusUsername|escape:'htmlall':'UTF-8'}.disqus.com/count.js" async></script>
+{/if}
