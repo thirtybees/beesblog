@@ -55,9 +55,6 @@ class BeesBlogPost extends \ObjectModel
             'title'             => ['type' => self::TYPE_STRING, 'lang' => true, 'validate' => 'isString',      'required' => false,                                     'db_type' => 'VARCHAR(255)'],
             'content'           => ['type' => self::TYPE_HTML,   'lang' => true, 'validate' => 'isString',      'required' => false,                                     'db_type' => 'TEXT'],
             'link_rewrite'      => ['type' => self::TYPE_STRING, 'lang' => true, 'validate' => 'isString',      'required' => true,                                      'db_type' => 'VARCHAR(255)'],
-            'meta_title'        => ['type' => self::TYPE_STRING, 'lang' => true, 'validate' => 'isGenericName', 'required' => false,                                     'db_type' => 'VARCHAR(128)'],
-            'meta_description'  => ['type' => self::TYPE_STRING, 'lang' => true, 'validate' => 'isGenericName', 'required' => false,                                     'db_type' => 'VARCHAR(255)'],
-            'meta_keywords'     => ['type' => self::TYPE_STRING, 'lang' => true, 'validate' => 'isGenericName', 'required' => false,                                     'db_type' => 'VARCHAR(255)'],
             'lang_active'       => ['type' => self::TYPE_BOOL,   'lang' => true, 'validate' => 'isBool',        'required' => true,                                      'db_type' => 'TINYINT(1) UNSIGNED'],
         ],
     ];
@@ -89,12 +86,6 @@ class BeesBlogPost extends \ObjectModel
     public $content;
     /** @var string $link_rewrite */
     public $link_rewrite;
-    /** @var string $meta_title */
-    public $meta_title;
-    /** @var string $meta_description */
-    public $meta_description;
-    /** @var string $meta_keywords */
-    public $meta_keywords;
     /** @var array $lang_active */
     public $lang_active;
     /** @var array $imageTypes Default image types */
