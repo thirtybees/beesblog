@@ -79,7 +79,7 @@ class BeesBlog extends Module
     {
         $this->name = 'beesblog';
         $this->tab = 'front_office_features';
-        $this->version = '1.0.2';
+        $this->version = '2.0.0';
         $this->author = 'thirty bees';
 
         $this->controllers = ['category', 'post'];
