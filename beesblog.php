@@ -437,9 +437,9 @@ class BeesBlog extends Module
             foreach ($results as $result) {
                 $link = [];
                 $link['link'] = BeesBlog::getBeesBlogLink('beesblog_post', ['blog_rewrite' => $result->link_rewrite[1]]);
-                $link['lastmod'] = $result->modified;
+                $link['lastmod'] = $result->date_upd;
                 $link['type'] = 'module';
-                $link['image'] = ['link' => Media::getMediaPath(BeesBlogPost::getImagePath($result->id))];
+                $link['image'] = ['link' => $this->context->link->getMediaLink(Media::getMediaPath(BeesBlogPost::getImagePath($result->id)))];
 
                 $links[] = $link;
             }
@@ -451,9 +451,9 @@ class BeesBlog extends Module
             foreach ($results as $result) {
                 $link = [];
                 $link['link'] = BeesBlog::getBeesBlogLink('beesblog_category', ['cat_rewrite' => $result->link_rewrite[1]]);
-                $link['lastmod'] = $result->modified;
+                $link['lastmod'] = $result->date_upd;
                 $link['type'] = 'module';
-                $link['image'] = ['link' => Media::getMediaPath(BeesBlogCategory::getImagePath($result->id))];
+                $link['image'] = ['link' => $this->context->link->getMediaLink(Media::getMediaPath(BeesBlogCategory::getImagePath($result->id)))];
 
                 $links[] = $link;
             }
