@@ -83,7 +83,7 @@ class AdminBeesBlogImagesController extends ModuleAdminController
             'name'                     => ['title' => $this->l('Name')],
             'width'                    => ['title' => $this->l('Width'),      'suffix' => ' px'],
             'height'                   => ['title' => $this->l('Height'),     'suffix' => ' px'],
-            'posts'                    => ['title' => $this->l('Products'),   'align' => 'center', 'active' => 'posts', 'type' => 'bool', 'orderby' => false],
+            'posts'                    => ['title' => $this->l('Posts'),   'align' => 'center', 'active' => 'posts', 'type' => 'bool', 'orderby' => false],
             'categories'               => ['title' => $this->l('Categories'), 'align' => 'center', 'active' => 'categories', 'type' => 'bool', 'orderby' => false],
         ];
 
@@ -125,15 +125,15 @@ class AdminBeesBlogImagesController extends ModuleAdminController
                     'name'     => 'posts',
                     'required' => false,
                     'is_bool'  => true,
-                    'hint'     => $this->l('This type will be used for Product images.'),
+                    'hint'     => $this->l('This type will be used for Post images.'),
                     'values'   => [
                         [
-                            'id'    => 'products_on',
+                            'id'    => 'posts_on',
                             'value' => 1,
                             'label' => $this->l('Enabled'),
                         ],
                         [
-                            'id'    => 'products_off',
+                            'id'    => 'posts_off',
                             'value' => 0,
                             'label' => $this->l('Disabled'),
                         ],
@@ -341,85 +341,57 @@ class AdminBeesBlogImagesController extends ModuleAdminController
      *
      * @param      $dir
      * @param      $type
-     * @param bool $productsImages
      *
      * @return bool|string
      *
      * @since 1.0.0
      */
-    protected function regenerateNewImages($dir, $type, $productsImages = false)
+    protected function regenerateNewImages($dir, $type)
     {
         if (!is_dir($dir)) {
             return false;
         }
 
         $generateHighDpiImages = (bool) Configuration::get('PS_HIGHT_DPI');
-
-        if (!$productsImages) {
-            $formattedThumbScene = ImageType::getFormatedName('thumb_scene');
-            $formattedMedium = ImageType::getFormatedName('medium');
-            foreach (scandir($dir) as $image) {
-                if (preg_match('/^[0-9]*\.jpg$/', $image)) {
-                    foreach ($type as $k => $imageType) {
-                        // Customizable writing dir
-                        $newDir = $dir;
-                        if ($imageType['name'] == $formattedThumbScene) {
-                            $newDir .= 'thumbs/';
-                        }
-                        if (!file_exists($newDir)) {
-                            continue;
-                        }
-
-                        if (($dir == _PS_CAT_IMG_DIR_) && ($imageType['name'] == $formattedMedium) && is_file(_PS_CAT_IMG_DIR_.str_replace('.', '_thumb.', $image))) {
-                            $image = str_replace('.', '_thumb.', $image);
-                        }
-
-                        if (!file_exists($newDir.substr($image, 0, -4).'-'.stripslashes($imageType['name']).'.jpg')) {
-                            if (!file_exists($dir.$image) || !filesize($dir.$image)) {
-                                $this->errors[] = sprintf(Tools::displayError('Source file does not exist or is empty (%s)'), $dir.$image);
-                            } elseif (!ImageManager::resize($dir.$image, $newDir.substr(str_replace('_thumb.', '.', $image), 0, -4).'-'.stripslashes($imageType['name']).'.jpg', (int) $imageType['width'], (int) $imageType['height'])) {
-                                $this->errors[] = sprintf(Tools::displayError('Failed to resize image file (%s)'), $dir.$image);
-                            }
-
-                            if ($generateHighDpiImages) {
-                                if (!ImageManager::resize($dir.$image, $newDir.substr($image, 0, -4).'-'.stripslashes($imageType['name']).'2x.jpg', (int) $imageType['width'] * 2, (int) $imageType['height'] * 2)) {
-                                    $this->errors[] = sprintf(Tools::displayError('Failed to resize image file to high resolution (%s)'), $dir.$image);
-                                }
-                            }
-                        }
-                        // stop 4 seconds before the timeout, just enough time to process the end of the page on a slow server
-                        if (time() - $this->start_time > $this->max_execution_time - 4) {
-                            return 'timeout';
-                        }
+        
+        $formattedThumbScene = ImageType::getFormatedName('thumb_scene');
+        $formattedMedium = ImageType::getFormatedName('medium');
+        foreach (scandir($dir) as $image) {
+            if (preg_match('/^[0-9]*\.jpg$/', $image)) {
+                foreach ($type as $k => $imageType) {
+                    // Customizable writing dir
+                    $newDir = $dir;
+                    if ($imageType['name'] == $formattedThumbScene) {
+                        $newDir .= 'thumbs/';
                     }
-                }
-            }
-        } else {
-            foreach (Image::getAllImages() as $image) {
-                $imageObj = new Image($image['id_image']);
-                $existingImg = $dir.$imageObj->getExistingImgPath().'.jpg';
-                if (file_exists($existingImg) && filesize($existingImg)) {
-                    foreach ($type as $imageType) {
-                        if (!file_exists($dir.$imageObj->getExistingImgPath().'-'.stripslashes($imageType['name']).'.jpg')) {
-                            if (!ImageManager::resize($existingImg, $dir.$imageObj->getExistingImgPath().'-'.stripslashes($imageType['name']).'.jpg', (int) $imageType['width'], (int) $imageType['height'])) {
-                                $this->errors[] = sprintf(Tools::displayError('Original image is corrupt (%s) for product ID %2$d or bad permission on folder'), $existingImg, (int) $imageObj->id_product);
-                            }
+                    if (!file_exists($newDir)) {
+                        continue;
+                    }
 
-                            if ($generateHighDpiImages) {
-                                if (!ImageManager::resize($existingImg, $dir.$imageObj->getExistingImgPath().'-'.stripslashes($imageType['name']).'2x.jpg', (int) $imageType['width'] * 2, (int) $imageType['height'] * 2)) {
-                                    $this->errors[] = sprintf(Tools::displayError('Original image is corrupt (%s) for product ID %2$d or bad permission on folder'), $existingImg, (int) $imageObj->id_product);
-                                }
+                    if (($dir == _PS_CAT_IMG_DIR_) && ($imageType['name'] == $formattedMedium) && is_file(_PS_CAT_IMG_DIR_.str_replace('.', '_thumb.', $image))) {
+                        $image = str_replace('.', '_thumb.', $image);
+                    }
+
+                    if (!file_exists($newDir.substr($image, 0, -4).'-'.stripslashes($imageType['name']).'.jpg')) {
+                        if (!file_exists($dir.$image) || !filesize($dir.$image)) {
+                            $this->errors[] = sprintf(Tools::displayError('Source file does not exist or is empty (%s)'), $dir.$image);
+                        } elseif (!ImageManager::resize($dir.$image, $newDir.substr(str_replace('_thumb.', '.', $image), 0, -4).'-'.stripslashes($imageType['name']).'.jpg', (int) $imageType['width'], (int) $imageType['height'])) {
+                            $this->errors[] = sprintf(Tools::displayError('Failed to resize image file (%s)'), $dir.$image);
+                        }
+
+                        if ($generateHighDpiImages) {
+                            if (!ImageManager::resize($dir.$image, $newDir.substr($image, 0, -4).'-'.stripslashes($imageType['name']).'2x.jpg', (int) $imageType['width'] * 2, (int) $imageType['height'] * 2)) {
+                                $this->errors[] = sprintf(Tools::displayError('Failed to resize image file to high resolution (%s)'), $dir.$image);
                             }
                         }
                     }
-                } else {
-                    $this->errors[] = sprintf(Tools::displayError('Original image is missing or empty (%1$s) for product ID %2$d'), $existingImg, (int) $imageObj->id_product);
-                }
-                if (time() - $this->start_time > $this->max_execution_time - 4) { // stop 4 seconds before the tiemout, just enough time to process the end of the page on a slow server
-                    return 'timeout';
+                    // stop 4 seconds before the timeout, just enough time to process the end of the page on a slow server
+                    if (time() - $this->start_time > $this->max_execution_time - 4) {
+                        return 'timeout';
+                    }
                 }
             }
-        }
+        }        
 
         return (bool) count($this->errors);
     }
@@ -520,7 +492,7 @@ class AdminBeesBlogImagesController extends ModuleAdminController
     public function initRegenerate()
     {
         $types = [
-            'posts'      => $this->l('Products'),
+            'posts'      => $this->l('Posts'),
             'categories' => $this->l('Categories'),
         ];
 
