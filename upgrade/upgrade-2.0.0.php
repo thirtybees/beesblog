@@ -30,12 +30,19 @@ require_once __DIR__.'/../classes/autoload.php';
 function upgrade_module_2_0_0()
 {
     $queries = [];
-    $queries[] = 'ALTER TABLE `'._DB_PREFIX_.bqSQL(BeesBlogPost::LANG_TABLE).'` ADD meta_title VARCHAR(128)';
-    $queries[] = 'ALTER TABLE `'._DB_PREFIX_.bqSQL(BeesBlogPost::LANG_TABLE).'` ADD meta_description VARCHAR(255)';
-    $queries[] = 'ALTER TABLE `'._DB_PREFIX_.bqSQL(BeesBlogPost::LANG_TABLE).'` ADD meta_keywords VARCHAR(255)';
-    $queries[] = 'ALTER TABLE `'._DB_PREFIX_.bqSQL(BeesBlogCategory::LANG_TABLE).'` ADD meta_title VARCHAR(128)';
-    $queries[] = 'ALTER TABLE `'._DB_PREFIX_.bqSQL(BeesBlogCategory::LANG_TABLE).'` ADD meta_description VARCHAR(255)';
-    $queries[] = 'ALTER TABLE `'._DB_PREFIX_.bqSQL(BeesBlogCategory::LANG_TABLE).'` ADD meta_keywords VARCHAR(255)';
+    $queries[] = 'ALTER TABLE `'._DB_PREFIX_.bqSQL(BeesBlogPost::LANG_TABLE).'` MODIFY title VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci';
+    $queries[] = 'ALTER TABLE `'._DB_PREFIX_.bqSQL(BeesBlogPost::LANG_TABLE).'` MODIFY content TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci';
+    $queries[] = 'ALTER TABLE `'._DB_PREFIX_.bqSQL(BeesBlogPost::LANG_TABLE).'` MODIFY link_rewrite VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci';
+    $queries[] = 'ALTER TABLE `'._DB_PREFIX_.bqSQL(BeesBlogCategory::LANG_TABLE).'` MODIFY title VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci';
+    $queries[] = 'ALTER TABLE `'._DB_PREFIX_.bqSQL(BeesBlogCategory::LANG_TABLE).'` MODIFY description VARCHAR(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci';
+    $queries[] = 'ALTER TABLE `'._DB_PREFIX_.bqSQL(BeesBlogCategory::LANG_TABLE).'` MODIFY link_rewrite VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci';
+
+    $queries[] = 'ALTER TABLE `'._DB_PREFIX_.bqSQL(BeesBlogPost::LANG_TABLE).'` ADD meta_title VARCHAR(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci';
+    $queries[] = 'ALTER TABLE `'._DB_PREFIX_.bqSQL(BeesBlogPost::LANG_TABLE).'` ADD meta_description VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci';
+    $queries[] = 'ALTER TABLE `'._DB_PREFIX_.bqSQL(BeesBlogPost::LANG_TABLE).'` ADD meta_keywords VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci';
+    $queries[] = 'ALTER TABLE `'._DB_PREFIX_.bqSQL(BeesBlogCategory::LANG_TABLE).'` ADD meta_title VARCHAR(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci';
+    $queries[] = 'ALTER TABLE `'._DB_PREFIX_.bqSQL(BeesBlogCategory::LANG_TABLE).'` ADD meta_description VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci';
+    $queries[] = 'ALTER TABLE `'._DB_PREFIX_.bqSQL(BeesBlogCategory::LANG_TABLE).'` ADD meta_keywords VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci';
 
     foreach ($queries as $sql) {
         try {

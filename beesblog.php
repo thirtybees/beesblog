@@ -155,6 +155,28 @@ class BeesBlog extends Module
         $this->createBeesBlogTabs();
         BeesBlogImageType::installBasics();
 
+        $queries = [];
+        $queries[] = 'ALTER TABLE `'._DB_PREFIX_.bqSQL(BeesBlogPost::LANG_TABLE).'` MODIFY title VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci';
+        $queries[] = 'ALTER TABLE `'._DB_PREFIX_.bqSQL(BeesBlogPost::LANG_TABLE).'` MODIFY content TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci';
+        $queries[] = 'ALTER TABLE `'._DB_PREFIX_.bqSQL(BeesBlogPost::LANG_TABLE).'` MODIFY link_rewrite VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci';
+        $queries[] = 'ALTER TABLE `'._DB_PREFIX_.bqSQL(BeesBlogPost::LANG_TABLE).'` MODIFY meta_title VARCHAR(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci';
+        $queries[] = 'ALTER TABLE `'._DB_PREFIX_.bqSQL(BeesBlogPost::LANG_TABLE).'` MODIFY meta_description VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci';
+        $queries[] = 'ALTER TABLE `'._DB_PREFIX_.bqSQL(BeesBlogPost::LANG_TABLE).'` MODIFY meta_keywords VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci';
+
+        $queries[] = 'ALTER TABLE `'._DB_PREFIX_.bqSQL(BeesBlogCategory::LANG_TABLE).'` MODIFY title VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci';
+        $queries[] = 'ALTER TABLE `'._DB_PREFIX_.bqSQL(BeesBlogCategory::LANG_TABLE).'` MODIFY description VARCHAR(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci';
+        $queries[] = 'ALTER TABLE `'._DB_PREFIX_.bqSQL(BeesBlogCategory::LANG_TABLE).'` MODIFY link_rewrite VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci';
+        $queries[] = 'ALTER TABLE `'._DB_PREFIX_.bqSQL(BeesBlogCategory::LANG_TABLE).'` MODIFY meta_title VARCHAR(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci';
+        $queries[] = 'ALTER TABLE `'._DB_PREFIX_.bqSQL(BeesBlogCategory::LANG_TABLE).'` MODIFY meta_description VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci';
+        $queries[] = 'ALTER TABLE `'._DB_PREFIX_.bqSQL(BeesBlogCategory::LANG_TABLE).'` MODIFY meta_keywords VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci';
+
+        foreach ($queries as $sql) {
+            try {
+                Db::getInstance()->execute($sql);
+            } catch (Exception $e) {
+            }
+        }
+
         return true;
     }
 
