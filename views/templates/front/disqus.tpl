@@ -24,7 +24,7 @@
        */
       var disqus_config = function () {
         this.page.url = '{$postPath|escape:'javascript':'UTF-8'}'; // Replace PAGE_URL with your page's canonical URL variable
-        this.page.identifier = '{'blog-'|cat:Context::getContext()->language->iso_code|strtolower|cat:'-'|cat:$post->id|intval}'; // Replace PAGE_IDENTIFIER with your page's unique identifier variable
+        this.page.identifier = '{$post->id|intval}'; // Replace PAGE_IDENTIFIER with your page's unique identifier variable
       };
 
       (function () { // DON'T EDIT BELOW THIS LINE
