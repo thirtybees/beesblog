@@ -147,6 +147,7 @@ class BeesBlog extends Module
         if (!$this->registerHook('displayHeader')
             || !$this->registerHook('moduleRoutes')
             || !$this->registerHook('displayBackOfficeHeader')
+            || !$this->registerHook('GSitemapAppendUrls')
             || !$this->insertBlogHooks()
         ) {
             return false;
