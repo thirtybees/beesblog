@@ -15,7 +15,7 @@
  *  @copyright 2017 thirty bees
  *  @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
 *}
-{assign var=imagePath value=Media::getMediaPath(BeesBlog::getPostImagePath($post->id))}
+{assign var=imagePath value=Media::getMediaPath(BeesBlog::getPostImagePath($post->id, 'post_list_item'))}
 {assign var=postPath value=BeesBlog::GetBeesBlogLink('beesblog_post', ['blog_rewrite' => $post->link_rewrite])}
 <article>
     <div itemtype="#" itemscope="" class="clearfix beesblog-post-list-item">
