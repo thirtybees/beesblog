@@ -472,7 +472,7 @@ class BeesBlog extends Module
                 $link['link'] = BeesBlog::getBeesBlogLink('beesblog_post', ['blog_rewrite' => $result->link_rewrite[1]]);
                 $link['lastmod'] = $result->date_upd;
                 $link['type'] = 'module';
-                $link['image'] = ['link' => $this->context->link->getMediaLink(Media::getMediaPath(BeesBlogPost::getImagePath($result->id)))];
+                $link['image'] = ['link' => $this->context->link->getMediaLink(Media::getMediaPath(BeesBlogPost::getImagePath($result->id, 'post_list_item')))];
 
                 $links[] = $link;
             }
