@@ -112,6 +112,7 @@ class BeesBlogCategory extends \ObjectModel
         $postCollection->orderBy('published', 'desc');
         $postCollection->where('published', '<=', date('Y-m-d H:i:s'));
         $postCollection->where('id_category', '=', $this->id);
+        $postCollection->where('active', '=', '1');
         $postCollection->sqlWhere('lang_active = \'1\'');
 
         if ($count) {
