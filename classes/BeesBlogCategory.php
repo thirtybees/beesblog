@@ -216,6 +216,7 @@ class BeesBlogCategory extends \ObjectModel
     public static function getImagePath($id, $type = 'category_default')
     {
         $baseLocation = _PS_IMG_DIR_.'beesblog/categories/';
+        $id = (int)$id;
 
         if ($type === 'original') {
             if (file_exists("{$baseLocation}{$id}.png")) {
