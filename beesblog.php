@@ -74,6 +74,7 @@ class BeesBlog extends Module
      * BeesBlog constructor.
      *
      * @since 1.0.0
+     * @throws PrestaShopException
      */
     public function __construct()
     {
@@ -96,6 +97,8 @@ class BeesBlog extends Module
      *
      * @return bool Whether the module has been successfully installed
      *
+     * @throws PrestaShopException
+     * @throws Adapter_Exception
      * @since 1.0.0
      */
     public function install()
@@ -162,6 +165,8 @@ class BeesBlog extends Module
     /**
      * @return bool
      *
+     * @throws Adapter_Exception
+     * @throws PrestaShopException
      * @since 1.0.0
      */
     public function insertBlogHooks()
@@ -191,6 +196,8 @@ class BeesBlog extends Module
      *
      * @return bool Whether the tabs have been successfully added
      *
+     * @throws Adapter_Exception
+     * @throws PrestaShopException
      * @since 1.0.0
      */
     protected function createBeesBlogTabs()
@@ -247,6 +254,9 @@ class BeesBlog extends Module
      *
      * @return bool Whether the module has been successfully uninstalled
      *
+     * @throws Adapter_Exception
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      * @since 1.0.0
      */
     public function uninstall()
@@ -299,6 +309,9 @@ class BeesBlog extends Module
      *
      * @return void
      *
+     * @throws Adapter_Exception
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      * @since 1.0.0
      */
     public function deleteBlogHooks()
@@ -316,6 +329,7 @@ class BeesBlog extends Module
      * Register the module routes
      *
      * @return array Array with routes
+     * @throws PrestaShopException
      */
     public function hookModuleRoutes()
     {
@@ -427,6 +441,7 @@ class BeesBlog extends Module
      * @return array Sitemap links
      *
      * @since 11.0.0
+     * @throws PrestaShopException
      */
     public function hookGSitemapAppendUrls()
     {
@@ -508,6 +523,10 @@ class BeesBlog extends Module
      *
      * @return string HTML
      *
+     * @throws HTMLPurifier_Exception
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
+     * @throws SmartyException
      * @since 1.0.0
      */
     public function getContent()
@@ -522,9 +541,13 @@ class BeesBlog extends Module
         return $html;
     }
 
+
     /**
      * Save form data.
      *
+     * @return string
+     * @throws HTMLPurifier_Exception
+     * @throws PrestaShopException
      * @since 1.0.0
      */
     protected function postProcess()
@@ -555,6 +578,8 @@ class BeesBlog extends Module
 
     /**
      * Process General Options
+     * @throws HTMLPurifier_Exception
+     * @throws PrestaShopException
      */
     protected function postProcessDisqusOptions()
     {
@@ -564,6 +589,7 @@ class BeesBlog extends Module
 
     /**
      * @return HelperForm
+     * @throws PrestaShopException
      */
     public function getSettingsFormHelper()
     {
@@ -787,6 +813,7 @@ class BeesBlog extends Module
      *
      * @return array Form values
      *
+     * @throws PrestaShopException
      * @since 1.0.0
      */
     protected function getFormValues()
@@ -816,6 +843,10 @@ class BeesBlog extends Module
      *
      * @return string HTML
      *
+     * @throws HTMLPurifier_Exception
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
+     * @throws SmartyException
      * @since 1.0.0
      */
     protected function renderDisqusOptions()
@@ -836,6 +867,7 @@ class BeesBlog extends Module
      *
      * @return array General options
      *
+     * @throws PrestaShopException
      * @since 1.0.0
      */
     protected function getDisqusOptions()
