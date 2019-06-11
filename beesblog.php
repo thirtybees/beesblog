@@ -95,13 +95,15 @@ class BeesBlog extends Module
     /**
      * Install this module
      *
+     * @param bool $createTables indicates if database table should be created or not
      * @return bool Whether the module has been successfully installed
      *
-     * @throws PrestaShopException
      * @throws Adapter_Exception
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      * @since 1.0.0
      */
-    public function install()
+    public function install($createTables = true)
     {
         if (!parent::install()) {
             return false;
@@ -122,11 +124,13 @@ class BeesBlog extends Module
         Configuration::updateGlobalValue(static::HOME_KEYWORDS, 'thirty bees blog,thirty bees');
         Configuration::updateGlobalValue(static::HOME_DESCRIPTION, 'The beesiest blog for thirty bees');
 
-        if (!(BeesBlogPost::createDatabase()
-            && BeesBlogCategory::createDatabase()
-            && BeesBlogImageType::createDatabase())
-        ) {
-            return false;
+        if ($createTables) {
+            if (!(BeesBlogPost::createDatabase()
+                && BeesBlogCategory::createDatabase()
+                && BeesBlogImageType::createDatabase())
+            ) {
+                return false;
+            }
         }
 
         if (!$this->registerHook('displayHeader')
@@ -234,6 +238,7 @@ class BeesBlog extends Module
     /**
      * Uninstall this module
      *
+     * @param bool $removeTables indicates if database tables should be dropped
      * @return bool Whether the module has been successfully uninstalled
      *
      * @throws Adapter_Exception
@@ -241,7 +246,7 @@ class BeesBlog extends Module
      * @throws PrestaShopException
      * @since 1.0.0
      */
-    public function uninstall()
+    public function uninstall($removeTables = true)
     {
         if (!parent::uninstall() ||
             !Configuration::deleteByName(static::HOME_TITLE) ||
@@ -274,11 +279,13 @@ class BeesBlog extends Module
             }
         }
 
-        if (!(BeesBlogPost::dropDatabase()
-            && BeesBlogCategory::dropDatabase()
-            && BeesBlogImageType::dropDatabase())
-        ) {
-            return false;
+        if ($removeTables) {
+            if (!(BeesBlogPost::dropDatabase()
+                && BeesBlogCategory::dropDatabase()
+                && BeesBlogImageType::dropDatabase())
+            ) {
+                return false;
+            }
         }
 
         $this->deleteBlogHooks();
@@ -305,6 +312,22 @@ class BeesBlog extends Module
                 $dltHook->delete();
             }
         }
+    }
+
+    /**
+     * Resets module settings without removing blog post data from database
+     *
+     * @return bool
+     * @throws Adapter_Exception
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
+     */
+    public function reset()
+    {
+        return (
+            $this->uninstall(false) &&
+            $this->install(false)
+        );
     }
 
     /**
