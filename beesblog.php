@@ -133,12 +133,7 @@ class BeesBlog extends Module
             }
         }
 
-        if (!$this->registerHook('displayHeader')
-            || !$this->registerHook('moduleRoutes')
-            || !$this->registerHook('displayBackOfficeHeader')
-            || !$this->registerHook('GSitemapAppendUrls')
-            || !$this->insertBlogHooks()
-        ) {
+        if (! $this->registerHooks()) {
             return false;
         }
 
@@ -146,6 +141,23 @@ class BeesBlog extends Module
         BeesBlogImageType::installBasics();
 
         return true;
+    }
+
+    /**
+     * Registers all hooks this module depends on
+     * @return bool
+     * @throws Adapter_Exception
+     * @throws PrestaShopException
+     */
+    public function registerHooks()
+    {
+        return (
+            $this->registerHook('displayHeader') &&
+            $this->registerHook('moduleRoutes') &&
+            $this->registerHook('displayBackOfficeHeader') &&
+            $this->registerHook('GSitemapAppendUrls') &&
+            $this->insertBlogHooks()
+        );
     }
 
     /**
