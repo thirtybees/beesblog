@@ -143,6 +143,10 @@ class AdminBeesBlogPostController extends \ModuleAdminController
             ],
         ];
 
+        $this->addJquery();
+        $this->addJqueryPlugin('autocomplete');
+        $this->addJS(_MODULE_DIR_ . 'beesblog/views/js/admin-post.js');
+
         parent::__construct();
     }
 
@@ -230,6 +234,9 @@ class AdminBeesBlogPostController extends \ModuleAdminController
 
     /**
      * @return string
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
+     * @throws SmartyException
      */
     public function renderForm()
     {
@@ -238,9 +245,18 @@ class AdminBeesBlogPostController extends \ModuleAdminController
         }
 
         $id = (int) \Tools::getValue(BeesBlogPost::PRIMARY);
+        $lang = (int)$this->context->language->id;
 
         $imageUrl = \ImageManager::thumbnail(BeesBlogPost::getImagePath($id), $this->table."_{$id}.jpg", 200, 'jpg', true, true);
         $imageSize = file_exists(BeesBlogPost::getImagePath($id)) ? filesize(BeesBlogPost::getImagePath($id)) / 1000 : false;
+
+        $products = $id ? Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS((new DbQuery())
+            ->select('p.id_product, pl.name, p.reference')
+            ->from('bees_blog_post_product', 'pp')
+            ->innerJoin('product', 'p', 'p.id_product = pp.id_product')
+            ->innerJoin('product_lang', 'pl', 'pl.id_product = p.id_product AND pl.id_lang = '.$lang.Shop::addSqlRestrictionOnLang('pl'))
+            ->where('pp.id_bees_blog_post = '.$id)
+        ) : [];
 
         $this->fields_form = [
             'legend' => [
@@ -331,6 +347,18 @@ class AdminBeesBlogPostController extends \ModuleAdminController
                     'lang'  => true,
                     'hint'  => $this->l('Forbidden characters:').' <>;=#{}',
                     'desc'  => $this->l('To add tags, click in the field, write something, then press "Enter".'),
+                ],
+                [
+                    'type'     => 'product-selector',
+                    'label'    => $this->l('Related products'),
+                    'name'     => 'products',
+                    'id'       => 'products',
+                    'size'     => 60,
+                    'required' => false,
+                    'products' => $products,
+                    'hint'     => [
+                        $this->l('Associate this blog post with products'),
+                    ]
                 ],
                 [
                     'type'     => 'switch',
@@ -478,6 +506,28 @@ class AdminBeesBlogPostController extends \ModuleAdminController
     }
 
     /**
+     * @param int $id Blog post id
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
+     */
+    public function processProducts($id)
+    {
+        $id = (int)$id;
+        Db::getInstance()->delete('bees_blog_post_product', 'id_bees_blog_post = '.$id);
+        $products = Tools::getValue('products');
+        if ($products) {
+            $insert = [];
+            foreach (explode('|', $products) as $productId) {
+                $insert[] = [
+                    'id_product' => (int)$productId,
+                    'id_bees_blog_post' => (int)$id,
+                ];
+            }
+            Db::getInstance()->insert('bees_blog_post_product', $insert);
+        }
+    }
+
+    /**
      * Process add
      *
      * @return bool
@@ -560,6 +610,7 @@ class AdminBeesBlogPostController extends \ModuleAdminController
 
         if ($blogPost->add()) {
             $this->processImage($_FILES, $blogPost->id);
+            $this->processProducts($blogPost->id);
             $this->confirmations[] = $this->l('Successfully added post');
 
             return true;
@@ -608,6 +659,7 @@ class AdminBeesBlogPostController extends \ModuleAdminController
         $blogPost->id_employee = $this->context->employee->id;
         $blogPost->id_shop = (int) Context::getContext()->shop->id;
         $this->processImage($_FILES, $blogPost->id);
+        $this->processProducts($blogPost->id);
         if ($blogPost->update()) {
             $this->confirmations[] = $this->l('Successfully updated post');
 
@@ -689,5 +741,36 @@ class AdminBeesBlogPostController extends \ModuleAdminController
     static public function getCategoryTitleById($id) {
 
         return BeesBlogCategory::getNameById($id);
+    }
+
+    /**
+     * Search products
+     *
+     * @return array
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
+     */
+    public function ajaxProcessSearchProducts()
+    {
+        $query = Tools::getValue('q');
+        $limit = (int)Tools::getValue('limit');
+        $products = [];
+        if ($query && $limit) {
+            $lang = (int)$this->context->language->id;
+            $query = pSQL($query);
+            $sql = (new DbQuery())
+                ->select('p.id_product, pl.name, p.reference')
+                ->from('product', 'p')
+                ->innerJoin('product_lang', 'pl', 'pl.id_product = p.id_product AND pl.id_lang = '.$lang.Shop::addSqlRestrictionOnLang('pl'))
+                ->where('pl.name LIKE "%'.$query.'%" OR p.reference like "%'.$query.'%"')
+                ->limit($limit);
+            $excludeIds = Tools::getValue('excludeIds');
+            if ($excludeIds && is_array($excludeIds)) {
+                $excludeIds = implode(',', array_map('intval', $excludeIds));
+                $sql->where('p.id_product NOT IN ('.$excludeIds.')');
+            }
+            $products = Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($sql);
+        }
+        die(json_encode($products));
     }
 }
