@@ -21,6 +21,8 @@ if (!defined('_TB_VERSION_')) {
     exit;
 }
 
+use BeesBlogModule\BeesBlogPost;
+
 /**
  * @return bool
  * @throws Adapter_Exception
@@ -34,6 +36,9 @@ function upgrade_module_1_0_4()
 
     // register new hooks
     $instance->registerHooks();
+
+    // create related products table
+    BeesBlogPost::createRelatedProductsTable();
 
     return true;
 }
