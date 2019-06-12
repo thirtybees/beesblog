@@ -381,4 +381,62 @@ class BeesBlogPost extends \ObjectModel
             return "{$baseLocation}{$id}-{$type}.jpg";
         }
     }
+
+    /**
+     * Create the database tables for BeesBlogPost model
+     *
+     * @param string|null $className Class name
+     * @return bool Indicates whether the database was successfully added
+     * @throws \PrestaShopException
+     */
+    public static function createDatabase($className = null)
+    {
+        return (
+            parent::createDatabase($className) &&
+            static::createRelatedProductsTable()
+        );
+    }
+
+    /**
+     * Drop the database for BeesBlogPost model
+     *
+     * @param string|null $className Class name
+     * @return bool Indicates whether the database was successfully dropped
+     * @throws \PrestaShopException
+     */
+    public static function dropDatabase($className = null)
+    {
+        return (
+            parent::dropDatabase($className) &&
+            static::dropRelatedProductsTable()
+        );
+    }
+
+    /**
+     * Creates database table to store related products
+     *
+     * @return boolean
+     * @throws \PrestaShopException
+     */
+    public static function createRelatedProductsTable()
+    {
+        return \Db::getInstance()->execute(
+            'CREATE TABLE IF NOT EXISTS `'._DB_PREFIX_.'bees_blog_post_product` (
+               `id_product`        INT(11) UNSIGNED NOT NULL,
+               `id_bees_blog_post` INT(11) UNSIGNED NOT NULL,
+               PRIMARY KEY (`id_product`, `id_bees_blog_post`)
+             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_unicode_ci'
+        );
+    }
+
+    /**
+     * Drop related products database table
+     *
+     * @return boolean
+     * @throws \PrestaShopException
+     */
+    public static function dropRelatedProductsTable()
+    {
+        return \Db::getInstance()->execute('DROP TABLE IF EXISTS `'._DB_PREFIX_.'bees_blog_post_product`');
+    }
 }
