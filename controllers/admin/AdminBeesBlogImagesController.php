@@ -128,12 +128,12 @@ class AdminBeesBlogImagesController extends ModuleAdminController
                     'hint'     => $this->l('This type will be used for Post images.'),
                     'values'   => [
                         [
-                            'id'    => 'products_on',
+                            'id'    => 'post_on',
                             'value' => 1,
                             'label' => $this->l('Enabled'),
                         ],
                         [
-                            'id'    => 'products_off',
+                            'id'    => 'post_off',
                             'value' => 0,
                             'label' => $this->l('Disabled'),
                         ],
