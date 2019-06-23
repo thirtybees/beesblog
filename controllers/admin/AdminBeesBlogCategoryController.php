@@ -119,6 +119,8 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
                     'type'     => 'text',
                     'label'    => $this->l('Name'),
                     'name'     => 'title',
+                    'id'       => 'name',
+                    'class'    => 'copyMeta2friendlyURL',
                     'size'     => 60,
                     'required' => true,
                     'desc'     => $this->l('Enter your category name'),
