@@ -1,6 +1,6 @@
 <?php
 /**
- * 2019 thirty bees
+ * Copyright (C) 2019 thirty bees
  *
  * NOTICE OF LICENSE
  *
@@ -12,9 +12,9 @@
  * obtain it through the world-wide-web, please send an email
  * to license@thirtybees.com so we can send you a copy immediately.
  *
- * @author    thirty bees <modules@thirtybees.com>
- * @copyright 2019 thirty bees
- * @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
+ *  @author    thirty bees <modules@thirtybees.com>
+ *  @copyright 2019 thirty bees
+ *  @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
  */
 
 if (!defined('_TB_VERSION_')) {

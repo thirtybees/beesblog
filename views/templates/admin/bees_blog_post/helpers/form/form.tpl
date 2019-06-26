@@ -1,5 +1,5 @@
 {*
- * 2019 thirty bees
+ * Copyright (C) 2019 thirty bees
  *
  * NOTICE OF LICENSE
  *
