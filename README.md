@@ -1,8 +1,8 @@
-# Bees blog
+# Bees Blog
 
-## Contributing
+## Bees Blog, thirty bees blog system
 
-See [CONTRIBUTING.md](CONTRIBUTING.md)
+Bees blog is the blogging system that thirty bees uses to add blogging functionality to your thirty bees website.
 
 ### Specific requirements for this repository
 
