@@ -1,1 +1,6 @@
-*beesblog*.zip
+/translations/*
+!/translations/index.php
+
+/config*.xml
+
+beesblog*.zip
