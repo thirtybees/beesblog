@@ -24,13 +24,6 @@ To build a package for the thirty bees distribution machinery or suitable for im
 
 For module development, one clones this repository into `modules/` of the shop, alongside the other modules. It should work fine without packaging.
 
-### Specific requirements for this repository
-
-Contributors **must** follow the following rules:
-
-* **Make your Pull Request on the "master" branch**
-* Do not update the module's version number.
-
 ## Roadmap
 
 #### Short Term
