@@ -37,7 +37,7 @@ class BeesBlogImageType extends \ObjectModel
     const POST_DEFAULT_HEIGHT = 500;
     const CATEGORY_DEFAULT_WIDTH = 800;
     const CATEGORY_DEFAULT_HEIGHT = 500;
-	
+
     // @codingStandardsIgnoreStart
     /**
      * @var array Image types cache
