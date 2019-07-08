@@ -123,6 +123,8 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
                     'required' => true,
                     'desc'     => $this->l('Enter your category name'),
                     'lang'     => true,
+                    'id'       => 'name',
+                    'class'    => 'copyMeta2friendlyURL',
                 ],
                 [
                     'type'         => 'textarea',
@@ -215,6 +217,8 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
         $this->fields_form['submit'] = [
             'title' => $this->l('Save'),
         ];
+
+        Media::addJsDef(['PS_ALLOW_ACCENTED_CHARS_URL' => (int) Configuration::get('PS_ALLOW_ACCENTED_CHARS_URL')]);
 
         return parent::renderForm();
     }

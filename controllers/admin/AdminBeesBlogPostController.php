@@ -433,7 +433,7 @@ class AdminBeesBlogPostController extends \ModuleAdminController
             $this->fields_value['lang_active_'.(int) $language['id_lang']] = (bool) BeesBlogPost::getLangActive(\Tools::getValue(BeesBlogPost::PRIMARY), $language['id_lang']);
         }
 
-        $this->tpl_form_vars['PS_ALLOW_ACCENTED_CHARS_URL'] = (int) \Configuration::get('PS_ALLOW_ACCENTED_CHARS_URL');
+        Media::addJsDef(['PS_ALLOW_ACCENTED_CHARS_URL' => (int) Configuration::get('PS_ALLOW_ACCENTED_CHARS_URL')]);
 
         return parent::renderForm();
     }
