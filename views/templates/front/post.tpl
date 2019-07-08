@@ -23,7 +23,7 @@
 {/capture}
 
 <article>
-	<div itemtype="#" itemscope="" id="sdsblogArticle" class="clearfix beesblog-post-list-item">
+	<div id="sdsblogArticle" class="clearfix beesblog-post-list-item">
 		<div id="beesblog-before-pos">
 			{$displayBeesBlogBeforePost}
 		</div>

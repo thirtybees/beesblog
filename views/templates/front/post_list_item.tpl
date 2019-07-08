@@ -19,7 +19,7 @@
 {assign var=imagePath value=Media::getMediaPath(BeesBlog::getPostImagePath($post->id, 'post_list_item'))}
 {assign var=postPath value=BeesBlog::GetBeesBlogLink('beesblog_post', ['blog_rewrite' => $post->link_rewrite])}
 <article>
-    <div itemtype="#" itemscope="" class="clearfix beesblog-post-list-item">
+    <div class="clearfix beesblog-post-list-item">
         <div id="beesblog-post-{$post->id|intval}">
             <h4 class="title_block">
                 <a title="{$post->title|escape:'htmlall':'UTF-8'}"
