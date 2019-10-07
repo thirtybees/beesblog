@@ -161,7 +161,7 @@ class BeesBlogRelatedProducts extends Module
             if ($products) {
                 foreach ($products as &$product) {
                     $product['link'] = $this->context->link->getProductLink($product['id_product']);
-                    $product['image'] = $this->context->link->getImageLink($product['id_product'], $product['id_image'], 'home_default');
+                    $product['image'] = $this->context->link->getImageLink($product['id_product'], $product['id_image'], ImageType::getFormatedName('home'));
                 }
             }
             Cache::store($key, $products);
