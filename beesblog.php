@@ -26,7 +26,6 @@ if (!defined('_TB_VERSION_')) {
 }
 
 require_once __DIR__.'/classes/autoload.php';
-require_once __DIR__.'/widgets/autoload.php';
 
 /**
  * Class BeesBlog
