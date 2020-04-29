@@ -258,6 +258,15 @@ class AdminBeesBlogPostController extends \ModuleAdminController
             ->where('pp.id_bees_blog_post = '.$id)
         ) : [];
 
+        $employees = array();
+        foreach (\Employee::getEmployees() as $employee)
+        {
+            $employees[] = array(
+                'id' => $employee['id_employee'],
+                'name' => sprintf('%s %s', $employee['firstname'], $employee['lastname'])
+            );
+        }
+
         $this->fields_form = [
             'legend' => [
                 'title' => $this->l('Blog Post'),
@@ -278,6 +287,17 @@ class AdminBeesBlogPostController extends \ModuleAdminController
                     'required' => true,
                     'desc'     => $this->l('Enter the title of your blog post'),
                     'lang'     => true,
+                ],
+                [
+                    'type'    => 'select',
+                    'label'   => $this->l('Post author'),
+                    'name'    => 'id_employee',
+                    'options' => [
+                        'query' => $employees,
+                        'id'    => 'id',
+                        'name'  => 'name',
+                    ],
+                    'desc'    => $this->l('Select blog post author'),
                 ],
                 [
                     'type'         => 'textarea',
@@ -656,7 +676,6 @@ class AdminBeesBlogPostController extends \ModuleAdminController
                 }
             }
         }
-        $blogPost->id_employee = $this->context->employee->id;
         $blogPost->id_shop = (int) Context::getContext()->shop->id;
         $this->processImage($_FILES, $blogPost->id);
         $this->processProducts($blogPost->id);
