@@ -64,7 +64,7 @@ class BeesBlogPostModuleFrontController extends \ModuleFrontController
         \Media::addJsDef([
             'sharing_name' => addcslashes($post->title, "'"),
             'sharing_url' => addcslashes(\Tools::getHttpHost(true).$_SERVER['REQUEST_URI'], "'"),
-            'sharing_img' => addcslashes(\Tools::getHttpHost(true).'/modules/beesblog/images/'.(int) $post->id.'.jpg', "'"),
+            'sharing_img' => addcslashes(\Tools::getHttpHost(true).'/img/beesblog/posts/'.(int) $post->id.'.jpg', "'"),
         ]);
 
         $postProperties = [
@@ -94,6 +94,14 @@ class BeesBlogPostModuleFrontController extends \ModuleFrontController
 
         $this->context->smarty->assign($postProperties);
 
+        $hookHeader = $this->context->smarty->getTemplateVars('HOOK_HEADER');
+        $hookHeader .= '<meta property="og:url" content="'.\Tools::getHttpHost(true).$_SERVER['REQUEST_URI'].'" >'.PHP_EOL;
+        $hookHeader .= '<meta property="og:type" content="article" >'.PHP_EOL;
+        $hookHeader .= '<meta property="og:title" content="'.$post->meta_title.' - '.Configuration::get('PS_SHOP_NAME').'" >'.PHP_EOL;
+        $hookHeader .= '<meta property="og:image" content="'.\Tools::getHttpHost(true).'/img/beesblog/posts/'.(int) $post->id.'.jpg'.'" >'.PHP_EOL;
+        $hookHeader .= '<meta property="og:description" content="'.$post->meta_description.'" >'.PHP_EOL;        
+        $this->context->smarty->assign('HOOK_HEADER' , $hookHeader);        
+        
         $this->setTemplate('post.tpl');
     }
 }
