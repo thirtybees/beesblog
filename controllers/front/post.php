@@ -64,7 +64,7 @@ class BeesBlogPostModuleFrontController extends \ModuleFrontController
         \Media::addJsDef([
             'sharing_name' => addcslashes($post->title, "'"),
             'sharing_url' => addcslashes(\Tools::getHttpHost(true).$_SERVER['REQUEST_URI'], "'"),
-            'sharing_img' => addcslashes(\Tools::getHttpHost(true).'/modules/beesblog/images/'.(int) $post->id.'.jpg', "'"),
+            'sharing_img' => addcslashes(\Tools::getHttpHost(true).'/img/beesblog/posts/'.(int) $post->id.'.jpg', "'"),
         ]);
 
         $postProperties = [
