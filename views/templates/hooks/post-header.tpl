@@ -15,7 +15,7 @@
 * @copyright 2021 thirty bees
 * @license   Academic Free License (AFL 3.0)
 *}
-<meta property="og:url" content="{$request}" >
+<meta property="og:url" content="{$bb_og_link}" >
 <meta property="og:type" content="article">
 <meta property="og:title" content="{$bb_og_title}">
 <meta property="og:image" content="{$bb_og_image}">

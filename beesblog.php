@@ -515,8 +515,9 @@ class BeesBlog extends Module
         if (!$rewrite) {
             $rewrite = 'beesblog';
         }
-
-        return Context::getContext()->link->getBaseLink().Context::getContext()->link->getLangLink().Dispatcher::getInstance()->createUrl($rewrite, $idLang, $params, false, '', $idShop);
+        $link = Context::getContext()->link;
+        $dispatcher = Dispatcher::getInstance();
+        return $link->getBaseLink() . $link->getLangLink() . $dispatcher->createUrl($rewrite, $idLang, $params, false, '', $idShop);
     }
 
     /**
@@ -536,6 +537,7 @@ class BeesBlog extends Module
             /** @var BeesBlogPostModuleFrontController $controller */
             $post = $controller->getBeesBlogPost();
             Context::getContext()->smarty->assign([
+                'bb_og_link' => static::getBeesBlogLink('beesblog_post', ['blog_rewrite' => $post->link_rewrite]),
                 'bb_og_title' => $post->meta_title.' - '.Configuration::get('PS_SHOP_NAME'),
                 'bb_og_description' => $post->meta_description,
                 'bb_og_image' => \Tools::getHttpHost(true) . '/img/beesblog/posts/'. (int) $post->id . '.jpg',
