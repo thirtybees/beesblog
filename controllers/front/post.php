@@ -31,10 +31,19 @@ class BeesBlogPostModuleFrontController extends \ModuleFrontController
 {
     public $report = '';
 
-    /** @var int $idPost */
+    /**
+     * @var int $idPost
+     */
     protected $idPost;
 
-    /** @var \BeesBlog $module */
+    /**
+     * @var BeesBlogPost $blogPost;
+     */
+    protected $blogPost;
+
+    /**
+     * @var \BeesBlog $module
+     */
     public $module;
 
     /**
@@ -45,18 +54,15 @@ class BeesBlogPostModuleFrontController extends \ModuleFrontController
     public function initContent()
     {
         parent::initContent();
-        $this->idPost = (int) BeesBlogPost::getIdByRewrite(\Tools::getValue('blog_rewrite'));
 
-        if (empty($this->idPost)) {
+        $post = $this->getBeesBlogPost();
+        if (! $post) {
             return;
         }
 
-        $post = new BeesBlogPost($this->idPost, $this->context->language->id);
-        $category = new BeesBlogCategory($post->id_category, $this->context->language->id);
-        $post->category = $category;
-        $post->employee = new Employee($post->id_employee);
+        // mark post as viewed
+        BeesBlogPost::viewed($post->id);
 
-        BeesBlogPost::viewed($this->idPost);
         if (Configuration::get(BeesBlog::SOCIAL_SHARING)) {
             $this->context->controller->addCSS(_PS_MODULE_DIR_.'beesblog/views/css/socialmedia.css', 'all');
             $this->context->controller->addJS(_PS_MODULE_DIR_.'beesblog/views/js/socialmedia.js');
@@ -95,5 +101,39 @@ class BeesBlogPostModuleFrontController extends \ModuleFrontController
         $this->context->smarty->assign($postProperties);
 
         $this->setTemplate('post.tpl');
+    }
+
+    /**
+     * Returns blog post ID
+     *
+     * @return int
+     */
+    public function getBeesBlogPostId()
+    {
+        if (is_null($this->idPost)) {
+            $this->idPost = (int)BeesBlogPost::getIdByRewrite(\Tools::getValue('blog_rewrite'));
+        }
+        return $this->idPost;
+    }
+
+    /**
+     * Returns associated blog post
+     *
+     * @return BeesBlogPost
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
+     */
+    public function getBeesBlogPost()
+    {
+        if (is_null($this->blogPost)) {
+            $postId = $this->getBeesBlogPostId();
+            if ($postId) {
+                $this->blogPost = new BeesBlogPost($postId, $this->context->language->id);
+                $category = new BeesBlogCategory($this->blogPost->id_category, $this->context->language->id);
+                $this->blogPost->category = $category;
+                $this->blogPost->employee = new Employee($this->blogPost->id_employee);
+            }
+        }
+        return $this->blogPost;
     }
 }
