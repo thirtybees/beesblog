@@ -50,6 +50,7 @@ class BeesBlogPostModuleFrontController extends \ModuleFrontController
      * Initialize content
      *
      * @return void
+     * @throws PrestaShopException
      */
     public function initContent()
     {
@@ -89,7 +90,6 @@ class BeesBlogPostModuleFrontController extends \ModuleFrontController
             'showComments'         => (bool) Configuration::get(\BeesBlog::DISQUS_USERNAME),
             'disqusUsername'       => Configuration::get(BeesBlog::DISQUS_USERNAME),
             'PS_SC_TWITTER'        => Configuration::get('PS_SC_TWITTER'),
-            'PS_SC_GOOGLE'         => Configuration::get('PS_SC_GOOGLE'),
             'PS_SC_FACEBOOK'       => Configuration::get('PS_SC_FACEBOOK'),
             'PS_SC_PINTEREST'      => Configuration::get('PS_SC_PINTEREST'),
         ];
