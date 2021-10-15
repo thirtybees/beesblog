@@ -142,6 +142,10 @@ class BeesBlog extends Module
         $this->createBeesBlogTabs();
         BeesBlogImageType::installBasics();
 
+        if ($createTables) {
+            $this->installFixtures();
+        }
+
         return true;
     }
 
@@ -303,6 +307,11 @@ class BeesBlog extends Module
         }
 
         $this->deleteBlogHooks();
+
+        if ($removeTables) {
+            // delete images when module is fully uninstalled
+            $this->deleteAllImages(_PS_IMG_DIR_.'beesblog/');
+        }
 
         return true;
     }
@@ -960,5 +969,170 @@ class BeesBlog extends Module
     public static function getCategoryImagePath($id, $type = 'category_default')
     {
         return BeesBlogCategory::getImagePath($id, $type);
+    }
+
+    /**
+     * Installs data fixtures
+     *
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
+     */
+    protected function installFixtures()
+    {
+        Shop::addTableAssociation(BeesBlogCategory::TABLE, ['type' => 'shop']);
+        Shop::addTableAssociation(BeesBlogPost::TABLE, ['type' => 'shop']);
+
+        $category = new BeesBlogCategory();
+        $category->active = true;
+        $category->id_parent = 0;
+        $category->position = 1;
+        $this->setLangValues($category, [
+            'title' => 'News',
+            'description' => 'thirty bees news',
+            'link_rewrite' => 'news',
+            'meta_title' => 'thirty bees news',
+            'meta_description' => 'news about thirty bees',
+            'meta_keywords' => '',
+        ]);
+        $category->add();
+
+        $this->installPostFixture('post1', $category->id, [
+            'title' => 'Organic Roasted Coffee',
+            'link_rewrite' => 'organic-coffee',
+            'meta_title' => 'Organic Roasted Coffee',
+            'meta_description' => 'thirty bees organic roasted coffee',
+        ]);
+        $this->installPostFixture('post2', $category->id, [
+            'title' => 'Hand Picked Teas',
+            'link_rewrite' => 'hand-picked-teas',
+            'meta_title' => 'Hand Picked Teas',
+            'meta_description' => 'Hand picked teas from thirty bees',
+        ]);
+        $this->installPostFixture('post3', $category->id, [
+            'title' => 'Organic Gifts',
+            'link_rewrite' => 'organic-gifts',
+            'meta_title' => 'Organic Gifts',
+            'meta_description' => 'Organic gifts from thirty bees',
+        ]);
+    }
+
+    /**
+     * Installs fixture for single post
+     *
+     * @param string $id
+     * @param int $categoryId
+     * @param array $texts
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
+     */
+    protected function installPostFixture($id, $categoryId, $texts)
+    {
+        $post = new BeesBlogPost();
+        $post->id_category = $categoryId;
+        $post->id_employee = Context::getContext()->employee->id;
+        $post->post_type = '0';
+        $post->viewed = 0;
+        $post->published = date('Y-m-d H:i:s');
+        $this->setLangValues($post, array_merge($texts, [
+            'content' => $this->getPostFixtureContent($id . '.html'),
+            'meta_keywords' => '',
+            'lang_active' => true,
+        ]));
+        $post->add();
+        $this->installFixtureImage($id . '.jpg', $post->id);
+    }
+
+    /**
+     * Helper method to set language texts to object model
+     *
+     * @param $obj
+     * @param $values
+     * @throws PrestaShopException
+     */
+    protected function setLangValues($obj, $values)
+    {
+        foreach ($values as $key => $_) {
+            $obj->{$key} = [];
+        }
+        foreach (Language::getLanguages(true, false, true) as $lang) {
+            foreach ($values as $key => $value) {
+                $obj->{$key}[$lang] = $value;
+            }
+        }
+    }
+
+    /**
+     * Installs image for post post fixture
+     *
+     * @param string $imageName
+     * @param int $postId
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
+     */
+    protected function installFixtureImage($imageName, $postId)
+    {
+        $sourceFile = _PS_MODULE_DIR_ . $this->name . '/fixtures/' . $imageName;
+        if (! file_exists($sourceFile)) {
+            throw new PrestaShopException(sprintf($this->l('File with fixture image not found: `%s`'), $sourceFile));
+        }
+        $dir = _PS_IMG_DIR_ . "beesblog/posts/";
+        if (!file_exists($dir)) {
+            if (!mkdir($dir, 0777, true)) {
+                throw new PrestaShopException(sprintf($this->l('Unable to create image directory: `%s`'), $dir));
+            }
+        }
+        $targetFile = $dir . $postId . ".jpg";
+        copy($sourceFile, $targetFile);
+
+        $imageTypes = BeesBlogImageType::getImagesTypes('posts');
+        foreach ($imageTypes as $imageType) {
+            $targetFile = $dir . $postId . '-' . $imageType['name'] . '.jpg';
+            if (file_exists($targetFile)) {
+                @unlink($targetFile);
+            }
+            ImageManager::resize(
+                $sourceFile,
+                $targetFile,
+                (int) $imageType['width'],
+                (int) $imageType['height'],
+                'jpg',
+                true
+            );
+        }
+    }
+
+    /**
+     * Returns html content for post fixture
+     *
+     * @param string $file
+     * @return string
+     */
+    protected function getPostFixtureContent($file)
+    {
+        return file_get_contents(_PS_MODULE_DIR_ . $this->name . '/fixtures/' . $file);
+    }
+
+    /**
+     * Helper method to delete all images in directory $dir
+     *
+     * @param string $dir
+     */
+    protected function deleteAllImages($dir)
+    {
+        if (is_dir($dir)) {
+            foreach (scandir($dir) as $file) {
+                if (in_array($file, ['.', '..'])) {
+                    continue;
+                }
+                $path = $dir . $file;
+                if (is_dir($path)) {
+                    $this->deleteAllImages($path . '/');
+                } else {
+                    if (preg_match('/.*\.jpg$/', $file)) {
+                        unlink($path);
+                    }
+                }
+            }
+        }
     }
 }
