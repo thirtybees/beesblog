@@ -441,6 +441,26 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
         return false;
     }
 
+        /**
+     * Initialize page header toolbar with a new add button
+     *
+     * @return void
+     *
+     * @since 1.0.0
+     */
+    public function initPageHeaderToolbar()
+    {
+        if (empty($this->display)) {
+            $this->page_header_toolbar_btn['new_image_type'] = [
+                'href' => static::$currentIndex.'&add'.BeesBlogCategory::TABLE.'&token='.$this->token,
+                'desc' => $this->l('Add new category', null, null, false),
+                'icon' => 'process-icon-new',
+            ];
+        }
+
+        parent::initPageHeaderToolbar();
+    }
+  
     /**
      * Process update
      *
