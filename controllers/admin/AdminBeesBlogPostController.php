@@ -610,22 +610,14 @@ class AdminBeesBlogPostController extends \ModuleAdminController
         $blogPost->id_employee = $this->context->employee->id;
         $blogPost->viewed = 0;
         $blogPost->id_shop = (int) Context::getContext()->shop->id;
+        $blogPost->lang_active = [];
+
         foreach (Language::getLanguages(false, false, true) as $idLang) {
             if (!$blogPost->link_rewrite[$idLang]) {
                 $blogPost->link_rewrite[$idLang] = Tools::link_rewrite($blogPost->title[$idLang]);
             }
-            // Manage `lang_active`
-            if (!is_array($blogPost->lang_active)) {
-                $blogPost->lang_active = [];
-            }
-            if (!isset($blogPost->lang_active[$idLang])) {
-                $blogPost->lang_active[$idLang] = false;
-            } else {
-                $blogPost->lang_active[$idLang] = ($blogPost->lang_active[$idLang] === 'on' ? true : false);
-                if (!Tools::isSubmit('lang_active_'.$idLang)) {
-                    $blogPost->lang_active[$idLang] = false;
-                }
-            }
+
+            $blogPost->lang_active[$idLang] = Tools::isSubmit('lang_active_'.$idLang);
         }
 
         if ($blogPost->add()) {
