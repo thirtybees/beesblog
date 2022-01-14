@@ -654,7 +654,9 @@ class AdminBeesBlogPostController extends \ModuleAdminController
         }
 
         $blogPost = new BeesBlogPost((int) Tools::getValue(BeesBlogPost::PRIMARY));
+        $blogPost->lang_active = [];
         $this->copyFromPost($blogPost, $this->table);
+
 
         // TODO: check if link_rewrite is unique
 
@@ -663,19 +665,18 @@ class AdminBeesBlogPostController extends \ModuleAdminController
         }
 
         // Manage `lang_active`
+        if (!is_array($blogPost->lang_active)) {
+            $blogPost->lang_active = [];
+        }
+
         foreach (Language::getLanguages(false, false, true) as $idLang) {
-            if (!is_array($blogPost->lang_active)) {
-                $blogPost->lang_active = [];
-            }
             if (!isset($blogPost->lang_active[$idLang])) {
                 $blogPost->lang_active[$idLang] = false;
-            } else {
-                $blogPost->lang_active[$idLang] = ($blogPost->lang_active[$idLang] === 'on' ? true : false);
-                if (!Tools::isSubmit('lang_active_'.$idLang)) {
-                    $blogPost->lang_active[$idLang] = false;
-                }
             }
+
+            $blogPost->lang_active[$idLang] = ($blogPost->lang_active[$idLang] === 'on');
         }
+
         $blogPost->id_shop = (int) Context::getContext()->shop->id;
         $this->processImage($_FILES, $blogPost->id);
         $this->processProducts($blogPost->id);
