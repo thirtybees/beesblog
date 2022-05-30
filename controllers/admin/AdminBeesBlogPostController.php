@@ -575,6 +575,14 @@ class AdminBeesBlogPostController extends \ModuleAdminController
         if (! Tools::getValue('published')) {
             $_POST['published'] = date('Y-m-d H:i:s');
         }
+        foreach (Language::getLanguages(false, false, true) as $idLang) {
+            $key = 'lang_active_' . (int)$idLang;
+            if (!isset($_POST[$key])) {
+                $_POST[$key] = 0;
+            } else {
+                $_POST[$key] = $_POST[$key] === 'on' ? 1 : 0;
+            }
+        }
         $this->validateRules();
         if ($this->errors) {
             $this->display = 'add';
@@ -628,15 +636,6 @@ class AdminBeesBlogPostController extends \ModuleAdminController
         $blogPost->id_employee = $this->context->employee->id;
         $blogPost->viewed = 0;
         $blogPost->id_shop = (int) Context::getContext()->shop->id;
-        $blogPost->lang_active = [];
-
-        foreach (Language::getLanguages(false, false, true) as $idLang) {
-            if (!$blogPost->link_rewrite[$idLang]) {
-                $blogPost->link_rewrite[$idLang] = Tools::link_rewrite($blogPost->title[$idLang]);
-            }
-
-            $blogPost->lang_active[$idLang] = Tools::isSubmit('lang_active_'.$idLang);
-        }
 
         if ($blogPost->add()) {
             $this->processImage($_FILES, $blogPost->id);
@@ -673,6 +672,14 @@ class AdminBeesBlogPostController extends \ModuleAdminController
         if (! Tools::getValue('published')) {
             $_POST['published'] = date('Y-m-d H:i:s');
         }
+        foreach (Language::getLanguages(false, false, true) as $idLang) {
+            $key = 'lang_active_' . (int)$idLang;
+            if (!isset($_POST[$key])) {
+                $_POST[$key] = 0;
+            } else {
+                $_POST[$key] = $_POST[$key] === 'on' ? 1 : 0;
+            }
+        }
         $this->validateRules();
         if ($this->errors) {
             $this->display = 'edit';
@@ -683,27 +690,16 @@ class AdminBeesBlogPostController extends \ModuleAdminController
         $blogPost->lang_active = [];
         $this->copyFromPost($blogPost, $this->table);
 
-
-        // TODO: check if link_rewrite is unique
-        // Manage `lang_active`
-        if (!is_array($blogPost->lang_active)) {
-            $blogPost->lang_active = [];
-        }
-
-        foreach (Language::getLanguages(false, false, true) as $idLang) {
-            if (!isset($blogPost->lang_active[$idLang])) {
-                $blogPost->lang_active[$idLang] = false;
-            }
-
-            $blogPost->lang_active[$idLang] = ($blogPost->lang_active[$idLang] === 'on');
-        }
-
         $blogPost->id_shop = (int) Context::getContext()->shop->id;
         $this->processImage($_FILES, $blogPost->id);
         $this->processProducts($blogPost->id);
         if ($blogPost->update()) {
             $this->confirmations[] = $this->l('Successfully updated post');
-
+            if (Tools::isSubmit('submitAdd'.$this->table.'AndStay')) {
+                $this->redirect_after = static::$currentIndex.'&'.$this->identifier.'='.$blogPost->id.'&update'.$this->table.'&token='.$this->token;
+            } else {
+                $this->redirect_after = static::$currentIndex.'&token='.$this->token;
+            }
             return true;
         }
 
