@@ -741,6 +741,7 @@ class AdminBeesBlogPostController extends \ModuleAdminController
      *
      * @return bool
      *
+     * @throws PrestaShopException
      * @since 1.0.0
      */
     public function processDelete()
@@ -749,13 +750,10 @@ class AdminBeesBlogPostController extends \ModuleAdminController
 
         if (!$blogPost->delete()) {
             $this->errors[] = $this->l('An error occurred while deleting the object.').' <strong>'.$this->table.' ('.\Db::getInstance()->getMsgError().')</strong>';
-
             return false;
         } else {
             $this->deleteImage($blogPost->id);
-
-            \Tools::redirectAdmin($this->context->link->getAdminLink('AdminBeesBlogCategory'));
-
+            Tools::redirectAdmin($this->context->link->getAdminLink('AdminBeesBlogPost'));
             return true;
         }
     }
