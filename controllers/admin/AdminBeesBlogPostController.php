@@ -240,7 +240,7 @@ class AdminBeesBlogPostController extends \ModuleAdminController
      */
     public function renderForm()
     {
-        if (!($obj = $this->loadObject(true)) || !empty($this->errors)) {
+        if (! $this->loadObject(true)) {
             return '';
         }
 
@@ -552,11 +552,23 @@ class AdminBeesBlogPostController extends \ModuleAdminController
      *
      * @return bool
      *
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      * @since 1.0.0
      */
     public function processAdd()
     {
         if (Tools::isSubmit(BeesBlogPost::PRIMARY)) {
+            return false;
+        }
+
+        // validate data
+        if (! Tools::getValue('published')) {
+            $_POST['published'] = date('Y-m-d H:i:s');
+        }
+        $this->validateRules();
+        if ($this->errors) {
+            $this->display = 'add';
             return false;
         }
 
@@ -604,9 +616,6 @@ class AdminBeesBlogPostController extends \ModuleAdminController
             }
         }
 
-        if (!$blogPost->published) {
-            $blogPost->published = date('Y-m-d H:i:s');
-        }
         $blogPost->id_employee = $this->context->employee->id;
         $blogPost->viewed = 0;
         $blogPost->id_shop = (int) Context::getContext()->shop->id;
@@ -637,11 +646,23 @@ class AdminBeesBlogPostController extends \ModuleAdminController
      *
      * @return bool
      *
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      * @since 1.0.0
      */
     public function processUpdate()
     {
         if (!Tools::isSubmit(BeesBlogPost::PRIMARY)) {
+            return false;
+        }
+
+        // validate data
+        if (! Tools::getValue('published')) {
+            $_POST['published'] = date('Y-m-d H:i:s');
+        }
+        $this->validateRules();
+        if ($this->errors) {
+            $this->display = 'edit';
             return false;
         }
 
@@ -651,11 +672,6 @@ class AdminBeesBlogPostController extends \ModuleAdminController
 
 
         // TODO: check if link_rewrite is unique
-
-        if (!$blogPost->published) {
-            $blogPost->published = date('Y-m-d H:i:s');
-        }
-
         // Manage `lang_active`
         if (!is_array($blogPost->lang_active)) {
             $blogPost->lang_active = [];
