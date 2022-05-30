@@ -447,6 +447,15 @@ class AdminBeesBlogPostController extends \ModuleAdminController
             'submit' => [
                 'title' => $this->l('Save'),
             ],
+            'buttons' => [
+                'save-and-stay' => [
+                    'title' => $this->l('Save and Stay'),
+                    'name' => 'submitAdd'.$this->table.'AndStay',
+                    'type' => 'submit',
+                    'class' => 'btn btn-default pull-right',
+                    'icon' => 'process-icon-save',
+                ],
+            ],
         ];
 
         foreach (\Language::getLanguages(true) as $language) {
@@ -633,7 +642,11 @@ class AdminBeesBlogPostController extends \ModuleAdminController
             $this->processImage($_FILES, $blogPost->id);
             $this->processProducts($blogPost->id);
             $this->confirmations[] = $this->l('Successfully added post');
-
+            if (Tools::isSubmit('submitAdd'.$this->table.'AndStay')) {
+                $this->redirect_after = static::$currentIndex.'&'.$this->identifier.'='.$blogPost->id.'&update'.$this->table.'&token='.$this->token;
+            } else {
+                $this->redirect_after = static::$currentIndex.'&token='.$this->token;
+            }
             return true;
         }
         $this->errors[] = $this->l('Unable to add new post');

@@ -102,6 +102,9 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
 
     /**
      * @return string
+     *
+     * @throws PrestaShopException
+     * @throws SmartyException
      */
     public function renderForm()
     {
@@ -212,10 +215,18 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
                     ],
                 ],
             ],
-        ];
-
-        $this->fields_form['submit'] = [
-            'title' => $this->l('Save'),
+            'submit' => [
+                'title' => $this->l('Save'),
+            ],
+            'buttons' => [
+                'save-and-stay' => [
+                    'title' => $this->l('Save and Stay'),
+                    'name' => 'submitAdd'.$this->table.'AndStay',
+                    'type' => 'submit',
+                    'class' => 'btn btn-default pull-right',
+                    'icon' => 'process-icon-save',
+                ],
+            ],
         ];
 
         Media::addJsDef(['PS_ALLOW_ACCENTED_CHARS_URL' => (int) Configuration::get('PS_ALLOW_ACCENTED_CHARS_URL')]);
@@ -363,11 +374,19 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
      *
      * @return bool
      *
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      * @since 1.0.0
      */
     public function processAdd()
     {
         if (Tools::isSubmit(BeesBlogCategory::PRIMARY)) {
+            return false;
+        }
+
+        $this->validateRules();
+        if ($this->errors) {
+            $this->display = 'add';
             return false;
         }
 
@@ -433,6 +452,12 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
             $this->processImage($_FILES, $blogCategory->id);
             $this->confirmations[] = $this->l('Successfully added a new category');
 
+            if (Tools::isSubmit('submitAdd'.$this->table.'AndStay')) {
+                $this->redirect_after = static::$currentIndex.'&'.$this->identifier.'='.$blogCategory->id.'&update'.$this->table.'&token='.$this->token;
+            } else {
+                $this->redirect_after = static::$currentIndex.'&token='.$this->token;
+            }
+
             return true;
         }
 
@@ -466,11 +491,19 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
      *
      * @return bool
      *
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      * @since 1.0.0
      */
     public function processUpdate()
     {
         if (!Tools::isSubmit(BeesBlogCategory::PRIMARY)) {
+            return false;
+        }
+
+        $this->validateRules();
+        if ($this->errors) {
+            $this->display = 'edit';
             return false;
         }
 

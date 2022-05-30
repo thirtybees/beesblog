@@ -166,6 +166,15 @@ class AdminBeesBlogImagesController extends ModuleAdminController
             'submit' => [
                 'title' => $this->l('Save'),
             ],
+            'buttons' => [
+                'save-and-stay' => [
+                    'title' => $this->l('Save and Stay'),
+                    'name' => 'submitAdd'.$this->table.'AndStay',
+                    'type' => 'submit',
+                    'class' => 'btn btn-default pull-right',
+                    'icon' => 'process-icon-save',
+                ],
+            ],
         ];
 
         parent::__construct();
