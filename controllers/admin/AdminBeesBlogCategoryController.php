@@ -525,6 +525,11 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
         if ($blogCategory->update()) {
             $this->confirmations[] = $this->l('Successfully updated the category');
 
+            if (Tools::isSubmit('submitAdd'.$this->table.'AndStay')) {
+                $this->redirect_after = static::$currentIndex.'&'.$this->identifier.'='.$blogCategory->id.'&update'.$this->table.'&token='.$this->token;
+            } else {
+                $this->redirect_after = static::$currentIndex.'&token='.$this->token;
+            }
             return true;
         }
         $this->errors[] = $this->l('Unable to update category');
