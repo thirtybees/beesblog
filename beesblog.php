@@ -476,34 +476,54 @@ class BeesBlog extends Module
         $links = [];
 
         // Blog posts
-        $results = (new \Collection('BeesBlogModule\\BeesBlogPost'))->getResults();
-        if (!empty($results)) {
+        $results = (new PrestaShopCollection('BeesBlogModule\\BeesBlogPost'))
+            ->where('active', '=', 1)
+            ->getResults();
+        if ($results) {
             foreach ($results as $result) {
                 $link = [];
                 $link['link'] = BeesBlog::getBeesBlogLink('beesblog_post', ['blog_rewrite' => $result->link_rewrite[1]]);
                 $link['lastmod'] = $result->date_upd;
                 $link['type'] = 'module';
-                $link['image'] = ['link' => $this->context->link->getMediaLink(Media::getMediaPath(BeesBlogPost::getImagePath($result->id, 'post_list_item')))];
-
+                $this->addImageLink($link, BeesBlogPost::getImagePath($result->id, 'post_list_item'));
                 $links[] = $link;
             }
         }
 
         // Categories
-        $results = (new \Collection('BeesBlogModule\\BeesBlogCategory'))->getResults();
-        if (!empty($results)) {
+        $results = (new PrestaShopCollection('BeesBlogModule\\BeesBlogCategory'))
+            ->where('active', '=', 1)
+            ->getResults();
+
+        if ($results) {
             foreach ($results as $result) {
                 $link = [];
                 $link['link'] = BeesBlog::getBeesBlogLink('beesblog_category', ['cat_rewrite' => $result->link_rewrite[1]]);
                 $link['lastmod'] = $result->date_upd;
                 $link['type'] = 'module';
-                $link['image'] = ['link' => $this->context->link->getMediaLink(Media::getMediaPath(BeesBlogCategory::getImagePath($result->id)))];
-
+                $this->addImageLink($link, BeesBlogCategory::getImagePath($result->id));
                 $links[] = $link;
             }
         }
 
         return $links;
+    }
+
+    /**
+     * Add $image to sitemapLink record, if image exists
+     *
+     * @param array $link
+     * @param string $imagePath
+     * @return void
+     * @throws PrestaShopException
+     */
+    protected function addImageLink(&$link, $imagePath)
+    {
+        if ($imagePath && @file_exists($imagePath)) {
+            $link['image'] = [
+                'link' => $this->context->link->getMediaLink(Media::getMediaPath($imagePath))
+            ];
+        }
     }
 
     /**
