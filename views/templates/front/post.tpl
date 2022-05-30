@@ -28,7 +28,7 @@
 			{$displayBeesBlogBeforePost}
 		</div>
 		<div class="block">
-			<h4 class="title_block">{$post->title|escape:'htmlall':'UTF-8'}</h4>
+			<h1 class="title_block">{$post->title|escape:'htmlall':'UTF-8'}</h1>
 			{assign var=imagePath value=Media::getMediaPath(BeesBlog::getPostImagePath($post->id))}
 			{if ($imagePath)}
 				<img class="img-responsive" alt="{$post->title|escape:'htmlall':'UTF-8'}" src="{$imagePath|escape:'htmlall':'UTF-8'}">
