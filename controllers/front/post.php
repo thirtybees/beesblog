@@ -58,6 +58,7 @@ class BeesBlogPostModuleFrontController extends \ModuleFrontController
 
         $post = $this->getBeesBlogPost();
         if (! $post) {
+            Tools::redirect(BeesBlog::getBeesBlogLink());
             return;
         }
 

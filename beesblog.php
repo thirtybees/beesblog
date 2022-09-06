@@ -565,14 +565,17 @@ class BeesBlog extends Module
         if ($controller instanceof BeesBlogPostModuleFrontController) {
             /** @var BeesBlogPostModuleFrontController $controller */
             $post = $controller->getBeesBlogPost();
-            Context::getContext()->smarty->assign([
-                'bb_og_link' => static::getBeesBlogLink('beesblog_post', ['blog_rewrite' => $post->link_rewrite]),
-                'bb_og_title' => $post->meta_title.' - '.Configuration::get('PS_SHOP_NAME'),
-                'bb_og_description' => $post->meta_description,
-                'bb_og_image' => \Tools::getHttpHost(true) . '/img/beesblog/posts/'. (int) $post->id . '.jpg',
-            ]);
-            return $this->display(__FILE__, 'views/templates/hooks/post-header.tpl');
+            if ($post) {
+                Context::getContext()->smarty->assign([
+                    'bb_og_link' => static::getBeesBlogLink('beesblog_post', ['blog_rewrite' => $post->link_rewrite]),
+                    'bb_og_title' => $post->meta_title . ' - ' . Configuration::get('PS_SHOP_NAME'),
+                    'bb_og_description' => $post->meta_description,
+                    'bb_og_image' => \Tools::getHttpHost(true) . '/img/beesblog/posts/' . (int)$post->id . '.jpg',
+                ]);
+                return $this->display(__FILE__, 'views/templates/hooks/post-header.tpl');
+            }
         }
+        return null;
     }
 
     /**
