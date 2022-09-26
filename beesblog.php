@@ -474,6 +474,7 @@ class BeesBlog extends Module
     public function hookGSitemapAppendUrls()
     {
         $links = [];
+        $langId = (int)Context::getContext()->language->id;
 
         // Blog posts
         $results = (new PrestaShopCollection('BeesBlogModule\\BeesBlogPost'))
@@ -482,7 +483,7 @@ class BeesBlog extends Module
         if ($results) {
             foreach ($results as $result) {
                 $link = [];
-                $link['link'] = BeesBlog::getBeesBlogLink('beesblog_post', ['blog_rewrite' => $result->link_rewrite[1]]);
+                $link['link'] = BeesBlog::getBeesBlogLink('beesblog_post', ['blog_rewrite' => $result->link_rewrite[$langId]]);
                 $link['lastmod'] = $result->date_upd;
                 $link['type'] = 'module';
                 $this->addImageLink($link, BeesBlogPost::getImagePath($result->id, 'post_list_item'));
@@ -498,7 +499,7 @@ class BeesBlog extends Module
         if ($results) {
             foreach ($results as $result) {
                 $link = [];
-                $link['link'] = BeesBlog::getBeesBlogLink('beesblog_category', ['cat_rewrite' => $result->link_rewrite[1]]);
+                $link['link'] = BeesBlog::getBeesBlogLink('beesblog_category', ['cat_rewrite' => $result->link_rewrite[$langId]]);
                 $link['lastmod'] = $result->date_upd;
                 $link['type'] = 'module';
                 $this->addImageLink($link, BeesBlogCategory::getImagePath($result->id));
