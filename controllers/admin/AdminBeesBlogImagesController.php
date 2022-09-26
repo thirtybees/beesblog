@@ -190,7 +190,7 @@ class AdminBeesBlogImagesController extends ModuleAdminController
     public function postProcess()
     {
         if (Tools::isSubmit('submitRegenerate'.$this->table)) {
-            if ($this->tabAccess['edit'] === '1') {
+            if ($this->tabAccess['edit']) {
                 if ($this->regenerateThumbnails(Tools::getValue('type'), Tools::getValue('erase'))) {
                     Tools::redirectAdmin(static::$currentIndex.'&conf=9'.'&token='.$this->token);
                 }
