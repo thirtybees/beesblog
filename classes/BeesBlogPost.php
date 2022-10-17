@@ -294,6 +294,7 @@ class BeesBlogPost extends \ObjectModel
         $sql->where('sbpl.`id_lang` = '.(int) $idLang);
         $sql->where('sbps.`id_shop` = '.(int) $idShop);
         $sql->where('sbp.`active` = '.(int) $active);
+        $sql->where('sbpl.`lang_active`');
         $sql->where('sbpl.`link_rewrite` = \''.pSQL($rewrite).'\'');
 
         return \Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql);
