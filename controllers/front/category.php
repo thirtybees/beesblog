@@ -29,14 +29,15 @@ if (!defined('_TB_VERSION_')) {
  */
 class BeesBlogCategoryModuleFrontController extends ModuleFrontController
 {
-    /** @var BeesBlogCategory $beesblogCategory */
-    public $beesblogCategory;
 
-    /** @var int $idCategory */
-    public $idCategory;
+    /**
+     * @var BeesBlog
+     */
+    public $module;
 
     /**
      * Initialize content
+     * @throws PrestaShopException
      */
     public function initContent()
     {
@@ -46,18 +47,12 @@ class BeesBlogCategoryModuleFrontController extends ModuleFrontController
         $postsPerPage = Configuration::get(\BeesBlog::POSTS_PER_PAGE);
         $limit = $postsPerPage;
 
-        $this->idCategory = BeesBlogCategory::getIdByRewrite(\Tools::getValue('cat_rewrite'));
-        if ($this->idCategory) {
-            $category = new BeesBlogCategory($this->idCategory, $this->context->language->id);
-        } else {
-            // Make a fake category if the category ID has not been given
-            $category = new BeesBlogCategory();
-            $category->active = true;
-            $category->title = Configuration::get(BeesBlog::HOME_TITLE);
-            $category->meta_title = Configuration::get(BeesBlog::HOME_TITLE);
-            $category->description = Configuration::get(BeesBlog::HOME_DESCRIPTION);
-            $category->meta_description = Configuration::get(BeesBlog::HOME_DESCRIPTION);
+        $rewrite = trim(Tools::getValue('cat_rewrite'));
+        $categoryId = BeesBlogCategory::getIdByRewrite($rewrite);
+        if ($rewrite && !$categoryId) {
+            Tools::redirect(BeesBlog::getBeesBlogLink());
         }
+        $category = $this->loadCategory($categoryId);
 
         $page = (int) Tools::getValue('page');
         if ($page <= 0) {
@@ -110,5 +105,30 @@ class BeesBlogCategoryModuleFrontController extends ModuleFrontController
         $templateName = 'category.tpl';
 
         $this->setTemplate($templateName);
+    }
+
+    /**
+     * @param int $categoryId
+     * @return BeesBlogCategory
+     * @throws PrestaShopException
+     */
+    protected function loadCategory($categoryId)
+    {
+        $categoryId = (int)$categoryId;
+        if ($categoryId) {
+            $category = new BeesBlogCategory($categoryId, $this->context->language->id);
+            if (Validate::isLoadedObject($category) && $category->active) {
+                return $category;
+            }
+        }
+
+        // Make a fake category if the category ID has not been given
+        $category = new BeesBlogCategory();
+        $category->active = true;
+        $category->title = Configuration::get(BeesBlog::HOME_TITLE);
+        $category->meta_title = Configuration::get(BeesBlog::HOME_TITLE);
+        $category->description = Configuration::get(BeesBlog::HOME_DESCRIPTION);
+        $category->meta_description = Configuration::get(BeesBlog::HOME_DESCRIPTION);
+        return $category;
     }
 }
