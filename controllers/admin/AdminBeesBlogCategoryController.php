@@ -30,6 +30,9 @@ use BeesBlogModule\BeesBlogPost;
  */
 class AdminBeesBlogCategoryController extends \ModuleAdminController
 {
+    /**
+     * @var BeesBlog
+     */
     public $module;
 
     /**
@@ -471,6 +474,7 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
      *
      * @return void
      *
+     * @throws PrestaShopException
      * @since 1.0.0
      */
     public function initPageHeaderToolbar()
@@ -480,6 +484,16 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
                 'href' => static::$currentIndex.'&add'.BeesBlogCategory::TABLE.'&token='.$this->token,
                 'desc' => $this->l('Add new category', null, null, false),
                 'icon' => 'process-icon-new',
+            ];
+        }
+
+        if ($previewUrl = $this->getPreviewUrl()) {
+            $this->page_header_toolbar_btn['preview'] = [
+                'short'  => $this->l('Preview', null, null, false),
+                'href'   => $previewUrl,
+                'desc'   => $this->l('Preview', null, null, false),
+                'target' => true,
+                'class'  => 'previewUrl',
             ];
         }
 
@@ -591,5 +605,21 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
         array_push($ResultTab, $value);
 
       return $ResultTab;
+    }
+
+    /**
+     * @return string | null
+     * @throws PrestaShopException
+     */
+    protected function getPreviewUrl()
+    {
+        $id = (int)Tools::getValue(BeesBlogCategory::PRIMARY);
+        if ($id) {
+            $category = new BeesBlogCategory($id, $this->context->language->id);
+            if (Validate::isLoadedObject($category)) {
+                return $this->module->getBeesBlogLink('beesblog_category', ['cat_rewrite' => $category->link_rewrite]);
+            }
+        }
+        return null;
     }
 }

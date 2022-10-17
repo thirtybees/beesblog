@@ -32,7 +32,10 @@ use BeesBlogModule\BeesBlogPost;
  */
 class AdminBeesBlogPostController extends \ModuleAdminController
 {
-    protected $blogPost = null;
+    /**
+     * @var BeesBlog
+     */
+    public $module;
 
     /**
      * AdminBeesBlogPostController constructor.
@@ -730,6 +733,7 @@ class AdminBeesBlogPostController extends \ModuleAdminController
      *
      * @return void
      *
+     * @throws PrestaShopException
      * @since 1.0.0
      */
     public function initPageHeaderToolbar()
@@ -739,6 +743,16 @@ class AdminBeesBlogPostController extends \ModuleAdminController
                 'href' => static::$currentIndex.'&add'.BeesBlogPost::TABLE.'&token='.$this->token,
                 'desc' => $this->l('Add new post', null, null, false),
                 'icon' => 'process-icon-new',
+            ];
+        }
+
+        if ($previewUrl = $this->getPreviewUrl()) {
+            $this->page_header_toolbar_btn['preview'] = [
+                'short'  => $this->l('Preview', null, null, false),
+                'href'   => $previewUrl,
+                'desc'   => $this->l('Preview', null, null, false),
+                'target' => true,
+                'class'  => 'previewUrl',
             ];
         }
 
@@ -807,5 +821,21 @@ class AdminBeesBlogPostController extends \ModuleAdminController
             $products = Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($sql);
         }
         die(json_encode($products));
+    }
+
+    /**
+     * @return string | null
+     * @throws PrestaShopException
+     */
+    protected function getPreviewUrl()
+    {
+        $id = (int)Tools::getValue(BeesBlogPost::PRIMARY);
+        if ($id) {
+            $post = new BeesBlogPost($id, $this->context->language->id);
+            if (Validate::isLoadedObject($post)) {
+                return $this->module->getBeesBlogLink('beesblog_post', ['blog_rewrite' => $post->link_rewrite]);
+            }
+        }
+        return null;
     }
 }
