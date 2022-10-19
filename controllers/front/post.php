@@ -131,9 +131,8 @@ class BeesBlogPostModuleFrontController extends \ModuleFrontController
             if ($postId) {
                 $blogPost = new BeesBlogPost($postId, $this->context->language->id);
                 if (Validate::isLoadedObject($blogPost) && $blogPost->active && $blogPost->lang_active) {
-                    $category = new BeesBlogCategory($this->blogPost->id_category, $this->context->language->id);
                     $this->blogPost = $blogPost;
-                    $this->blogPost->category = $category;
+                    $this->blogPost->category = new BeesBlogCategory($this->blogPost->id_category, $this->context->language->id);
                     $this->blogPost->employee = new Employee($this->blogPost->id_employee);
                 }
             }
