@@ -19,6 +19,15 @@
 
 namespace BeesBlogModule;
 
+use PrestaShopCollection as Collection;
+use Context;
+use Db;
+use DbQuery;
+use ObjectModel;
+use PrestaShopDatabaseException;
+use PrestaShopException;
+use Tools;
+
 if (!defined('_TB_VERSION_')) {
     exit;
 }
@@ -26,15 +35,17 @@ if (!defined('_TB_VERSION_')) {
 /**
  * Class BeesBlogPost
  */
-class BeesBlogPost extends \ObjectModel
+class BeesBlogPost extends ObjectModel
 {
-    // @codingStandardsIgnoreStart
     const PRIMARY    = 'id_bees_blog_post';
     const TABLE      = 'bees_blog_post';
     const LANG_TABLE = 'bees_blog_post_lang';
     const SHOP_TABLE = 'bees_blog_post_shop';
     const IMAGE_TYPE = 'beesblog_post';
 
+    /**
+     * @var array Contains object definition
+     */
     public static $definition = [
         'table'          => self::TABLE,
         'primary'        => self::PRIMARY,
@@ -61,45 +72,101 @@ class BeesBlogPost extends \ObjectModel
             'lang_active'       => ['type' => self::TYPE_BOOL,   'lang' => true, 'validate' => 'isBool', 'db_type' => 'TINYINT(1) UNSIGNED'],
         ],
     ];
-    /** @var bool $active */
+
+    /**
+     * @var bool $active
+     */
     public $active = true;
-    /** @var int $id_employee */
+
+    /**
+     * @var int $id_employee
+     */
     public $id_employee;
-    /** @var int $id_category */
+
+    /**
+     * @var int $id_category
+     */
     public $id_category;
-    /** @var int $position */
+
+    /**
+     * @var int $position
+     */
     public $position = 0;
-    /** @var string $date_add */
+
+    /**
+     * @var string $date_add
+     */
     public $date_add;
-    /** @var string $date_upd */
+
+    /**
+     * @var string $date_upd
+     */
     public $date_upd;
-    /** @var string $published */
+
+    /**
+     * @var string $published
+     */
     public $published;
-    /** @var int $viewed */
+
+    /**
+     * @var int $viewed
+     */
     public $viewed;
-    /** @var bool $comments_enabled */
+
+    /**
+     * @var bool $comments_enabled
+     */
     public $comments_enabled = true;
-    /** @var int $post_type */
+
+    /**
+     * @var int $post_type
+     */
     public $post_type;
-    /** @var string $title */
+
+    /**
+     * @var string|string[] $title
+     */
     public $title;
-    /** @var string $image */
+
+    /**
+     * @var string $image
+     */
     public $image;
-    /** @var string $content */
+
+    /**
+     * @var string|string[] $content
+     */
     public $content;
-    /** @var string $link_rewrite */
+
+    /**
+     * @var string|string[] $link_rewrite
+     */
     public $link_rewrite;
-    /** @var string $meta_title */
+
+    /**
+     * @var string|string[] $meta_title
+     */
     public $meta_title;
-    /** @var string $meta_description */
+
+    /**
+     * @var string|string[] $meta_description
+     */
     public $meta_description;
-    /** @var string $meta_keywords */
+
+    /**
+     * @var string|string[] $meta_keywords
+     */
     public $meta_keywords;
-    /** @var array $lang_active */
+
+    /**
+     * @var bool|bool[] $lang_active
+     */
     public $lang_active;
-    /** @var array $imageTypes Default image types */
+
+    /**
+     * @var array $imageTypes Default image types
+     */
     public static $imageTypes = ['post_default', 'post_list_item'];
-    // @codingStandardsIgnoreEnd
 
     /**
      * BeesBlogPost constructor.
@@ -107,6 +174,9 @@ class BeesBlogPost extends \ObjectModel
      * @param int|null $id
      * @param int|null $idLang
      * @param int|null $idShop
+     *
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      */
     public function __construct($id = null, $idLang = null, $idShop = null)
     {
@@ -119,17 +189,18 @@ class BeesBlogPost extends \ObjectModel
      * Get posts
      *
      * @param int|null $idLang
-     * @param int      $page
-     * @param int      $limit
-     * @param bool     $count
-     * @param bool     $raw
-     * @param array    $propertyFilter
+     * @param int $page
+     * @param int $limit
+     * @param bool $count
+     * @param bool $raw
+     * @param array $propertyFilter
      *
      * @return array|int
+     * @throws PrestaShopException
      */
     public static function getPosts($idLang = null, $page = 0, $limit = 0, $count = false, $raw = false, $propertyFilter = [])
     {
-        $postCollection = new \Collection('BeesBlogModule\\BeesBlogPost', $idLang);
+        $postCollection = new Collection('BeesBlogModule\\BeesBlogPost', $idLang);
         $postCollection->setPageSize($limit);
         $postCollection->setPageNumber($page);
         $postCollection->orderBy('published', 'desc');
@@ -166,17 +237,18 @@ class BeesBlogPost extends \ObjectModel
      * Get posts by popularity
      *
      * @param int|null $idLang
-     * @param int      $page
-     * @param int      $limit
-     * @param bool     $count
-     * @param bool     $raw
-     * @param array    $propertyFilter
+     * @param int $page
+     * @param int $limit
+     * @param bool $count
+     * @param bool $raw
+     * @param array $propertyFilter
      *
      * @return array|int
+     * @throws PrestaShopException
      */
     public static function getPopularPosts($idLang = null, $page = 0, $limit = 0, $count = false, $raw = false, $propertyFilter = [])
     {
-        $postCollection = new \Collection('BeesBlogModule\\BeesBlogPost', $idLang);
+        $postCollection = new Collection('BeesBlogModule\\BeesBlogPost', $idLang);
         $postCollection->setPageSize($limit);
         $postCollection->setPageNumber($page);
         $postCollection->orderBy('viewed', 'desc');
@@ -214,26 +286,30 @@ class BeesBlogPost extends \ObjectModel
      * @param int $idBeesBlogPost BeesBlogPost ID
      *
      * @return bool Whether view count has been successfully incremented
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      */
     public static function viewed($idBeesBlogPost)
     {
         $sql = 'UPDATE '._DB_PREFIX_.'bees_blog_post as p SET p.viewed = (p.viewed+1) where p.id_bees_blog_post = '.(int) $idBeesBlogPost;
 
-        return \Db::getInstance()->execute($sql);
+        return Db::getInstance()->execute($sql);
     }
 
     /**
      * Get blog image
      *
      * @return false|null|string
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      */
     public static function getBlogImage()
     {
-        $sql = new \DbQuery();
+        $sql = new DbQuery();
         $sql->select('`'.self::PRIMARY.'`');
         $sql->from(self::TABLE);
 
-        return \Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql);
+        return Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql);
     }
 
     /**
@@ -243,15 +319,17 @@ class BeesBlogPost extends \ObjectModel
      * @param int|null $idLang Language ID
      *
      * @return false|null|string
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      */
     public static function getPostRewriteById($idPost, $idLang = null)
     {
         if ($idLang == null) {
-            $idLang = (int) \Context::getContext()->language->id;
+            $idLang = (int) Context::getContext()->language->id;
         }
-        $idShop = (int) \Context::getContext()->shop->id;
+        $idShop = (int) Context::getContext()->shop->id;
 
-        $sql = new \DbQuery();
+        $sql = new DbQuery();
         $sql->select('sbp.`link_rewrite`');
         $sql->from(self::TABLE, 'sbp');
         $sql->innerJoin(self::LANG_TABLE, 'sbpl', 'sbp.`'.self::PRIMARY.'` = sbpl.`'.self::PRIMARY.'`');
@@ -262,18 +340,20 @@ class BeesBlogPost extends \ObjectModel
         $sql->where('sbp.`active` = 1');
         $sql->where('sbp.`'.self::PRIMARY.'` = '.(int) $idPost);
 
-        return \Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql);
+        return Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql);
     }
 
     /**
      * Get BeesBlogPost ID by rewrite
      *
-     * @param string   $rewrite Rewrite
-     * @param bool     $active  Active
-     * @param int|null $idLang  Language ID
-     * @param int|null $idShop  Shop ID
+     * @param string $rewrite Rewrite
+     * @param bool $active Active
+     * @param int|null $idLang Language ID
+     * @param int|null $idShop Shop ID
      *
      * @return bool|false|null|string
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      */
     public static function getIdByRewrite($rewrite, $active = true, $idLang = null, $idShop = null)
     {
@@ -281,12 +361,12 @@ class BeesBlogPost extends \ObjectModel
             return false;
         }
         if (empty($idLang)) {
-            $idLang = (int) \Context::getContext()->language->id;
+            $idLang = (int) Context::getContext()->language->id;
         }
         if (empty($idShop)) {
-            $idShop = (int) \Context::getContext()->shop->id;
+            $idShop = (int) Context::getContext()->shop->id;
         }
-        $sql = new \DbQuery();
+        $sql = new DbQuery();
         $sql->select('sbp.`'.self::PRIMARY.'`');
         $sql->from(self::TABLE, 'sbp');
         $sql->innerJoin(self::LANG_TABLE, 'sbpl', 'sbp.`'.self::PRIMARY.'` = sbpl.`'.self::PRIMARY.'`');
@@ -297,31 +377,35 @@ class BeesBlogPost extends \ObjectModel
         $sql->where('sbpl.`lang_active`');
         $sql->where('sbpl.`link_rewrite` = \''.pSQL($rewrite).'\'');
 
-        return \Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql);
+        return Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql);
     }
 
     /**
      * @param int $idBeesBlogPost BeesBlogPost ID
-     * @param int $idLang         Language ID
+     * @param int $idLang Language ID
      *
      * @return false|null|string
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      */
     public static function getLangActive($idBeesBlogPost, $idLang)
     {
-        $sql = new \DbQuery();
+        $sql = new DbQuery();
         $sql->select('sbpl.`lang_active`');
         $sql->from(static::LANG_TABLE, 'sbpl');
         $sql->where('sbpl.`'.static::PRIMARY.'` = '.(int) $idBeesBlogPost);
         $sql->where('sbpl.`id_lang` = '.(int) $idLang);
 
-        return \Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql);
+        return Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql);
     }
 
     /**
-     * @param int   $idBeesBlogPost BeesBlogPost ID
+     * @param int $idBeesBlogPost BeesBlogPost ID
      * @param array $langActive
      *
      * @return void
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      */
     public static function setLangActive($idBeesBlogPost, $langActive)
     {
@@ -330,7 +414,7 @@ class BeesBlogPost extends \ObjectModel
         }
 
         foreach ($langActive as $idLang => $active) {
-            \Db::getInstance(_PS_USE_SQL_SLAVE_)->update(
+            Db::getInstance(_PS_USE_SQL_SLAVE_)->update(
                 static::LANG_TABLE,
                 [
                     'lang_active' => $active,
@@ -349,11 +433,11 @@ class BeesBlogPost extends \ObjectModel
      */
     public function getSummary()
     {
-        if (\Tools::strlen(strip_tags($this->content)) < 512) {
+        if (Tools::strlen(strip_tags($this->content)) < 512) {
             return strip_tags($this->content);
         }
 
-        return \Tools::substr(strip_tags($this->content), 0, 512).' [...]';
+        return Tools::substr(strip_tags($this->content), 0, 512).' [...]';
     }
 
     /**
@@ -388,7 +472,7 @@ class BeesBlogPost extends \ObjectModel
      *
      * @param string|null $className Class name
      * @return bool Indicates whether the database was successfully added
-     * @throws \PrestaShopException
+     * @throws PrestaShopException
      */
     public static function createDatabase($className = null)
     {
@@ -403,7 +487,7 @@ class BeesBlogPost extends \ObjectModel
      *
      * @param string|null $className Class name
      * @return bool Indicates whether the database was successfully dropped
-     * @throws \PrestaShopException
+     * @throws PrestaShopException
      */
     public static function dropDatabase($className = null)
     {
@@ -417,11 +501,11 @@ class BeesBlogPost extends \ObjectModel
      * Creates database table to store related products
      *
      * @return boolean
-     * @throws \PrestaShopException
+     * @throws PrestaShopException
      */
     public static function createRelatedProductsTable()
     {
-        return \Db::getInstance()->execute(
+        return Db::getInstance()->execute(
             'CREATE TABLE IF NOT EXISTS `'._DB_PREFIX_.'bees_blog_post_product` (
                `id_product`        INT(11) UNSIGNED NOT NULL,
                `id_bees_blog_post` INT(11) UNSIGNED NOT NULL,
@@ -434,10 +518,10 @@ class BeesBlogPost extends \ObjectModel
      * Drop related products database table
      *
      * @return boolean
-     * @throws \PrestaShopException
+     * @throws PrestaShopException
      */
     public static function dropRelatedProductsTable()
     {
-        return \Db::getInstance()->execute('DROP TABLE IF EXISTS `'._DB_PREFIX_.'bees_blog_post_product`');
+        return Db::getInstance()->execute('DROP TABLE IF EXISTS `'._DB_PREFIX_.'bees_blog_post_product`');
     }
 }

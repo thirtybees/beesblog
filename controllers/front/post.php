@@ -27,8 +27,11 @@ if (!defined('_TB_VERSION_')) {
 /**
  * Class BeesBlogDetailsModuleFrontController
  */
-class BeesBlogPostModuleFrontController extends \ModuleFrontController
+class BeesBlogPostModuleFrontController extends ModuleFrontController
 {
+    /**
+     * @var string
+     */
     public $report = '';
 
     /**
@@ -42,7 +45,7 @@ class BeesBlogPostModuleFrontController extends \ModuleFrontController
     protected $blogPost;
 
     /**
-     * @var \BeesBlog $module
+     * @var BeesBlog $module
      */
     public $module;
 
@@ -69,17 +72,17 @@ class BeesBlogPostModuleFrontController extends \ModuleFrontController
             $this->context->controller->addCSS(_PS_MODULE_DIR_.'beesblog/views/css/socialmedia.css', 'all');
             $this->context->controller->addJS(_PS_MODULE_DIR_.'beesblog/views/js/socialmedia.js');
         }
-        \Media::addJsDef([
+        Media::addJsDef([
             'sharing_name' => addcslashes($post->title, "'"),
-            'sharing_url' => addcslashes(\Tools::getHttpHost(true).$_SERVER['REQUEST_URI'], "'"),
-            'sharing_img' => addcslashes(\Tools::getHttpHost(true).'/img/beesblog/posts/'.(int) $post->id.'.jpg', "'"),
+            'sharing_url' => addcslashes(Tools::getHttpHost(true).$_SERVER['REQUEST_URI'], "'"),
+            'sharing_img' => addcslashes(Tools::getHttpHost(true).'/img/beesblog/posts/'.(int) $post->id.'.jpg', "'"),
         ]);
 
         $postProperties = [
             'meta_title'           => $post->meta_title.' - '.Configuration::get('PS_SHOP_NAME'),
             'meta_description'     => $post->meta_description,
             'meta_keywords'        => $post->meta_keywords,
-            'blogHome'             => \BeesBlog::getBeesBlogLink(),
+            'blogHome'             => BeesBlog::getBeesBlogLink(),
             'post'                 => $post,
             'authorStyle'          => Configuration::get(BeesBlog::AUTHOR_STYLE),
             'showAuthor'           => (bool) Configuration::get(BeesBlog::SHOW_AUTHOR),
@@ -88,15 +91,15 @@ class BeesBlogPostModuleFrontController extends \ModuleFrontController
             'disableCategoryImage' => (bool) Configuration::get(BeesBlog::SHOW_CATEGORY_IMAGE),
             'showViewed'           => (bool) Configuration::get(BeesBlog::SHOW_POST_COUNT),
             'showNoImage'          => (bool) Configuration::get(BeesBlog::SHOW_NO_IMAGE),
-            'showComments'         => (bool) Configuration::get(\BeesBlog::DISQUS_USERNAME),
+            'showComments'         => (bool) Configuration::get(BeesBlog::DISQUS_USERNAME),
             'disqusUsername'       => Configuration::get(BeesBlog::DISQUS_USERNAME),
             'PS_SC_TWITTER'        => Configuration::get('PS_SC_TWITTER'),
             'PS_SC_FACEBOOK'       => Configuration::get('PS_SC_FACEBOOK'),
             'PS_SC_PINTEREST'      => Configuration::get('PS_SC_PINTEREST'),
         ];
         $postProperties = array_merge($postProperties, [
-            'displayBeesBlogBeforePost' => \Hook::exec('displayBeesBlogBeforePost', $postProperties),
-            'displayBeesBlogAfterPost' => \Hook::exec('displayBeesBlogAfterPost', $postProperties),
+            'displayBeesBlogBeforePost' => Hook::exec('displayBeesBlogBeforePost', $postProperties),
+            'displayBeesBlogAfterPost' => Hook::exec('displayBeesBlogAfterPost', $postProperties),
         ]);
 
         $this->context->smarty->assign($postProperties);
@@ -108,11 +111,13 @@ class BeesBlogPostModuleFrontController extends \ModuleFrontController
      * Returns blog post ID
      *
      * @return int
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      */
     public function getBeesBlogPostId()
     {
         if (is_null($this->idPost)) {
-            $this->idPost = (int)BeesBlogPost::getIdByRewrite(\Tools::getValue('blog_rewrite'));
+            $this->idPost = (int)BeesBlogPost::getIdByRewrite(Tools::getValue('blog_rewrite'));
         }
         return $this->idPost;
     }

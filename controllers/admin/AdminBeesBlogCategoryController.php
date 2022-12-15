@@ -28,7 +28,7 @@ use BeesBlogModule\BeesBlogPost;
 /**
  * Class AdminBeesBlogCategoryController
  */
-class AdminBeesBlogCategoryController extends \ModuleAdminController
+class AdminBeesBlogCategoryController extends ModuleAdminController
 {
     /**
      * @var BeesBlog
@@ -37,6 +37,8 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
 
     /**
      * AdminBeesBlogCategoryController constructor.
+     *
+     * @throws PrestaShopException
      */
     public function __construct()
     {
@@ -50,7 +52,7 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
         $this->bootstrap = true;
 
         // Retrieve the context from a static context, just because
-        $this->context = \Context::getContext();
+        $this->context = Context::getContext();
 
         // Only display this page in single store context
         $this->multishop_context = Shop::CONTEXT_SHOP;
@@ -111,9 +113,9 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
      */
     public function renderForm()
     {
-        $id = (int) \Tools::getValue(BeesBlogCategory::PRIMARY);
+        $id = (int) Tools::getValue(BeesBlogCategory::PRIMARY);
 
-        $imageUrl = \ImageManager::thumbnail(BeesBlogCategory::getImagePath($id), $this->table."_{$id}.jpg", 200, 'jpg', true, true);
+        $imageUrl = ImageManager::thumbnail(BeesBlogCategory::getImagePath($id), $this->table."_{$id}.jpg", 200, 'jpg', true, true);
         $imageSize = file_exists(BeesBlogCategory::getImagePath($id)) ? filesize(BeesBlogCategory::getImagePath($id)) / 1000 : false;
 
         $this->fields_form = [
@@ -151,7 +153,7 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
                     'display_image' => true,
                     'image'         => $imageUrl ? $imageUrl : false,
                     'size'          => $imageSize,
-                    'delete_url'    => self::$currentIndex.'&'.$this->identifier.'='.\Tools::getValue(BeesBlogCategory::PRIMARY).'&token='.$this->token.'&deleteImage=1',
+                    'delete_url'    => self::$currentIndex.'&'.$this->identifier.'='. Tools::getValue(BeesBlogCategory::PRIMARY).'&token='.$this->token.'&deleteImage=1',
                     'hint'          => $this->l('Upload an image from your computer.'),
                 ],
                 [
@@ -239,6 +241,8 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
 
     /**
      * @return false|string
+     * @throws PrestaShopException
+     * @throws SmartyException
      */
     public function renderList()
     {
@@ -254,11 +258,13 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
     /**
      * @return void
      *
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      * @since 1.0.0
      */
     public function postProcess()
     {
-        if (\Tools::isSubmit('deleteImage')) {
+        if (Tools::isSubmit('deleteImage')) {
                $this->processForceDeleteImage();
         } else {
             parent::postProcess();
@@ -269,16 +275,18 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
      * Process category image
      *
      * @param array $files
-     * @param int   $id
+     * @param int $id
      *
      * @return bool
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      */
     public function processImage($files, $id)
     {
         $categoryImageInput = 'category_image';
 
         if (isset($files[$categoryImageInput]) && isset($files[$categoryImageInput]['tmp_name']) && !empty($files[$categoryImageInput]['tmp_name'])) {
-            if ($error = \ImageManager::validateUpload($files[$categoryImageInput], 4000000)) {
+            if ($error = ImageManager::validateUpload($files[$categoryImageInput], 4000000)) {
                 $this->errors[] = $error;
 
                 return false;
@@ -302,7 +310,7 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
                         if (file_exists($dir)) {
                             unlink($dir);
                         }
-                        \ImageManager::resize(
+                        ImageManager::resize(
                             $path,
                             _PS_IMG_DIR_."beesblog/categories/{$id}-{$imageType['name']}.{$ext}",
                             (int) $imageType['width'],
@@ -319,13 +327,15 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
     }
 
     /**
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      * @since 1.0.0
      */
     public function processForceDeleteImage()
     {
         $blogPost = $this->loadObject(true);
 
-        if (\Validate::isLoadedObject($blogPost)) {
+        if (Validate::isLoadedObject($blogPost)) {
             $this->deleteImage($blogPost->id);
         }
     }
@@ -335,6 +345,8 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
      *
      * @return bool
      *
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      * @since 1.0.0
      */
     public function deleteImage($idBeesBlogCategory)
@@ -556,12 +568,14 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
      *
      * @return bool
      *
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      * @since 1.0.0
      */
     public function processDelete()
     {
-        $idLang = (int) \Context::getContext()->language->id;
-        $blogCategory = new BeesBlogCategory((int) \Tools::getValue(BeesBlogCategory::PRIMARY));
+        $idLang = (int) Context::getContext()->language->id;
+        $blogCategory = new BeesBlogCategory((int) Tools::getValue(BeesBlogCategory::PRIMARY));
 
         $postCount = (int) $blogCategory->getPostsInCategory($idLang, 0, 0, true);
         if ((int) $postCount != 0) {
@@ -570,13 +584,13 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
             return false;
         } else {
             if (!$blogCategory->delete()) {
-                $this->errors[] = $this->l('An error occurred while deleting the object.').' <strong>'.$this->table.' ('.\Db::getInstance()->getMsgError().')</strong>';
+                $this->errors[] = $this->l('An error occurred while deleting the object.').' <strong>'.$this->table.' ('. Db::getInstance()->getMsgError().')</strong>';
 
                 return false;
             } else {
                 $this->deleteImage($blogCategory->id);
 
-                \Tools::redirectAdmin($this->context->link->getAdminLink('AdminBeesBlogCategory'));
+                Tools::redirectAdmin($this->context->link->getAdminLink('AdminBeesBlogCategory'));
 
                 return true;
             }
@@ -586,14 +600,22 @@ class AdminBeesBlogCategoryController extends \ModuleAdminController
     /**
      * Return category title by Id (list admin controller)
      *
+     * @param int $id
+     *
      * @return string
      *
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      */
     static public function getParentTitleById($id) {
 
         return BeesBlogCategory::getNameById($id);
     }
 
+    /**
+     * @return array[]
+     * @throws PrestaShopException
+     */
     public static function getCategoriesName() {
 
       $ResultTab = array(0 => ['id_bees_blog_category' => '0', 'title' =>  'Root']);

@@ -30,18 +30,17 @@ if (!defined('_TB_VERSION_')) {
  */
 class AdminBeesBlogImagesController extends ModuleAdminController
 {
-    // @codingStandardsIgnoreStart
     /** @var int $start_time */
     protected $start_time = 0;
     /** @var int $max_execution_time */
     protected $max_execution_time = 7200;
     /** @var bool $display_move */
     protected $display_move;
-    // @codingStandardsIgnoreEnd
 
     /**
      * AdminImagesControllerCore constructor.
      *
+     * @throws PrestaShopException
      * @since 1.0.0
      */
     public function __construct()
@@ -52,7 +51,7 @@ class AdminBeesBlogImagesController extends ModuleAdminController
         $this->lang = false;
 
         // Retrieve the context from a static context, just because
-        $this->context = \Context::getContext();
+        $this->context = Context::getContext();
 
         // Only display this page in single store context
         $this->multishop_context = Shop::CONTEXT_SHOP;
@@ -185,6 +184,8 @@ class AdminBeesBlogImagesController extends ModuleAdminController
      *
      * @return bool
      *
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      * @since 1.0.0
      */
     public function postProcess()
@@ -256,10 +257,12 @@ class AdminBeesBlogImagesController extends ModuleAdminController
      * Regenerate thumbnails
      *
      * @param string $type
-     * @param bool   $deleteOldImages
+     * @param bool $deleteOldImages
      *
      * @return bool
      *
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      * @since 1.0.0
      */
     protected function regenerateThumbnails($type = 'all', $deleteOldImages = false)
@@ -409,12 +412,13 @@ class AdminBeesBlogImagesController extends ModuleAdminController
     /**
      * Regenerate no-pictures images
      *
-     * @param $dir
-     * @param $type
-     * @param $languages
+     * @param string $dir
+     * @param array $type
+     * @param array $languages
      *
      * @return bool
      *
+     * @throws PrestaShopException
      * @since 1.0.0
      */
     protected function regenerateNoPictureImages($dir, $type, $languages)
@@ -450,6 +454,7 @@ class AdminBeesBlogImagesController extends ModuleAdminController
      *
      * @return void
      *
+     * @throws PrestaShopException
      * @since 1.0.0
      */
     public function initPageHeaderToolbar()
@@ -470,6 +475,9 @@ class AdminBeesBlogImagesController extends ModuleAdminController
      *
      * @return void
      *
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
+     * @throws SmartyException
      * @since 1.0.0
      */
     public function initContent()
@@ -497,6 +505,8 @@ class AdminBeesBlogImagesController extends ModuleAdminController
      *
      * @return void
      *
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      * @since 1.0.0
      */
     public function initRegenerate()
@@ -524,6 +534,8 @@ class AdminBeesBlogImagesController extends ModuleAdminController
      *
      * @return void
      *
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      * @since 1.0.0
      */
     protected function childValidation()

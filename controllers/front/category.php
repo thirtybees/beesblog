@@ -44,7 +44,7 @@ class BeesBlogCategoryModuleFrontController extends ModuleFrontController
         parent::initContent();
 
         $totalPages = 0;
-        $postsPerPage = Configuration::get(\BeesBlog::POSTS_PER_PAGE);
+        $postsPerPage = Configuration::get(BeesBlog::POSTS_PER_PAGE);
         $limit = $postsPerPage;
 
         $rewrite = trim(Tools::getValue('cat_rewrite'));
@@ -86,14 +86,14 @@ class BeesBlogCategoryModuleFrontController extends ModuleFrontController
             'posts'                => $posts,
             'category'             => $category,
             'categoryImageUrl'     => Media::getMediaPath(BeesBlogCategory::getImagePath($category->id)),
-            'authorStyle'          => (bool) Configuration::get(\BeesBlog::AUTHOR_STYLE),
-            'showAuthor'           => (bool) Configuration::get(\BeesBlog::SHOW_AUTHOR),
-            'showDate'             => (bool) Configuration::get(\BeesBlog::SHOW_DATE),
-            'showCategoryImage'    => (bool) Configuration::get(\BeesBlog::SHOW_CATEGORY_IMAGE),
-            'showViewed'           => (bool) Configuration::get(\BeesBlog::SHOW_POST_COUNT),
-            'showNoImage'          => (bool) Configuration::get(\BeesBlog::SHOW_NO_IMAGE),
-            'showComments'         => (bool) Configuration::get(\BeesBlog::DISQUS_USERNAME),
-            'disqusUsername'       => Configuration::get(\BeesBlog::DISQUS_USERNAME),
+            'authorStyle'          => (bool) Configuration::get(BeesBlog::AUTHOR_STYLE),
+            'showAuthor'           => (bool) Configuration::get(BeesBlog::SHOW_AUTHOR),
+            'showDate'             => (bool) Configuration::get(BeesBlog::SHOW_DATE),
+            'showCategoryImage'    => (bool) Configuration::get(BeesBlog::SHOW_CATEGORY_IMAGE),
+            'showViewed'           => (bool) Configuration::get(BeesBlog::SHOW_POST_COUNT),
+            'showNoImage'          => (bool) Configuration::get(BeesBlog::SHOW_NO_IMAGE),
+            'showComments'         => (bool) Configuration::get(BeesBlog::DISQUS_USERNAME),
+            'disqusUsername'       => Configuration::get(BeesBlog::DISQUS_USERNAME),
             'start'                => (int) $start = (($page - 1) * $limit) + 1,
             'postsPerPage'         => (int) $limit,
             'totalPosts'           => (int) $totalPosts,

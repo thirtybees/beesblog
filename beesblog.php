@@ -51,6 +51,9 @@ class BeesBlog extends Module
     const MAX_POSTS_PER_PAGE = 20;
     const MAX_CATEGORIES_PER_PAGE = 20;
 
+    /**
+     * @var array[]
+     */
     public $blogHooks = [
         [
             'name'        => 'displayBeesBlogBeforePost',
@@ -67,6 +70,10 @@ class BeesBlog extends Module
             'live_edit'   => 0,
         ],
     ];
+
+    /**
+     * @var array
+     */
     protected $fieldsForm;
 
     /**
@@ -98,9 +105,9 @@ class BeesBlog extends Module
      * Install this module
      *
      * @param bool $createTables indicates if database table should be created or not
+     *
      * @return bool Whether the module has been successfully installed
      *
-     * @throws Adapter_Exception
      * @throws PrestaShopDatabaseException
      * @throws PrestaShopException
      * @since 1.0.0
@@ -151,8 +158,9 @@ class BeesBlog extends Module
 
     /**
      * Registers all hooks this module depends on
+     *
      * @return bool
-     * @throws Adapter_Exception
+     * @throws PrestaShopDatabaseException
      * @throws PrestaShopException
      */
     public function registerHooks()
@@ -169,7 +177,7 @@ class BeesBlog extends Module
     /**
      * @return bool
      *
-     * @throws Adapter_Exception
+     * @throws PrestaShopDatabaseException
      * @throws PrestaShopException
      * @since 1.0.0
      */
@@ -200,7 +208,7 @@ class BeesBlog extends Module
      *
      * @return bool Whether the tabs have been successfully added
      *
-     * @throws Adapter_Exception
+     * @throws PrestaShopDatabaseException
      * @throws PrestaShopException
      * @since 1.0.0
      */
@@ -259,7 +267,6 @@ class BeesBlog extends Module
      * @param bool $removeTables indicates if database tables should be dropped
      * @return bool Whether the module has been successfully uninstalled
      *
-     * @throws Adapter_Exception
      * @throws PrestaShopDatabaseException
      * @throws PrestaShopException
      * @since 1.0.0
@@ -321,7 +328,6 @@ class BeesBlog extends Module
      *
      * @return void
      *
-     * @throws Adapter_Exception
      * @throws PrestaShopDatabaseException
      * @throws PrestaShopException
      * @since 1.0.0
@@ -341,7 +347,6 @@ class BeesBlog extends Module
      * Resets module settings without removing blog post data from database
      *
      * @return bool
-     * @throws Adapter_Exception
      * @throws PrestaShopDatabaseException
      * @throws PrestaShopException
      */
@@ -564,14 +569,13 @@ class BeesBlog extends Module
         $controller->addCSS($this->_path.'views/css/beesblogstyle.css', 'all');
 
         if ($controller instanceof BeesBlogPostModuleFrontController) {
-            /** @var BeesBlogPostModuleFrontController $controller */
             $post = $controller->getBeesBlogPost();
             if ($post) {
                 Context::getContext()->smarty->assign([
                     'bb_og_link' => static::getBeesBlogLink('beesblog_post', ['blog_rewrite' => $post->link_rewrite]),
                     'bb_og_title' => $post->meta_title . ' - ' . Configuration::get('PS_SHOP_NAME'),
                     'bb_og_description' => $post->meta_description,
-                    'bb_og_image' => \Tools::getHttpHost(true) . '/img/beesblog/posts/' . (int)$post->id . '.jpg',
+                    'bb_og_image' => Tools::getHttpHost(true) . '/img/beesblog/posts/' . (int)$post->id . '.jpg',
                 ]);
                 return $this->display(__FILE__, 'views/templates/hooks/post-header.tpl');
             }
@@ -592,7 +596,6 @@ class BeesBlog extends Module
      *
      * @return string HTML
      *
-     * @throws HTMLPurifier_Exception
      * @throws PrestaShopDatabaseException
      * @throws PrestaShopException
      * @throws SmartyException
@@ -615,7 +618,6 @@ class BeesBlog extends Module
      * Save form data.
      *
      * @return string
-     * @throws HTMLPurifier_Exception
      * @throws PrestaShopException
      * @since 1.0.0
      */
@@ -647,7 +649,7 @@ class BeesBlog extends Module
 
     /**
      * Process General Options
-     * @throws HTMLPurifier_Exception
+     *
      * @throws PrestaShopException
      */
     protected function postProcessDisqusOptions()
@@ -912,7 +914,6 @@ class BeesBlog extends Module
      *
      * @return string HTML
      *
-     * @throws HTMLPurifier_Exception
      * @throws PrestaShopDatabaseException
      * @throws PrestaShopException
      * @throws SmartyException
@@ -1069,8 +1070,8 @@ class BeesBlog extends Module
     /**
      * Helper method to set language texts to object model
      *
-     * @param $obj
-     * @param $values
+     * @param ObjectModel $obj
+     * @param array $values
      * @throws PrestaShopException
      */
     protected function setLangValues($obj, $values)

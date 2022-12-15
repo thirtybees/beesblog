@@ -19,12 +19,23 @@
 
 namespace BeesBlogModule;
 
+use Context;
+use Db;
+use DbQuery;
+use ObjectModel;
+use PrestaShopDatabaseException;
+use PrestaShopException;
+use ReflectionClass;
+use Shop;
+use Tools;
+use Validate;
+
 /**
  * Class BeesBlogImageType
  *
  * @since 1.0.0
  */
-class BeesBlogImageType extends \ObjectModel
+class BeesBlogImageType extends ObjectModel
 {
     const PRIMARY = 'id_bees_blog_image_type';
     const TABLE = 'bees_blog_image_type';
@@ -38,23 +49,40 @@ class BeesBlogImageType extends \ObjectModel
     const CATEGORY_DEFAULT_WIDTH = 800;
     const CATEGORY_DEFAULT_HEIGHT = 500;
 
-    // @codingStandardsIgnoreStart
     /**
      * @var array Image types cache
      */
     protected static $imagesTypesCache = [];
+
+    /**
+     * @var array
+     */
     protected static $imagesTypesNameCache = [];
-    /** @var string Name */
+
+    /**
+     * @var string Name
+     */
     public $name;
-    /** @var int Width */
+
+    /**
+     * @var int Width
+     */
     public $width;
-    /** @var int Height */
+
+    /**
+     * @var int Height
+     */
     public $height;
-    /** @var bool $posts Apply to posts */
+
+    /**
+     * @var bool $posts Apply to posts
+     */
     public $posts;
-    /** @var bool $categories Apply to categories */
+
+    /**
+     * @var bool $categories Apply to categories
+     */
     public $categories;
-    // @codingStandardsIgnoreEnd
 
     /**
      * @see ObjectModel::$definition
@@ -72,17 +100,20 @@ class BeesBlogImageType extends \ObjectModel
         ],
     ];
 
+    /**
+     * @var array
+     */
     protected $webserviceParameters = [];
 
     /**
      * Returns image type definitions
      *
-     * @param string|null $type        Image type
-     * @param bool        $orderBySize
+     * @param string|null $type Image type
+     * @param bool $orderBySize
      *
      * @return array Image type definitions
-     * @throws \PrestaShopDatabaseException
-     *
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      * @since   1.0.0
      * @version 1.0.0 Initial version
      */
@@ -100,7 +131,7 @@ class BeesBlogImageType extends \ObjectModel
                 $query = 'SELECT * FROM `'._DB_PREFIX_.bqSQL(static::$definition['table']).'` '.$where.' ORDER BY `name` ASC';
             }
 
-            static::$imagesTypesCache[$type] = \Db::getInstance()->executeS($query);
+            static::$imagesTypesCache[$type] = Db::getInstance()->executeS($query);
         }
 
         return static::$imagesTypesCache[$type];
@@ -113,23 +144,25 @@ class BeesBlogImageType extends \ObjectModel
      *
      * @return int Number of results found
      *
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      * @since   1.0.0
      * @version 1.0.0 Initial version
      */
     public static function typeAlreadyExists($typeName)
     {
-        if (!\Validate::isImageTypeName($typeName)) {
-            die(\Tools::displayError());
+        if (!Validate::isImageTypeName($typeName)) {
+            die(Tools::displayError());
         }
 
-        \Db::getInstance()->executeS(
+        Db::getInstance()->executeS(
             '
 			SELECT `id_image_type`
 			FROM `'._DB_PREFIX_.'image_type`
 			WHERE `name` = \''.pSQL($typeName).'\''
         );
 
-        return \Db::getInstance()->NumRows();
+        return Db::getInstance()->NumRows();
     }
 
     /**
@@ -137,12 +170,14 @@ class BeesBlogImageType extends \ObjectModel
      *
      * @return string
      *
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      * @since   1.0.0
      * @version 1.0.0 Initial version
      */
     public static function getFormatedName($name)
     {
-        $themeName = \Context::getContext()->shop->theme_name;
+        $themeName = Context::getContext()->shop->theme_name;
         $nameWithoutThemeName = str_replace(['_'.$themeName, $themeName.'_'], '', $name);
 
         //check if the theme name is already in $name if yes only return $name
@@ -161,10 +196,12 @@ class BeesBlogImageType extends \ObjectModel
      * Finds image type definition by name and type
      *
      * @param string $name
-     * @param string $type
-     * @param int    $order
+     * @param string|null $type
+     * @param int $order
      *
-     * @return bool|mixed
+     * @return bool|array
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      * @since   1.0.0
      * @version 1.0.0 Initial version
      */
@@ -173,7 +210,7 @@ class BeesBlogImageType extends \ObjectModel
         static $isPassed = false;
 
         if (!isset(static::$imagesTypesNameCache["{$name}_{$type}_{$order}"]) && !$isPassed) {
-            $results = \Db::getInstance()->ExecuteS('SELECT * FROM `'._DB_PREFIX_.bqSQL(static::$definition['table']).'`');
+            $results = Db::getInstance()->ExecuteS('SELECT * FROM `'._DB_PREFIX_.bqSQL(static::$definition['table']).'`');
 
             $types = ['posts', 'categories'];
             $total = count($types);
@@ -202,20 +239,22 @@ class BeesBlogImageType extends \ObjectModel
      *
      * @return array|bool
      *
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      * @since 1.0.0
      */
     public static function getBasicTypeIds()
     {
-        $idShop = \Context::getContext()->shop->id;
+        $idShop = Context::getContext()->shop->id;
 
-        $sql = new \DbQuery();
+        $sql = new DbQuery();
         $sql->select('it.'.static::PRIMARY);
         $sql->from(static::TABLE, 'it');
         $sql->innerJoin(static::SHOP_TABLE, 'its', 'its.`'.static::PRIMARY.'` = it.`'.static::PRIMARY.'`');
         $sql->where('its.`id_shop` = '.(int) $idShop);
         $sql->where('it.`name` IN (\'post_list_item\', \'post_default\', \'category_default\')');
 
-        $result = \Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($sql);
+        $result = Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($sql);
 
         if (is_array($result)) {
             return array_column($result, static::PRIMARY);
@@ -227,27 +266,29 @@ class BeesBlogImageType extends \ObjectModel
     /**
      * Install basic image types
      *
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      * @since 1.0.0
      */
     public static function installBasics()
     {
         $basicTypes = ['post_list_item', 'post_default', 'category_default'];
-        $shops = \Shop::getShops(false, null, true);
+        $shops = Shop::getShops(false, null, true);
 
-        $reflection = new \ReflectionClass(__CLASS__);
+        $reflection = new ReflectionClass(__CLASS__);
         $consts = $reflection->getConstants();
 
         foreach ($basicTypes as $basicType) {
             foreach ($shops as $idShop) {
-                $sql = new \DbQuery();
+                $sql = new DbQuery();
                 $sql->select('it.'.static::PRIMARY);
                 $sql->from(static::TABLE, 'it');
                 $sql->innerJoin(static::SHOP_TABLE, 'its', 'its.`'.static::PRIMARY.'` = it.`'.static::PRIMARY.'`');
                 $sql->where('its.`id_shop` = '.(int) $idShop);
                 $sql->where("name = '{$basicType}'");
 
-                if (!\Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql)) {
-                    \Db::getInstance()->insert(
+                if (!Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql)) {
+                    Db::getInstance()->insert(
                         static::TABLE,
                         [
                             'name'       => $basicType,
@@ -257,10 +298,10 @@ class BeesBlogImageType extends \ObjectModel
                             'categories' => substr($basicType, 0, 4) !== 'post',
                         ]
                     );
-                    \Db::getInstance()->insert(
+                    Db::getInstance()->insert(
                         static::SHOP_TABLE,
                         [
-                            static::PRIMARY => (int) \Db::getInstance()->Insert_ID(),
+                            static::PRIMARY => (int) Db::getInstance()->Insert_ID(),
                             'id_shop'       => (int) $idShop,
                         ]
                     );

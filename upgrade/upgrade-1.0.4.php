@@ -25,7 +25,6 @@ use BeesBlogModule\BeesBlogPost;
 
 /**
  * @return bool
- * @throws Adapter_Exception
  * @throws PrestaShopDatabaseException
  * @throws PrestaShopException
  */
