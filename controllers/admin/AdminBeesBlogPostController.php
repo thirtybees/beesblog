@@ -733,10 +733,11 @@ class AdminBeesBlogPostController extends ModuleAdminController
         $today = strtotime(date('Y-m-d H:i:s'));
         $dateIssueStr = strtotime($dateIssue);
 
-        if ($today - $dateIssueStr < 0)
+        if ($today - $dateIssueStr < 0) {
             $color = '#eab3b7';
-        else
+        } else {
             $color = '#92d097';
+        }
         return "<span style='background-color:".$color."; color:white; border-radius:3px 3px 3px 3px; font-size:11px; padding: 2px 5px'>".$dateIssue."</span>";
     }
 

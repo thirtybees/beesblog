@@ -623,8 +623,9 @@ class AdminBeesBlogCategoryController extends ModuleAdminController
       $context = Context::getContext();
       $ResultQuery = BeesBlogCategory::getCategories($context->language->id, 0, 0, false, true, [BeesBlogCategory::PRIMARY, 'title']);
 
-      foreach ( $ResultQuery  as $key => $value)
-        array_push($ResultTab, $value);
+      foreach ( $ResultQuery  as $key => $value) {
+          array_push($ResultTab, $value);
+      }
 
       return $ResultTab;
     }
