@@ -617,16 +617,21 @@ class AdminBeesBlogCategoryController extends ModuleAdminController
      */
     public static function getCategoriesName() {
 
-      $ResultTab = array(0 => ['id_bees_blog_category' => '0', 'title' =>  'Root']);
+      $result = [
+          0 => [
+              'id_bees_blog_category' => '0',
+              'title' =>  'Root'
+          ]
+      ];
 
-      $context = Context::getContext();
-      $ResultQuery = BeesBlogCategory::getCategories($context->language->id, 0, 0, false, true, [BeesBlogCategory::PRIMARY, 'title']);
+      $langId = Context::getContext()->language->id;
+      $categories = BeesBlogCategory::getCategories($langId, 0, 0, false, true, [BeesBlogCategory::PRIMARY, 'title']);
 
-      foreach ( $ResultQuery  as $key => $value) {
-          array_push($ResultTab, $value);
+      foreach ($categories as $value) {
+          $result[] = $value;
       }
 
-      return $ResultTab;
+      return $result;
     }
 
     /**
