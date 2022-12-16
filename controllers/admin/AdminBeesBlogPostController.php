@@ -470,6 +470,11 @@ class AdminBeesBlogPostController extends ModuleAdminController
             ],
         ];
 
+        $this->fields_value = [
+            'post_image' => $imageUrl,
+            'products' => $products,
+        ];
+
         foreach (Language::getLanguages(true) as $language) {
             $this->fields_value['lang_active_'.(int) $language['id_lang']] = (bool) BeesBlogPost::getLangActive(Tools::getValue(BeesBlogPost::PRIMARY), $language['id_lang']);
         }

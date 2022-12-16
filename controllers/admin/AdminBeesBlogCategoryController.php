@@ -233,6 +233,10 @@ class AdminBeesBlogCategoryController extends ModuleAdminController
             ],
         ];
 
+        $this->fields_value = [
+            'category_image' => $imageUrl
+        ];
+
         Media::addJsDef(['PS_ALLOW_ACCENTED_CHARS_URL' => (int) Configuration::get('PS_ALLOW_ACCENTED_CHARS_URL')]);
 
         return parent::renderForm();
