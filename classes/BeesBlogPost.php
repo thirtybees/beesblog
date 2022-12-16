@@ -19,6 +19,7 @@
 
 namespace BeesBlogModule;
 
+use BeesBlog;
 use Employee;
 use PrestaShopCollection as Collection;
 use Context;
@@ -179,6 +180,11 @@ class BeesBlogPost extends ObjectModel
     public $employee;
 
     /**
+     * @var string|string[]
+     */
+    public $link;
+
+    /**
      * BeesBlogPost constructor.
      *
      * @param int|null $id
@@ -222,6 +228,22 @@ class BeesBlogPost extends ObjectModel
     {
         $this->employee = new Employee((int)$this->id_employee);
         $this->category = new BeesBlogCategory((int)$this->id_category, $idLang);
+        if ($idLang) {
+            // single language context
+            if (is_string($this->link_rewrite)) {
+                $this->link = BeesBlog::getBeesBlogLink('beesblog_post', ['blog_rewrite' => $this->link_rewrite]);
+            } else {
+                $this->link = '';
+            }
+        } else {
+            // multiple language context
+            $this->link = [];
+            if (is_array($this->link_rewrite)) {
+                foreach ($this->link_rewrite as $lang => $rewrite) {
+                    $this->link[$lang] = BeesBlog::getBeesBlogLink('beesblog_post', ['blog_rewrite' => $rewrite]);
+                }
+            }
+        }
     }
 
     /**

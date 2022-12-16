@@ -848,9 +848,7 @@ class AdminBeesBlogPostController extends ModuleAdminController
         $id = (int)Tools::getValue(BeesBlogPost::PRIMARY);
         if ($id) {
             $post = new BeesBlogPost($id, $this->context->language->id);
-            if (Validate::isLoadedObject($post)) {
-                return $this->module->getBeesBlogLink('beesblog_post', ['blog_rewrite' => $post->link_rewrite]);
-            }
+            return $post->link;
         }
         return null;
     }

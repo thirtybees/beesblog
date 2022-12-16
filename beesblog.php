@@ -482,13 +482,13 @@ class BeesBlog extends Module
         $langId = (int)Context::getContext()->language->id;
 
         // Blog posts
-        $results = (new PrestaShopCollection('BeesBlogModule\\BeesBlogPost'))
+        $results = (new PrestaShopCollection('BeesBlogModule\\BeesBlogPost', $langId))
             ->where('active', '=', 1)
             ->getResults();
         if ($results) {
             foreach ($results as $result) {
                 $link = [];
-                $link['link'] = BeesBlog::getBeesBlogLink('beesblog_post', ['blog_rewrite' => $result->link_rewrite[$langId]]);
+                $link['link'] = $result->link;
                 $link['lastmod'] = $result->date_upd;
                 $link['type'] = 'module';
                 $this->addImageLink($link, BeesBlogPost::getImagePath($result->id, 'post_list_item'));
@@ -572,7 +572,7 @@ class BeesBlog extends Module
             $post = $controller->getBeesBlogPost();
             if ($post) {
                 Context::getContext()->smarty->assign([
-                    'bb_og_link' => static::getBeesBlogLink('beesblog_post', ['blog_rewrite' => $post->link_rewrite]),
+                    'bb_og_link' => $post->link,
                     'bb_og_title' => $post->meta_title . ' - ' . Configuration::get('PS_SHOP_NAME'),
                     'bb_og_description' => $post->meta_description,
                     'bb_og_image' => Tools::getHttpHost(true) . '/img/beesblog/posts/' . (int)$post->id . '.jpg',

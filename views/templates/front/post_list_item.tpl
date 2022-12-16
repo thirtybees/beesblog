@@ -17,7 +17,7 @@
  *}
 
 {assign var=imagePath value=Media::getMediaPath(BeesBlog::getPostImagePath($post->id, 'post_list_item'))}
-{assign var=postPath value=BeesBlog::GetBeesBlogLink('beesblog_post', ['blog_rewrite' => $post->link_rewrite])}
+{assign var=postPath value=$post->link}
 <article>
     <div class="clearfix beesblog-post-list-item">
         <div id="beesblog-post-{$post->id|intval}">

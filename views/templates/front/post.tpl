@@ -16,7 +16,7 @@
  * @license   Academic Free License (AFL 3.0)
  *}
 
-{assign var=postPath value=BeesBlog::GetBeesBlogLink('beesblog_post', ['blog_rewrite' => $post->link_rewrite])}
+{assign var=postPath value=$post->link}
 {capture name=path}
 	<a href="{$blogHome|escape:'htmlall':'UTF-8'}">{l s='Blog' mod='beesblog'}</a>
 	<span class="navigation-pipe">{$navigationPipe|escape:'htmlall':'UTF-8'}</span>{$post->title}
