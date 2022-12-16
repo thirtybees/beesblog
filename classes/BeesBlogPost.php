@@ -432,11 +432,11 @@ class BeesBlogPost extends ObjectModel
      */
     public function getSummary()
     {
-        if (Tools::strlen(strip_tags($this->content)) < 512) {
-            return strip_tags($this->content);
+        $content = strip_tags($this->content);
+        if (mb_strlen($content) < 512) {
+            return $content;
         }
-
-        return Tools::substr(strip_tags($this->content), 0, 512).' [...]';
+        return mb_substr($content, 0, 512).' [...]';
     }
 
     /**
