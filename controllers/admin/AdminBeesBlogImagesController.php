@@ -30,12 +30,6 @@ if (!defined('_TB_VERSION_')) {
  */
 class AdminBeesBlogImagesController extends ModuleAdminController
 {
-    /** @var int $start_time */
-    protected $start_time = 0;
-    /** @var int $max_execution_time */
-    protected $max_execution_time = 7200;
-    /** @var bool $display_move */
-    protected $display_move;
 
     /**
      * AdminImagesControllerCore constructor.
@@ -176,6 +170,33 @@ class AdminBeesBlogImagesController extends ModuleAdminController
             ],
         ];
 
+        $this->fields_options = [
+            'regenerate' => [
+                'title'  => $this->l('Regenerate images'),
+                'description' => $this->l('Use this functionality to regenerate blog images'),
+                'fields' => [
+                    'type' => [
+                        'title'      => $this->l('Image types'),
+                        'type'       => 'select',
+                        'identifier' => 'type',
+                        'list'       => [
+                            [ 'type' => 'all', 'name' => $this->l('All images') ],
+                            [ 'type' => 'posts', 'name' => $this->l('Posts images') ],
+                            [ 'type' => 'categories', 'name' => $this->l('Category images') ]
+                        ],
+                    ],
+                    'erase' => [
+                        'title'      => $this->l('Delete existing thumbnails'),
+                        'type'       => 'bool',
+                    ],
+                ],
+                'submit' => [
+                    'name' => 'submitRegenerate'.$this->table,
+                    'title' => $this->l('Regenerate')
+                ],
+            ],
+        ];
+
         parent::__construct();
     }
 
@@ -267,14 +288,9 @@ class AdminBeesBlogImagesController extends ModuleAdminController
      */
     protected function regenerateThumbnails($type = 'all', $deleteOldImages = false)
     {
-        $this->start_time = time();
-        @ini_set('max_execution_time', $this->max_execution_time); // ini_set may be disabled, we need the real value
-        $this->max_execution_time = (int) ini_get('max_execution_time');
-        $languages = Language::getLanguages(false);
-
         $process = [
-            ['type' => 'posts',      'dir' => _PS_IMG_DIR_.'/beesblog/posts/'],
-            ['type' => 'categories', 'dir' => _PS_IMG_DIR_.'/beesblog/categories/'],
+            ['type' => 'posts',      'dir' => rtrim(_PS_IMG_DIR_, '/') . '/beesblog/posts/'],
+            ['type' => 'categories', 'dir' => rtrim(_PS_IMG_DIR_, '/') . '/beesblog/categories/'],
         ];
 
         // Launching generation process
@@ -305,12 +321,6 @@ class AdminBeesBlogImagesController extends ModuleAdminController
                 }
             } elseif ($return == 'timeout') {
                 $this->errors[] = Tools::displayError('Only part of the images have been regenerated. The server timed out before finishing.');
-            } else {
-                if (!count($this->errors)) {
-                    if ($this->regenerateNoPictureImages($proc['dir'], $formats, $languages)) {
-                        $this->errors[] = sprintf(Tools::displayError('Cannot write "No picture" image to (%s) images folder. Please check the folder\'s writing permissions.'), $proc['type']);
-                    }
-                }
             }
         }
 
@@ -354,7 +364,7 @@ class AdminBeesBlogImagesController extends ModuleAdminController
      *
      * @param string $dir
      * @param array $formats
-     * @return bool|string
+     * @return bool
      *
      * @throws PrestaShopDatabaseException
      * @throws PrestaShopException
@@ -399,55 +409,11 @@ class AdminBeesBlogImagesController extends ModuleAdminController
                             }
                         }
                     }
-                    // stop 4 seconds before the timeout, just enough time to process the end of the page on a slow server
-                    if (time() - $this->start_time > $this->max_execution_time - 4) {
-                        return 'timeout';
-                    }
                 }
             }
         }
 
         return (bool) count($this->errors);
-    }
-
-    /**
-     * Regenerate no-pictures images
-     *
-     * @param string $dir
-     * @param array $type
-     * @param array $languages
-     *
-     * @return bool
-     *
-     * @throws PrestaShopException
-     * @since 1.0.0
-     */
-    protected function regenerateNoPictureImages($dir, $type, $languages)
-    {
-        $errors = false;
-        $generateHighDpiImages = (bool) Configuration::get('PS_HIGHT_DPI');
-
-        foreach ($type as $imageType) {
-            foreach ($languages as $language) {
-                $file = $dir.$language['iso_code'].'.jpg';
-                if (!file_exists($file)) {
-                    $file = _PS_PROD_IMG_DIR_.Language::getIsoById((int) Configuration::get('PS_LANG_DEFAULT')).'.jpg';
-                }
-                if (!file_exists($dir.$language['iso_code'].'-default-'.stripslashes($imageType['name']).'.jpg')) {
-                    if (!ImageManager::resize($file, $dir.$language['iso_code'].'-default-'.stripslashes($imageType['name']).'.jpg', (int) $imageType['width'], (int) $imageType['height'])) {
-                        $errors = true;
-                    }
-
-                    if ($generateHighDpiImages) {
-                        if (!ImageManager::resize($file, $dir.$language['iso_code'].'-default-'.stripslashes($imageType['name']).'2x.jpg', (int) $imageType['width'] * 2, (int) $imageType['height'] * 2)) {
-                            $errors = true;
-                        }
-                    }
-                }
-            }
-        }
-
-        return $errors;
     }
 
     /**
@@ -483,51 +449,10 @@ class AdminBeesBlogImagesController extends ModuleAdminController
      */
     public function initContent()
     {
-        if ($this->display != 'edit' && $this->display != 'add') {
-            $this->initRegenerate();
-
-            $this->context->smarty->assign(
-                [
-                    'display_regenerate' => true,
-                    'display_move'       => $this->display_move,
-                ]
-            );
-        }
-
-        if ($this->display == 'edit') {
+        if ($this->display === 'edit' || $this->display === 'add') {
             $this->warnings[] = $this->l('After modification, do not forget to regenerate thumbnails');
         }
-
         parent::initContent();
-    }
-
-    /**
-     * Init display for the thumbnails regeneration block
-     *
-     * @return void
-     *
-     * @throws PrestaShopDatabaseException
-     * @throws PrestaShopException
-     * @since 1.0.0
-     */
-    public function initRegenerate()
-    {
-        $types = [
-            'posts'      => $this->l('Posts'),
-            'categories' => $this->l('Categories'),
-        ];
-
-        $formats = [];
-        foreach ($types as $i => $type) {
-            $formats[$i] = BeesBlogImageType::getImagesTypes($i);
-        }
-
-        $this->context->smarty->assign(
-            [
-                'types'   => $types,
-                'formats' => $formats,
-            ]
-        );
     }
 
     /**
