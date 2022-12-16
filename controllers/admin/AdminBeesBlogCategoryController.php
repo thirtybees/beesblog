@@ -644,7 +644,7 @@ class AdminBeesBlogCategoryController extends ModuleAdminController
         if ($id) {
             $category = new BeesBlogCategory($id, $this->context->language->id);
             if (Validate::isLoadedObject($category)) {
-                return $this->module->getBeesBlogLink('beesblog_category', ['cat_rewrite' => $category->link_rewrite]);
+                return $category->link;
             }
         }
         return null;

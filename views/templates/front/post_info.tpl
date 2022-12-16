@@ -39,7 +39,7 @@
 
     <i class="icon icon-object-group"></i>&nbsp;
     <span>
-        <a href="{BeesBlog::GetBeesBlogLink('beesblog_category', ['cat_rewrite' => $post->category->link_rewrite])}">
+        <a href="{$post->category->link}">
             {$post->category->title|escape:'htmlall':'UTF-8'}
         </a>
     </span>

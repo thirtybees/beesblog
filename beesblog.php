@@ -497,14 +497,14 @@ class BeesBlog extends Module
         }
 
         // Categories
-        $results = (new PrestaShopCollection('BeesBlogModule\\BeesBlogCategory'))
+        $results = (new PrestaShopCollection('BeesBlogModule\\BeesBlogCategory', $langId))
             ->where('active', '=', 1)
             ->getResults();
 
         if ($results) {
             foreach ($results as $result) {
                 $link = [];
-                $link['link'] = BeesBlog::getBeesBlogLink('beesblog_category', ['cat_rewrite' => $result->link_rewrite[$langId]]);
+                $link['link'] = $result->link;
                 $link['lastmod'] = $result->date_upd;
                 $link['type'] = 'module';
                 $this->addImageLink($link, BeesBlogCategory::getImagePath($result->id));

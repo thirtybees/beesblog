@@ -19,6 +19,7 @@
 
 namespace BeesBlogModule;
 
+use BeesBlog;
 use PrestaShopCollection as Collection;
 use Context;
 use Db;
@@ -127,6 +128,11 @@ class BeesBlogCategory extends ObjectModel
     public $meta_keywords;
 
     /**
+     * @var string|string[]
+     */
+    public $link;
+
+    /**
      * BeesBlogPost constructor.
      *
      * @param int|null $id
@@ -139,6 +145,47 @@ class BeesBlogCategory extends ObjectModel
     public function __construct($id = null, $idLang = null, $idShop = null)
     {
         parent::__construct($id, $idLang, $idShop);
+        $this->resolveAssociations($idLang);
+    }
+
+    /**
+     * @param array $row
+     * @param int|null $idLang
+     *
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
+     */
+    public function hydrate(array $row, $idLang = null)
+    {
+        parent::hydrate($row, $idLang);
+        $this->resolveAssociations($idLang);
+    }
+
+    /**
+     * @param int|null $idLang
+     *
+     * @return void
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
+     */
+    protected function resolveAssociations($idLang)
+    {
+        if ($idLang) {
+            // single language context
+            if (is_string($this->link_rewrite)) {
+                $this->link = BeesBlog::getBeesBlogLink('beesblog_category', ['cat_rewrite' => $this->link_rewrite]);
+            } else {
+                $this->link = '';
+            }
+        } else {
+            // multiple language context
+            $this->link = [];
+            if (is_array($this->link_rewrite)) {
+                foreach ($this->link_rewrite as $lang => $rewrite) {
+                    $this->link[$lang] = BeesBlog::getBeesBlogLink('beesblog_category', ['cat_rewrite' => $rewrite]);
+                }
+            }
+        }
     }
 
     /**
@@ -185,7 +232,7 @@ class BeesBlogCategory extends ObjectModel
      * @param bool $raw
      * @param array $propertyFilter
      *
-     * @return array|int
+     * @return BeesBlogCategory[]|int
      * @throws PrestaShopException
      */
     public static function getCategories($idLang = null, $page = 0, $limit = 0, $count = false, $raw = false, $propertyFilter = [])

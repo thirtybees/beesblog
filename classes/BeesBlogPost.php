@@ -216,7 +216,6 @@ class BeesBlogPost extends ObjectModel
         $this->resolveAssociations($idLang);
     }
 
-
     /**
      * @param int|null $idLang
      *
