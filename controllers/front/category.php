@@ -72,10 +72,6 @@ class BeesBlogCategoryModuleFrontController extends ModuleFrontController
         if ($totalPosts !== 0) {
             $totalPages = ceil($totalPosts / $postsPerPage);
         }
-        foreach ($posts as $post) {
-            $post->employee = new Employee($post->id_employee);
-            $post->category = new BeesBlogCategory($post->id_category, $this->context->language->id);
-        }
 
         $this->context->smarty->assign([
             'meta_title'           => $category->meta_title.' - '.Configuration::get('PS_SHOP_NAME'),

@@ -19,6 +19,7 @@
 
 namespace BeesBlogModule;
 
+use Employee;
 use PrestaShopCollection as Collection;
 use Context;
 use Db;
@@ -168,6 +169,16 @@ class BeesBlogPost extends ObjectModel
     public static $imageTypes = ['post_default', 'post_list_item'];
 
     /**
+     * @var BeesBlogCategory
+     */
+    public $category;
+
+    /**
+     * @var Employee
+     */
+    public $employee;
+
+    /**
      * BeesBlogPost constructor.
      *
      * @param int|null $id
@@ -181,7 +192,36 @@ class BeesBlogPost extends ObjectModel
     {
         parent::__construct($id, $idLang, $idShop);
 
-        $this->image_dir = _PS_IMG_DIR_.'/beesblog/'.static::IMAGE_TYPE;
+        $this->image_dir = _PS_IMG_DIR_ . '/beesblog/' . static::IMAGE_TYPE;
+
+        $this->resolveAssociations($idLang);
+    }
+
+    /**
+     * @param array $row
+     * @param int|null $idLang
+     *
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
+     */
+    public function hydrate(array $row, $idLang = null)
+    {
+        parent::hydrate($row, $idLang);
+        $this->resolveAssociations($idLang);
+    }
+
+
+    /**
+     * @param int|null $idLang
+     *
+     * @return void
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
+     */
+    protected function resolveAssociations($idLang)
+    {
+        $this->employee = new Employee((int)$this->id_employee);
+        $this->category = new BeesBlogCategory((int)$this->id_category, $idLang);
     }
 
     /**
