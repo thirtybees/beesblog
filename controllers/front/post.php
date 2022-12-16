@@ -87,7 +87,7 @@ class BeesBlogPostModuleFrontController extends ModuleFrontController
             'authorStyle'          => Configuration::get(BeesBlog::AUTHOR_STYLE),
             'showAuthor'           => (bool) Configuration::get(BeesBlog::SHOW_AUTHOR),
             'showDate'             => (bool) Configuration::get(BeesBlog::SHOW_DATE),
-            'socialSharing'        => (bool) Configuration::get(BeesBlog::SOCIAL_SHARING) && Module::isEnabled('socialsharing'),
+            'socialSharing'        => Configuration::get(BeesBlog::SOCIAL_SHARING) && Module::isEnabled('socialsharing'),
             'disableCategoryImage' => (bool) Configuration::get(BeesBlog::SHOW_CATEGORY_IMAGE),
             'showViewed'           => (bool) Configuration::get(BeesBlog::SHOW_POST_COUNT),
             'showNoImage'          => (bool) Configuration::get(BeesBlog::SHOW_NO_IMAGE),

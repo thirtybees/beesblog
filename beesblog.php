@@ -617,13 +617,12 @@ class BeesBlog extends Module
     /**
      * Save form data.
      *
-     * @return string
+     * @return void
      * @throws PrestaShopException
      * @since 1.0.0
      */
     protected function postProcess()
     {
-        $output = '';
         if (Tools::isSubmit('submit'.$this->name)) {
             Configuration::updateValue(static::HOME_TITLE, Tools::getValue(static::HOME_TITLE));
             Configuration::updateValue(static::HOME_KEYWORDS, Tools::getValue(static::HOME_KEYWORDS));
@@ -641,10 +640,8 @@ class BeesBlog extends Module
         }
 
         if (Tools::isSubmit('submitOptionsconfiguration') || Tools::isSubmit('submitOptions')) {
-            $output .= $this->postProcessDisqusOptions();
+            $this->postProcessDisqusOptions();
         }
-
-        return $output;
     }
 
     /**
@@ -664,14 +661,6 @@ class BeesBlog extends Module
      */
     public function getSettingsFormHelper()
     {
-        $postsPerPage = [];
-        for ($i = 1; $i < static::MAX_POSTS_PER_PAGE; $i++) {
-            $postsPerPage[] = [
-                'id'    => $i,
-                'value' => $i,
-                'name'  => $i,
-            ];
-        }
         $categoriesPerPage = [];
         for ($i = 1; $i < static::MAX_CATEGORIES_PER_PAGE; $i++) {
             $categoriesPerPage[] = [

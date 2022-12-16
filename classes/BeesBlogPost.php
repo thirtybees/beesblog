@@ -26,7 +26,6 @@ use DbQuery;
 use ObjectModel;
 use PrestaShopDatabaseException;
 use PrestaShopException;
-use Tools;
 
 if (!defined('_TB_VERSION_')) {
     exit;

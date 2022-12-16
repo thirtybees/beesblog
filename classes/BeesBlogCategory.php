@@ -151,7 +151,7 @@ class BeesBlogCategory extends ObjectModel
      * @param bool $raw
      * @param array $propertyFilter
      *
-     * @return array|int
+     * @return int|BeesBlogPost[]
      * @throws PrestaShopException
      */
     public function getPostsInCategory($idLang = null, $page = 0, $limit = 0, $count = false, $raw = false, $propertyFilter = [])

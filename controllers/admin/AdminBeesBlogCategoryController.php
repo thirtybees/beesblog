@@ -23,7 +23,6 @@ if (!defined('_TB_VERSION_')) {
 
 use BeesBlogModule\BeesBlogCategory;
 use BeesBlogModule\BeesBlogImageType;
-use BeesBlogModule\BeesBlogPost;
 
 /**
  * Class AdminBeesBlogCategoryController
@@ -412,7 +411,6 @@ class AdminBeesBlogCategoryController extends ModuleAdminController
             if (isset($field['lang']) && $field['lang']) {
                 foreach (Language::getLanguages(false, false, true) as $idLang) {
                     if ((int) $idLang !== $idLangDefault) {
-                        $defaultValue = '';
                         switch (BeesBlogCategory::$definition['fields'][$name]['type']) {
                             case ObjectModel::TYPE_INT:
                             case ObjectModel::TYPE_FLOAT:
@@ -433,6 +431,7 @@ class AdminBeesBlogCategoryController extends ModuleAdminController
                                 $defaultValue = null;
                                 break;
                             default:
+                                $defaultValue = '';
                                 break;
                         }
                         if (!is_array($blogCategory->{$name})) {

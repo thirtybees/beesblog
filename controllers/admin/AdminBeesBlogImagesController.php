@@ -314,7 +314,7 @@ class AdminBeesBlogImagesController extends ModuleAdminController
             }
         }
 
-        return (count($this->errors) > 0 ? false : true);
+        return count($this->errors) === 0;
     }
 
     /**
@@ -346,6 +346,7 @@ class AdminBeesBlogImagesController extends ModuleAdminController
                 }
             }
         }
+        return true;
     }
 
     /**

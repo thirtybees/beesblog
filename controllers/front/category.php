@@ -72,8 +72,7 @@ class BeesBlogCategoryModuleFrontController extends ModuleFrontController
         if ($totalPosts !== 0) {
             $totalPages = ceil($totalPosts / $postsPerPage);
         }
-        foreach ($posts as &$post) {
-            /** @var BeesBlogModule\BeesBlogPost $post */
+        foreach ($posts as $post) {
             $post->employee = new Employee($post->id_employee);
             $post->category = new BeesBlogCategory($post->id_category, $this->context->language->id);
         }
@@ -94,7 +93,7 @@ class BeesBlogCategoryModuleFrontController extends ModuleFrontController
             'showNoImage'          => (bool) Configuration::get(BeesBlog::SHOW_NO_IMAGE),
             'showComments'         => (bool) Configuration::get(BeesBlog::DISQUS_USERNAME),
             'disqusUsername'       => Configuration::get(BeesBlog::DISQUS_USERNAME),
-            'start'                => (int) $start = (($page - 1) * $limit) + 1,
+            'start'                => (int) (($page - 1) * $limit) + 1,
             'postsPerPage'         => (int) $limit,
             'totalPosts'           => (int) $totalPosts,
             'totalPostsOnThisPage' => (int) $totalPostsOnThisPage,

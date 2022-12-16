@@ -611,7 +611,6 @@ class AdminBeesBlogPostController extends ModuleAdminController
             if (isset($field['lang']) && $field['lang']) {
                 foreach (Language::getLanguages(false, false, true) as $idLang) {
                     if ((int) $idLang !== $idLangDefault) {
-                        $defaultValue = '';
                         switch (BeesBlogPost::$definition['fields'][$name]['type']) {
                             case ObjectModel::TYPE_INT:
                             case ObjectModel::TYPE_FLOAT:
@@ -632,6 +631,7 @@ class AdminBeesBlogPostController extends ModuleAdminController
                                 $defaultValue = null;
                                 break;
                             default:
+                                $defaultValue = '';
                                 break;
                         }
                         if (!is_array($blogPost->{$name})) {
