@@ -34,7 +34,7 @@
         &nbsp;
         <time>
             {$post->published|date_format}
-        </time
+        </time>
     {/if}
 
     <i class="icon icon-object-group"></i>&nbsp;
