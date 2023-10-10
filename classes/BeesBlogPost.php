@@ -200,7 +200,7 @@ class BeesBlogPost extends ObjectModel
 
         $this->image_dir = _PS_IMG_DIR_ . '/beesblog/' . static::IMAGE_TYPE;
 
-        $this->resolveAssociations($idLang);
+        $this->resolveAssociations($idLang, $idShop);
     }
 
     /**
@@ -213,24 +213,25 @@ class BeesBlogPost extends ObjectModel
     public function hydrate(array $row, $idLang = null)
     {
         parent::hydrate($row, $idLang);
-        $this->resolveAssociations($idLang);
+        $this->resolveAssociations($idLang, $this->id_shop);
     }
 
     /**
      * @param int|null $idLang
+     * @param int|null $idShop
      *
      * @return void
      * @throws PrestaShopDatabaseException
      * @throws PrestaShopException
      */
-    protected function resolveAssociations($idLang)
+    protected function resolveAssociations($idLang, $idShop)
     {
         $this->employee = new Employee((int)$this->id_employee);
-        $this->category = new BeesBlogCategory((int)$this->id_category, $idLang);
+        $this->category = new BeesBlogCategory((int)$this->id_category, $idLang, $idShop);
         if ($idLang) {
             // single language context
             if (is_string($this->link_rewrite)) {
-                $this->link = BeesBlog::getBeesBlogLink('beesblog_post', ['blog_rewrite' => $this->link_rewrite]);
+                $this->link = BeesBlog::getBeesBlogLink('beesblog_post', ['blog_rewrite' => $this->link_rewrite], $idShop, $idLang);
             } else {
                 $this->link = '';
             }
@@ -239,7 +240,7 @@ class BeesBlogPost extends ObjectModel
             $this->link = [];
             if (is_array($this->link_rewrite)) {
                 foreach ($this->link_rewrite as $lang => $rewrite) {
-                    $this->link[$lang] = BeesBlog::getBeesBlogLink('beesblog_post', ['blog_rewrite' => $rewrite]);
+                    $this->link[$lang] = BeesBlog::getBeesBlogLink('beesblog_post', ['blog_rewrite' => $rewrite], $idShop, $lang);
                 }
             }
         }

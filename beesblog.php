@@ -170,6 +170,7 @@ class BeesBlog extends Module
             $this->registerHook('moduleRoutes') &&
             $this->registerHook('displayBackOfficeHeader') &&
             $this->registerHook('GSitemapAppendUrls') &&
+            $this->registerHook('actionRegisterShortcodes') &&
             $this->insertBlogHooks()
         );
     }
@@ -552,7 +553,7 @@ class BeesBlog extends Module
         }
         $link = Context::getContext()->link;
         $dispatcher = Dispatcher::getInstance();
-        return $link->getBaseLink() . $link->getLangLink() . $dispatcher->createUrl($rewrite, $idLang, $params, false, '', $idShop);
+        return $link->getBaseLink() . $link->getLangLink($idLang) . $dispatcher->createUrl($rewrite, $idLang, $params, false, '', $idShop);
     }
 
     /**
@@ -589,6 +590,17 @@ class BeesBlog extends Module
     public function hookDisplayBackOfficeHeader()
     {
         $this->context->controller->addCSS($this->_path.'views/css/back.css', 'all');
+    }
+
+    /**
+     * @return Shortcodes\Shortcode\Shortcode[]
+     */
+    public function hookActionRegisterShortcodes($params)
+    {
+        require_once(__DIR__ . '/classes/shortcode/BlogPostListShortcode.php');
+        return [
+            new \BeesBlogModule\BlogPostListShortcode($params['contextFactory'])
+        ];
     }
 
     /**
