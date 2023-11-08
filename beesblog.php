@@ -32,6 +32,7 @@ require_once __DIR__.'/classes/autoload.php';
  */
 class BeesBlog extends Module
 {
+    const SHORTCODE_HOOK = 'actionConvertShortcodes';
     const POSTS_PER_PAGE = 'BEESBLOG_POSTS_PER_PAGE';
     const AUTHOR_STYLE = 'BEESBLOG_SHOW_AUTHOR_STYLE';
     const MAIN_URL_KEY = 'BEESBLOG_MAIN_URL_KEY';
@@ -171,6 +172,7 @@ class BeesBlog extends Module
             $this->registerHook('displayBackOfficeHeader') &&
             $this->registerHook('GSitemapAppendUrls') &&
             $this->registerHook('actionRegisterShortcodes') &&
+            $this->registerHook('actionRegisterShortcodeEntityTypes') &&
             $this->insertBlogHooks()
         );
     }
@@ -597,13 +599,25 @@ class BeesBlog extends Module
      */
     public function hookActionRegisterShortcodes($params)
     {
-        require_once(__DIR__ . '/classes/shortcode/BlogPostListShortcode.php');
+        require_once(__DIR__ . '/classes/shortcode/include.php');
         return [
-            new \BeesBlogModule\BlogPostListShortcode($params['contextFactory'])
+            new \BeesBlogModule\BlogPostLinkShortcode($params['contextFactory'])
         ];
     }
 
     /**
+     * @return array
+     */
+    public function hookActionRegisterShortcodeEntityTypes()
+    {
+        require_once(__DIR__ . '/classes/shortcode/include.php');
+        return [
+            new \BeesBlogModule\BlogPostEntityType()
+        ];
+    }
+
+
+        /**
      * Get module configuration page
      *
      * @return string HTML
@@ -1160,5 +1174,35 @@ class BeesBlog extends Module
                 }
             }
         }
+    }
+
+    /**
+     * @param string $text
+     *
+     * @return string
+     *
+     * @throws PrestaShopException
+     */
+    public static function processText(string $text)
+    {
+        $text = trim((string)$text);
+        if ($text && static::shouldRunShortcodeHook()) {
+            return (string)Hook::getFirstResponse(static::SHORTCODE_HOOK, ['input' => $text]);
+        }
+        return $text;
+    }
+
+    /**
+     * @return bool
+     *
+     * @throws PrestaShopException
+     */
+    protected static function shouldRunShortcodeHook()
+    {
+        static $shortcodeHookExists = null;
+        if ($shortcodeHookExists === null) {
+            $shortcodeHookExists = (bool)Hook::getHookModuleExecList(static::SHORTCODE_HOOK);
+        }
+        return (bool)$shortcodeHookExists;
     }
 }

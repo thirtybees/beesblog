@@ -8,7 +8,7 @@ use Shortcodes\Context\LinkContext;
 use Shortcodes\Shortcode\Shortcode;
 use Validate;
 
-class BlogPostListShortcode implements Shortcode
+class BlogPostLinkShortcode implements Shortcode
 {
     const TAG = 'blogpost';
 
@@ -21,7 +21,6 @@ class BlogPostListShortcode implements Shortcode
     {
         $this->contextFactory = $contextFactory;
     }
-
 
     /**
      * @return string
@@ -54,5 +53,13 @@ class BlogPostListShortcode implements Shortcode
             }
         }
         return $content;
+    }
+
+    /**
+     * @return array
+     */
+    function getParameters(): array
+    {
+        return ['id', 'language', 'shop'];
     }
 }
