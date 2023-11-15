@@ -25,7 +25,7 @@ class BlogPostLinkShortcode implements Shortcode
     /**
      * @return string
      */
-    function getTag(): string
+    public function getTag(): string
     {
         return static::TAG;
     }
@@ -38,7 +38,7 @@ class BlogPostLinkShortcode implements Shortcode
      * @return string
      * @throws PrestaShopException
      */
-    function process(string $content, array $parameters, LinkContext $linkContext): string
+    public function process(string $content, array $parameters, LinkContext $linkContext): string
     {
         if (isset($parameters['id']) && ($id = (int)$parameters['id'])) {
             if (isset($parameters['language']) || isset($parameters['shop'])) {
@@ -58,7 +58,7 @@ class BlogPostLinkShortcode implements Shortcode
     /**
      * @return array
      */
-    function getParameters(): array
+    public function getParameters(): array
     {
         return ['id', 'language', 'shop'];
     }
