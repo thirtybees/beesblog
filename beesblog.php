@@ -553,9 +553,10 @@ class BeesBlog extends Module
         if (!$rewrite) {
             $rewrite = 'beesblog';
         }
-        $link = Context::getContext()->link;
         $dispatcher = Dispatcher::getInstance();
-        return $link->getBaseLink() . $link->getLangLink($idLang) . $dispatcher->createUrl($rewrite, $idLang, $params, false, '', $idShop);
+        $context = Context::getContext();
+        $link = $context->link;
+        return $link->getBaseLink($idShop) . $link->getLangLink($idLang, $context, $idShop) . $dispatcher->createUrl($rewrite, $idLang, $params, false, '', $idShop);
     }
 
     /**
