@@ -142,4 +142,23 @@ class BeesBlogPostModuleFrontController extends ModuleFrontController
         }
         return $this->blogPost;
     }
+
+    /**
+     * @param int $shopId
+     * @param int $languageId
+     *
+     * @return string|null
+     * @throws PrestaShopException
+     */
+    protected function getCurrentPageAlternateUrl(int $shopId, int $languageId)
+    {
+        $id = $this->getBeesBlogPostId();
+        if ($id) {
+            $blogPost = new BeesBlogPost($id, $languageId, $shopId);
+            if (Validate::isLoadedObject($blogPost) && $blogPost->active && $blogPost->lang_active && $blogPost->link) {
+                return $blogPost->link;
+            }
+        }
+        return null;
+    }
 }
