@@ -489,13 +489,16 @@ class BeesBlog extends Module
             ->where('active', '=', 1)
             ->getResults();
         if ($results) {
+            /** @var BeesBlogPost $result */
             foreach ($results as $result) {
-                $link = [];
-                $link['link'] = $result->link;
-                $link['lastmod'] = $result->date_upd;
-                $link['type'] = 'module';
-                $this->addImageLink($link, BeesBlogPost::getImagePath($result->id, 'post_list_item'));
-                $links[] = $link;
+                if ($result->lang_active) {
+                    $link = [];
+                    $link['link'] = $result->link;
+                    $link['lastmod'] = $result->date_upd;
+                    $link['type'] = 'module';
+                    $this->addImageLink($link, BeesBlogPost::getImagePath($result->id, 'post_list_item'));
+                    $links[] = $link;
+                }
             }
         }
 
@@ -505,6 +508,7 @@ class BeesBlog extends Module
             ->getResults();
 
         if ($results) {
+            /** @var BeesBlogCategory $result */
             foreach ($results as $result) {
                 $link = [];
                 $link['link'] = $result->link;
