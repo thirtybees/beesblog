@@ -36,6 +36,11 @@ class BeesBlogCategoryModuleFrontController extends ModuleFrontController
     public $module;
 
     /**
+     * @var int
+     */
+    protected $categoryId;
+
+    /**
      * Initialize content
      * @throws PrestaShopException
      */
@@ -47,11 +52,7 @@ class BeesBlogCategoryModuleFrontController extends ModuleFrontController
         $postsPerPage = Configuration::get(BeesBlog::POSTS_PER_PAGE);
         $limit = $postsPerPage;
 
-        $rewrite = trim(Tools::getValue('cat_rewrite'));
-        $categoryId = BeesBlogCategory::getIdByRewrite($rewrite);
-        if ($rewrite && !$categoryId) {
-            Tools::redirect(BeesBlog::getBeesBlogLink());
-        }
+        $categoryId = $this->getCategoryId();
         $category = $this->loadCategory($categoryId);
 
         $page = (int) Tools::getValue('page');
@@ -125,5 +126,41 @@ class BeesBlogCategoryModuleFrontController extends ModuleFrontController
         $category->description = Configuration::get(BeesBlog::HOME_DESCRIPTION);
         $category->meta_description = Configuration::get(BeesBlog::HOME_DESCRIPTION);
         return $category;
+    }
+
+    /**
+     * @param int $shopId
+     * @param int $languageId
+     *
+     * @return string|null
+     * @throws PrestaShopException
+     */
+    protected function getCurrentPageAlternateUrl(int $shopId, int $languageId)
+    {
+        $categoryId = $this->getCategoryId();
+        if ($categoryId) {
+            $category = new BeesBlogCategory($categoryId, $languageId, $shopId);
+            if (Validate::isLoadedObject($category) && $category->active && $category->link) {
+                return $category->link;
+            }
+        }
+        return BeesBlog::getBeesBlogLink('beesblog', [], $shopId, $languageId);
+    }
+
+    /**
+     * @return int
+     *
+     * @throws PrestaShopException
+     */
+    protected function getCategoryId()
+    {
+        if (is_null($this->categoryId)) {
+            $rewrite = trim(Tools::getValue('cat_rewrite'));
+            $this->categoryId = (int)BeesBlogCategory::getIdByRewrite($rewrite);
+            if ($rewrite && !$this->categoryId) {
+                Tools::redirect(BeesBlog::getBeesBlogLink());
+            }
+        }
+        return (int)$this->categoryId;
     }
 }
