@@ -12,7 +12,7 @@
  * to license@thirtybees.com so we can send you a copy immediately.
  *
  * @author    thirty bees <modules@thirtybees.com>
- * @c0pyright 2017-2024 thirty bees
+ * @copyright 2017-2024 thirty bees
  * @license   Academic Free License (AFL 3.0)
  */
 
