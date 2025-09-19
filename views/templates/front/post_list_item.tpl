@@ -29,7 +29,7 @@
                 {if ($imagePath)}
                     <a title="{$post->title|escape:'htmlall':'UTF-8'}" href="{$postPath|escape:'htmlall':'UTF-8'}">
                         <img class="img-responsive" alt="{$post->title|escape:'htmlall':'UTF-8'}"
-                             src="{$imagePath|escape:'htmlall':'UTF-8'}">
+                             src="{$link->getMediaLink($imagePath)|escape:'htmlall':'UTF-8'}">
                     </a>
                 {/if}
                 <span class="clearfix">
