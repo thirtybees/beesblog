@@ -182,7 +182,7 @@ class BeesBlogCategory extends ObjectModel
             $this->link = [];
             if (is_array($this->link_rewrite)) {
                 foreach ($this->link_rewrite as $lang => $rewrite) {
-                    $this->link[$lang] = BeesBlog::getBeesBlogLink('beesblog_category', ['cat_rewrite' => $rewrite], $idShop, $idLang);
+                    $this->link[$lang] = BeesBlog::getBeesBlogLink('beesblog_category', ['cat_rewrite' => $rewrite], $idShop, $lang);
                 }
             }
         }
@@ -366,12 +366,12 @@ class BeesBlogCategory extends ObjectModel
      * Return the category title by id
      *
      * @param int $id
-     * @param int|null $id_lang
+     * @param int|null $idLang
      * @return string single array string (title of category)
      * @throws PrestaShopDatabaseException
      * @throws PrestaShopException
      */
-    public static function getNameById($id, $id_lang = null)
+    public static function getNameById($id, $idLang = null)
     {
         if (empty($idLang)) {
             $idLang = (int) Context::getContext()->language->id;
