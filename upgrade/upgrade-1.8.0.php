@@ -29,5 +29,32 @@ if (!defined('_TB_VERSION_')) {
  */
 function upgrade_module_1_8_0($module)
 {
-    return $module->registerHooks();
+    $module->registerHooks();
+
+    $defaults = [
+        BeesBlog::HOME_TITLE => 'Bees blog title',
+        BeesBlog::HOME_KEYWORDS => 'thirty bees blog,thirty bees',
+        BeesBlog::HOME_DESCRIPTION => 'The beesiest blog for thirty bees',
+    ];
+
+    foreach ($defaults as $key => $defaultValue) {
+        $fallbackValue = Configuration::get($key);
+        if ($fallbackValue === false || $fallbackValue === null || $fallbackValue === '') {
+            $fallbackValue = $defaultValue;
+        }
+
+        $values = [];
+        foreach (Language::getLanguages(false, false, true) as $idLang) {
+            $idLang = (int) $idLang;
+            $value = Configuration::get($key, $idLang);
+            if ($value === false || $value === null || $value === '') {
+                $value = $fallbackValue;
+            }
+            $values[$idLang] = (string) $value;
+        }
+
+        Configuration::updateValue($key, $values);
+    }
+
+    return true;
 }

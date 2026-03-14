@@ -410,47 +410,7 @@ class AdminBeesBlogCategoryController extends ModuleAdminController
 
         $blogCategory = new BeesBlogCategory();
         $this->copyFromPost($blogCategory, $this->table);
-        $idLangDefault = (int) Configuration::get('PS_LANG_DEFAULT');
-        foreach (BeesBlogCategory::$definition['fields'] as $name => $field) {
-            if (isset($field['lang']) && $field['lang']) {
-                foreach (Language::getLanguages(false, false, true) as $idLang) {
-                    if ((int) $idLang !== $idLangDefault) {
-                        switch (BeesBlogCategory::$definition['fields'][$name]['type']) {
-                            case ObjectModel::TYPE_INT:
-                            case ObjectModel::TYPE_FLOAT:
-                                $defaultValue = 0;
-                                break;
-                            case ObjectModel::TYPE_BOOL:
-                                $defaultValue = false;
-                                break;
-                            case ObjectModel::TYPE_STRING:
-                            case ObjectModel::TYPE_HTML:
-                            case ObjectModel::TYPE_SQL:
-                                $defaultValue = '';
-                                break;
-                            case ObjectModel::TYPE_DATE:
-                                $defaultValue = '1970-01-01 00:00:00';
-                                break;
-                            case ObjectModel::TYPE_NOTHING:
-                                $defaultValue = null;
-                                break;
-                            default:
-                                $defaultValue = '';
-                                break;
-                        }
-                        if (!is_array($blogCategory->{$name})) {
-                            $blogCategory->$name = [
-                                $idLangDefault => $defaultValue,
-                            ];
-                        } elseif (!isset($blogCategory->$name[$idLangDefault])) {
-                            $blogCategory->$name[$idLangDefault] = $defaultValue;
-                        }
-
-                        $blogCategory->$name[$idLang] = $blogCategory->$name[$idLangDefault];
-                    }
-                }
-            }
-        }
+        $this->normalizeTranslatedCategoryFields($blogCategory);
 
         if (!$blogCategory->id_parent) {
             $blogCategory->id_parent = 0;
@@ -459,12 +419,6 @@ class AdminBeesBlogCategoryController extends ModuleAdminController
             $blogCategory->position = 0;
         }
         $blogCategory->id_shop = (int) Context::getContext()->shop->id;
-        foreach (Language::getLanguages(false, false, true) as $idLang) {
-            if (!$blogCategory->link_rewrite[$idLang]) {
-                $blogCategory->link_rewrite[$idLang] = Tools::link_rewrite($blogCategory->title[$idLang]);
-            }
-        }
-
         // TODO: check if link_rewrite is unique
         if ($blogCategory->add()) {
             $this->processImage($_FILES, $blogCategory->id);
@@ -538,6 +492,7 @@ class AdminBeesBlogCategoryController extends ModuleAdminController
 
         $blogCategory = new BeesBlogCategory((int) Tools::getValue(BeesBlogCategory::PRIMARY));
         $this->copyFromPost($blogCategory, $this->table);
+        $this->normalizeTranslatedCategoryFields($blogCategory);
         if (!$blogCategory->id_parent) {
             $blogCategory->id_parent = 0;
         }
@@ -652,5 +607,54 @@ class AdminBeesBlogCategoryController extends ModuleAdminController
             }
         }
         return null;
+    }
+
+    /**
+     * @param BeesBlogCategory $blogCategory
+     *
+     * @return void
+     * @throws PrestaShopException
+     */
+    protected function normalizeTranslatedCategoryFields(BeesBlogCategory $blogCategory)
+    {
+        $defaultLang = (int) Configuration::get('PS_LANG_DEFAULT');
+        $defaultTitle = trim((string) $this->getTranslatedFieldValue($blogCategory->title, $defaultLang));
+
+        if (!is_array($blogCategory->title)) {
+            $blogCategory->title = [];
+        }
+        if (!is_array($blogCategory->link_rewrite)) {
+            $blogCategory->link_rewrite = [];
+        }
+
+        foreach (Language::getLanguages(false, false, true) as $idLang) {
+            $idLang = (int) $idLang;
+            $title = trim((string) $this->getTranslatedFieldValue($blogCategory->title, $idLang));
+            if ($title === '') {
+                $title = $defaultTitle;
+            }
+            $blogCategory->title[$idLang] = $title;
+
+            $linkRewrite = trim((string) $this->getTranslatedFieldValue($blogCategory->link_rewrite, $idLang));
+            if ($linkRewrite === '') {
+                $linkRewrite = Tools::link_rewrite($title ?: $defaultTitle);
+            }
+            $blogCategory->link_rewrite[$idLang] = $linkRewrite;
+        }
+    }
+
+    /**
+     * @param mixed $value
+     * @param int $idLang
+     *
+     * @return mixed
+     */
+    protected function getTranslatedFieldValue($value, $idLang)
+    {
+        if (is_array($value)) {
+            return $value[$idLang] ?? null;
+        }
+
+        return $value;
     }
 }
