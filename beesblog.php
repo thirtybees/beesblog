@@ -87,7 +87,7 @@ class BeesBlog extends Module
     {
         $this->name = 'beesblog';
         $this->tab = 'front_office_features';
-        $this->version = '1.7.0';
+        $this->version = '1.8.0';
         $this->author = 'thirty bees';
         $this->tb_min_version = '1.0.0';
         $this->tb_versions_compliancy = '> 1.0.0';
@@ -173,6 +173,7 @@ class BeesBlog extends Module
             $this->registerHook('GSitemapAppendUrls') &&
             $this->registerHook('actionRegisterShortcodes') &&
             $this->registerHook('actionRegisterShortcodeEntityTypes') &&
+            $this->registerHook('actionGetWebserviceResources') &&
             $this->insertBlogHooks()
         );
     }
@@ -621,8 +622,31 @@ class BeesBlog extends Module
         ];
     }
 
+    /**
+     * Registers blog entities as webservice (API) resources
+     *
+     * @return array
+     */
+    public function hookActionGetWebserviceResources()
+    {
+        // shop associations are normally registered by the admin controllers;
+        // the webservice bypasses those, so register them here as well
+        Shop::addTableAssociation(BeesBlogCategory::TABLE, ['type' => 'shop']);
+        Shop::addTableAssociation(BeesBlogPost::TABLE, ['type' => 'shop']);
 
-        /**
+        return [
+            'bees_blog_posts'      => [
+                'description' => $this->l('Bees Blog posts'),
+                'class'       => BeesBlogPost::class,
+            ],
+            'bees_blog_categories' => [
+                'description' => $this->l('Bees Blog categories'),
+                'class'       => BeesBlogCategory::class,
+            ],
+        ];
+    }
+
+    /**
      * Get module configuration page
      *
      * @return string HTML
