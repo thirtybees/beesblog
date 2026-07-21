@@ -27,8 +27,8 @@ For module development, one clones this repository into `modules/` of the shop, 
 ## Multistore
 
 Version 1.9 adds shop-scoped posts, categories, translations, URL rewrites,
-related products, translated blog route prefixes, and native all/group/shop
-back-office workflows. See
+related products, translated blog route prefixes, default and per-language
+images, and native all/group/shop back-office workflows. See
 [the multistore behavior and migration notes](docs/multistore.md).
 
 ## Roadmap

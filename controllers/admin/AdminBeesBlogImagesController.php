@@ -17,6 +17,7 @@
  * @license   Academic Free License (AFL 3.0)
  */
 
+use BeesBlogModule\BeesBlogImage;
 use BeesBlogModule\BeesBlogImageType;
 use BeesBlogModule\BeesBlogMultistore;
 
@@ -365,15 +366,13 @@ class AdminBeesBlogImagesController extends ModuleAdminController
                 }
             }
 
-            if ($deleteOldImages) {
-                $this->deleteOldImages($proc['dir'], $formats);
-            }
-            if (($return = $this->regenerateNewImages($proc['dir'], $formats)) === true) {
-                if (!count($this->errors)) {
-                    $this->errors[] = sprintf(Tools::displayError('Cannot write images for this type: %s. Please check the %s folder\'s writing permissions.'), $proc['type'], $proc['dir']);
-                }
-            } elseif ($return == 'timeout') {
-                $this->errors[] = Tools::displayError('Only part of the images have been regenerated. The server timed out before finishing.');
+            foreach (BeesBlogImage::regenerateThumbnails(
+                $proc['type'],
+                $formats,
+                BeesBlogMultistore::getContextShopIds(),
+                $deleteOldImages
+            ) as $error) {
+                $this->errors[] = Tools::displayError($error);
             }
         }
 

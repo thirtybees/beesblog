@@ -22,7 +22,7 @@ if (!defined('_TB_VERSION_')) {
 }
 
 use BeesBlogModule\BeesBlogCategory;
-use BeesBlogModule\BeesBlogImageType;
+use BeesBlogModule\BeesBlogImage;
 use BeesBlogModule\BeesBlogMultistore;
 use BeesBlogModule\BeesBlogPost;
 
@@ -134,9 +134,17 @@ class AdminBeesBlogCategoryController extends ModuleAdminController
             return '';
         }
         $id = (int) Tools::getValue(BeesBlogCategory::PRIMARY);
+        $idShop = BeesBlogMultistore::getObjectRepresentativeShopId(
+            BeesBlogCategory::TABLE,
+            BeesBlogCategory::PRIMARY,
+            $id
+        );
 
-        $imageUrl = ImageManager::thumbnail(BeesBlogCategory::getImagePath($id), $this->table."_{$id}.jpg", 200, 'jpg', true, true);
-        $imageSize = file_exists(BeesBlogCategory::getImagePath($id)) ? filesize(BeesBlogCategory::getImagePath($id)) / 1000 : false;
+        $imagePath = BeesBlogCategory::getImagePath($id, 'category_default', $idShop, 0);
+        $imageUrl = $imagePath
+            ? ImageManager::thumbnail($imagePath, $this->table."_{$id}_s{$idShop}_default.jpg", 200, 'jpg', true, true)
+            : false;
+        $imageSize = $imagePath && file_exists($imagePath) ? filesize($imagePath) / 1000 : false;
 
         $this->fields_form = [
             'legend' => [
@@ -168,13 +176,13 @@ class AdminBeesBlogCategoryController extends ModuleAdminController
                 ],
                 [
                     'type'          => 'file',
-                    'label'         => $this->l('Category image'),
+                    'label'         => $this->l('Default category image'),
                     'name'          => 'category_image',
                     'display_image' => true,
                     'image'         => $imageUrl ? $imageUrl : false,
                     'size'          => $imageSize,
-                    'delete_url'    => self::$currentIndex.'&'.$this->identifier.'='. Tools::getValue(BeesBlogCategory::PRIMARY).'&token='.$this->token.'&deleteImage=1',
-                    'hint'          => $this->l('Upload an image from your computer.'),
+                    'delete_url'    => self::$currentIndex.'&'.$this->identifier.'='.Tools::getValue(BeesBlogCategory::PRIMARY).'&token='.$this->token.'&deleteImage=1&image_scope=shop',
+                    'hint'          => $this->l('Fallback image for every language. It is applied to all shops in the current shop context.'),
                 ],
                 [
                     'type'     => 'text',
@@ -262,6 +270,40 @@ class AdminBeesBlogCategoryController extends ModuleAdminController
             ];
         }
 
+        foreach (Language::getLanguages(true, $idShop) as $language) {
+            $idLang = (int) $language['id_lang'];
+            $languageImagePath = BeesBlogImage::getScopedImagePath(
+                BeesBlogImage::ENTITY_CATEGORY,
+                $id,
+                'category_default',
+                $idShop,
+                $idLang
+            );
+            $languageImageUrl = $languageImagePath
+                ? ImageManager::thumbnail(
+                    $languageImagePath,
+                    $this->table."_{$id}_s{$idShop}_l{$idLang}.jpg",
+                    200,
+                    'jpg',
+                    true,
+                    true
+                )
+                : false;
+            $this->fields_form['input'][] = [
+                'type' => 'file',
+                'label' => sprintf($this->l('%s image override'), $language['name']),
+                'name' => 'category_image_lang_'.$idLang,
+                'display_image' => true,
+                'image' => $languageImageUrl,
+                'size' => $languageImagePath && file_exists($languageImagePath)
+                    ? filesize($languageImagePath) / 1000
+                    : false,
+                'delete_url' => self::$currentIndex.'&'.$this->identifier.'='.Tools::getValue(BeesBlogCategory::PRIMARY).
+                    '&token='.$this->token.'&deleteImage=1&image_scope=language&id_lang='.$idLang,
+                'hint' => $this->l('Optional. When empty, this language uses the default image above.'),
+            ];
+        }
+
         $this->fields_value = [
             'category_image' => $imageUrl
         ];
@@ -313,45 +355,29 @@ class AdminBeesBlogCategoryController extends ModuleAdminController
      * @throws PrestaShopDatabaseException
      * @throws PrestaShopException
      */
-    public function processImage($files, $id)
+    public function processImage($files, $id, array $shopIds = [])
     {
-        $categoryImageInput = 'category_image';
+        $shopIds = $shopIds ?: BeesBlogMultistore::getSubmittedShopIds($this->table);
+        $uploads = ['category_image' => 0];
+        foreach (Language::getLanguages(false, false, true) as $idLang) {
+            $uploads['category_image_lang_'.(int) $idLang] = (int) $idLang;
+        }
 
-        if (isset($files[$categoryImageInput]) && isset($files[$categoryImageInput]['tmp_name']) && !empty($files[$categoryImageInput]['tmp_name'])) {
-            if ($error = ImageManager::validateUpload($files[$categoryImageInput], 4000000)) {
-                $this->errors[] = $error;
-
+        foreach ($uploads as $input => $idLang) {
+            if (empty($files[$input]['tmp_name']) || (int) $files[$input]['error'] === UPLOAD_ERR_NO_FILE) {
+                continue;
+            }
+            $error = null;
+            if (!BeesBlogImage::saveUploadedImage(
+                $files[$input],
+                BeesBlogImage::ENTITY_CATEGORY,
+                (int) $id,
+                $shopIds,
+                $idLang,
+                $error
+            )) {
+                $this->errors[] = $error ?: $this->l('An error occurred while attempting to upload the image.');
                 return false;
-            } else {
-                $ext = substr($files[$categoryImageInput]['name'], strrpos($files[$categoryImageInput]['name'], '.') + 1);
-                $path = _PS_IMG_DIR_."beesblog/categories/";
-                if (!file_exists($path)) {
-                    if (!mkdir($path, 0777, true)) {
-                        $this->errors[] = sprintf($this->l('Unable to create image directory: `%s`'), $path);
-                    }
-                }
-                $path .= "$id.$ext";
-                if (!move_uploaded_file($files[$categoryImageInput]['tmp_name'], $path)) {
-                    $this->errors[] = $this->l('An error occurred while attempting to upload the file.');
-
-                    return false;
-                } else {
-                    $imageTypes = BeesBlogImageType::getImagesTypes('categories');
-                    foreach ($imageTypes as $imageType) {
-                        $dir = _PS_IMG_DIR_."beesblog/categories/{$id}-{$imageType['name']}.{$ext}";
-                        if (file_exists($dir)) {
-                            unlink($dir);
-                        }
-                        ImageManager::resize(
-                            $path,
-                            _PS_IMG_DIR_."beesblog/categories/{$id}-{$imageType['name']}.{$ext}",
-                            (int) $imageType['width'],
-                            (int) $imageType['height'],
-                            $ext,
-                            true
-                        );
-                    }
-                }
             }
         }
 
@@ -365,10 +391,16 @@ class AdminBeesBlogCategoryController extends ModuleAdminController
      */
     public function processForceDeleteImage()
     {
-        $blogPost = $this->loadObject(true);
+        $blogCategory = $this->loadObject(true);
 
-        if (Validate::isLoadedObject($blogPost)) {
-            $this->deleteImage($blogPost->id);
+        if (Validate::isLoadedObject($blogCategory)) {
+            $shopIds = BeesBlogMultistore::getSubmittedShopIds($this->table);
+            $idLang = Tools::getValue('image_scope') === 'language'
+                ? max(1, (int) Tools::getValue('id_lang'))
+                : 0;
+            if (BeesBlogImage::deleteForShops(BeesBlogImage::ENTITY_CATEGORY, $blogCategory->id, $shopIds, $idLang)) {
+                $this->confirmations[] = $this->l('Successfully deleted image');
+            }
         }
     }
 
@@ -381,38 +413,19 @@ class AdminBeesBlogCategoryController extends ModuleAdminController
      * @throws PrestaShopException
      * @since 1.0.0
      */
-    public function deleteImage($idBeesBlogCategory)
+    public function deleteImage($idBeesBlogCategory, array $shopIds = [], $deleteLegacy = false)
     {
-        $deleted = false;
-        // Delete base image
-        foreach (['png', 'jpg'] as $extension) {
-            if (file_exists(_PS_IMG_DIR_."beesblog/categories/{$idBeesBlogCategory}.{$extension}")) {
-                unlink(_PS_IMG_DIR_."beesblog/categories/{$idBeesBlogCategory}.{$extension}");
-            }
-
-            // now we need to delete the image type of post
-
-            $filesToDelete = [];
-
-            // Delete auto-generated images
-            $imageTypes = BeesBlogImageType::getImagesTypes('categories');
-            foreach ($imageTypes as $imageType) {
-                $filesToDelete[] = _PS_IMG_DIR_."beesblog/categories/{$idBeesBlogCategory}-{$imageType['name']}.{$extension}";
-            }
-
-            foreach ($filesToDelete as $file) {
-                if (file_exists($file)) {
-                    @unlink($file);
-                    $deleted = true;
-                }
-            }
+        $shopIds = $shopIds ?: BeesBlogMultistore::getSubmittedShopIds($this->table);
+        $result = BeesBlogImage::deleteForShops(
+            BeesBlogImage::ENTITY_CATEGORY,
+            (int) $idBeesBlogCategory,
+            $shopIds
+        );
+        if ($deleteLegacy) {
+            BeesBlogImage::deleteLegacyImages(BeesBlogImage::ENTITY_CATEGORY, (int) $idBeesBlogCategory);
         }
 
-        if ($deleted) {
-            $this->confirmations[] = $this->l('Successfully deleted image');
-        }
-
-        return true;
+        return $result;
     }
 
 
@@ -460,7 +473,9 @@ class AdminBeesBlogCategoryController extends ModuleAdminController
             return false;
         }
         if ($blogCategory->add()) {
-            $this->processImage($_FILES, $blogCategory->id);
+            if (!$this->processImage($_FILES, $blogCategory->id, $shopIds)) {
+                return false;
+            }
             $this->confirmations[] = $this->l('Successfully added a new category');
 
             if (Tools::isSubmit('submitAdd'.$this->table.'AndStay')) {
@@ -559,7 +574,9 @@ class AdminBeesBlogCategoryController extends ModuleAdminController
         }
 
         if ($blogCategory->update()) {
-            $this->processImage($_FILES, $blogCategory->id);
+            if (!$this->processImage($_FILES, $blogCategory->id, $shopIds)) {
+                return false;
+            }
             $this->confirmations[] = $this->l('Successfully updated the category');
 
             if (Tools::isSubmit('submitAdd'.$this->table.'AndStay')) {
@@ -602,10 +619,11 @@ class AdminBeesBlogCategoryController extends ModuleAdminController
 
                 return false;
             } else {
+                BeesBlogImage::deleteForShops(BeesBlogImage::ENTITY_CATEGORY, $blogCategory->id, $shopIds);
                 if (!Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue(
                     'SELECT 1 FROM `'._DB_PREFIX_.BeesBlogCategory::TABLE.'` WHERE `'.BeesBlogCategory::PRIMARY.'` = '.(int) $blogCategory->id
                 )) {
-                    $this->deleteImage($blogCategory->id);
+                    BeesBlogImage::deleteLegacyImages(BeesBlogImage::ENTITY_CATEGORY, $blogCategory->id);
                 }
 
                 Tools::redirectAdmin($this->context->link->getAdminLink('AdminBeesBlogCategory'));
@@ -664,10 +682,11 @@ class AdminBeesBlogCategoryController extends ModuleAdminController
                 $this->errors[] = sprintf($this->l('Cannot delete category #%d.'), $idCategory);
                 continue;
             }
+            BeesBlogImage::deleteForShops(BeesBlogImage::ENTITY_CATEGORY, $idCategory, $shopIds);
             if (!Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue(
                 'SELECT 1 FROM `'._DB_PREFIX_.BeesBlogCategory::TABLE.'` WHERE `'.BeesBlogCategory::PRIMARY.'` = '.$idCategory
             )) {
-                $this->deleteImage($idCategory);
+                BeesBlogImage::deleteLegacyImages(BeesBlogImage::ENTITY_CATEGORY, $idCategory);
             }
         }
 

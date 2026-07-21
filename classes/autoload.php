@@ -25,6 +25,7 @@ spl_autoload_register(
     function ($className) {
         if (!in_array($className, [
             'BeesBlogModule\\BeesBlogCategory',
+            'BeesBlogModule\\BeesBlogImage',
             'BeesBlogModule\\BeesBlogImageType',
             'BeesBlogModule\\BeesBlogMultistore',
             'BeesBlogModule\\BeesBlogMultistoreObjectModelTrait',

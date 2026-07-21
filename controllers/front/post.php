@@ -71,10 +71,19 @@ class BeesBlogPostModuleFrontController extends ModuleFrontController
             $this->context->controller->addCSS(_PS_MODULE_DIR_.'beesblog/views/css/socialmedia.css', 'all');
             $this->context->controller->addJS(_PS_MODULE_DIR_.'beesblog/views/js/socialmedia.js');
         }
+        $sharingImagePath = BeesBlogPost::getImagePath(
+            $post->id,
+            'original',
+            (int) $this->context->shop->id,
+            (int) $this->context->language->id
+        );
+        $sharingImageUrl = $sharingImagePath
+            ? $this->context->link->getMediaLink(Media::getMediaPath($sharingImagePath))
+            : '';
         Media::addJsDef([
             'sharing_name' => addcslashes($post->title, "'"),
             'sharing_url' => addcslashes($post->link, "'"),
-            'sharing_img' => addcslashes(Tools::getHttpHost(true).'/img/beesblog/posts/'.(int) $post->id.'.jpg', "'"),
+            'sharing_img' => addcslashes($sharingImageUrl, "'"),
         ]);
 
         $postProperties = [

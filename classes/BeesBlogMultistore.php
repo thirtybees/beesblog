@@ -224,6 +224,10 @@ class BeesBlogMultistore
     {
         static::registerAssociations();
 
+        if (!BeesBlogImage::createDatabase()) {
+            throw new PrestaShopException('Unable to create the blog image association table');
+        }
+
         $legacyPostSchema = !static::columnExists(BeesBlogPost::LANG_TABLE, 'id_shop');
         $legacyCategorySchema = !static::columnExists(BeesBlogCategory::LANG_TABLE, 'id_shop');
 

@@ -571,25 +571,19 @@ class BeesBlogPost extends ObjectModel
      * @param int    $id
      * @param string $type
      *
-     * @return string
+     * @param int|null $idShop
+     * @param int|null $idLang
+     * @return string|false
      */
-    public static function getImagePath($id, $type = 'post_default')
+    public static function getImagePath($id, $type = 'post_default', $idShop = null, $idLang = null)
     {
-        $baseLocation = _PS_IMG_DIR_.'beesblog/posts/';
-
-        if ($type === 'original') {
-            if (file_exists("{$baseLocation}{$id}.png")) {
-                return "{$baseLocation}{$id}.png";
-            } else {
-                return "{$baseLocation}{$id}.jpg";
-            }
-        }
-
-        if (file_exists("{$baseLocation}{$id}-{$type}.png")) {
-            return "{$baseLocation}{$id}-{$type}.png";
-        } else {
-            return "{$baseLocation}{$id}-{$type}.jpg";
-        }
+        return BeesBlogImage::getImagePath(
+            BeesBlogImage::ENTITY_POST,
+            $id,
+            $type,
+            $idShop,
+            $idLang
+        );
     }
 
     /**

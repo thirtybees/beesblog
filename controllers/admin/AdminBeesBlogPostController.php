@@ -22,7 +22,7 @@ if (!defined('_TB_VERSION_')) {
 }
 
 use BeesBlogModule\BeesBlogCategory;
-use BeesBlogModule\BeesBlogImageType;
+use BeesBlogModule\BeesBlogImage;
 use BeesBlogModule\BeesBlogMultistore;
 use BeesBlogModule\BeesBlogPost;
 
@@ -205,7 +205,13 @@ class AdminBeesBlogPostController extends ModuleAdminController
         $blogPost = $this->loadObject(true);
 
         if (Validate::isLoadedObject($blogPost)) {
-            $this->deleteImage($blogPost->id);
+            $shopIds = BeesBlogMultistore::getSubmittedShopIds($this->table);
+            $idLang = Tools::getValue('image_scope') === 'language'
+                ? max(1, (int) Tools::getValue('id_lang'))
+                : 0;
+            if (BeesBlogImage::deleteForShops(BeesBlogImage::ENTITY_POST, $blogPost->id, $shopIds, $idLang)) {
+                $this->confirmations[] = $this->l('Successfully deleted image');
+            }
         }
     }
 
@@ -218,38 +224,19 @@ class AdminBeesBlogPostController extends ModuleAdminController
      * @throws PrestaShopException
      * @since 1.0.0
      */
-    public function deleteImage($idBeesBlogPost)
+    public function deleteImage($idBeesBlogPost, array $shopIds = [], $deleteLegacy = false)
     {
-        $deleted = false;
-        // Delete base image
-        foreach (['png', 'jpg'] as $extension) {
-            if (file_exists(_PS_IMG_DIR_."beesblog/posts/{$idBeesBlogPost}.{$extension}")) {
-                unlink(_PS_IMG_DIR_."beesblog/posts/{$idBeesBlogPost}.{$extension}");
-            }
-
-            // now we need to delete the image type of post
-
-            $filesToDelete = [];
-
-            // Delete auto-generated images
-            $imageTypes = BeesBlogImageType::getImagesTypes('posts');
-            foreach ($imageTypes as $imageType) {
-                $filesToDelete[] = _PS_IMG_DIR_."beesblog/posts/{$idBeesBlogPost}-{$imageType['name']}.{$extension}";
-            }
-
-            foreach ($filesToDelete as $file) {
-                if (file_exists($file)) {
-                    @unlink($file);
-                    $deleted = true;
-                }
-            }
+        $shopIds = $shopIds ?: BeesBlogMultistore::getSubmittedShopIds($this->table);
+        $result = BeesBlogImage::deleteForShops(
+            BeesBlogImage::ENTITY_POST,
+            (int) $idBeesBlogPost,
+            $shopIds
+        );
+        if ($deleteLegacy) {
+            BeesBlogImage::deleteLegacyImages(BeesBlogImage::ENTITY_POST, (int) $idBeesBlogPost);
         }
 
-        if ($deleted) {
-            $this->confirmations[] = $this->l('Successfully deleted image');
-        }
-
-        return true;
+        return $result;
     }
 
     /**
@@ -268,8 +255,11 @@ class AdminBeesBlogPostController extends ModuleAdminController
         $lang = (int)$this->context->language->id;
         $idShop = BeesBlogMultistore::getObjectRepresentativeShopId(BeesBlogPost::TABLE, BeesBlogPost::PRIMARY, $id);
 
-        $imageUrl = ImageManager::thumbnail(BeesBlogPost::getImagePath($id), $this->table."_{$id}.jpg", 200, 'jpg', true, true);
-        $imageSize = file_exists(BeesBlogPost::getImagePath($id)) ? filesize(BeesBlogPost::getImagePath($id)) / 1000 : false;
+        $imagePath = BeesBlogPost::getImagePath($id, 'post_default', $idShop, 0);
+        $imageUrl = $imagePath
+            ? ImageManager::thumbnail($imagePath, $this->table."_{$id}_s{$idShop}_default.jpg", 200, 'jpg', true, true)
+            : false;
+        $imageSize = $imagePath && file_exists($imagePath) ? filesize($imagePath) / 1000 : false;
 
         $products = $id ? Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS((new DbQuery())
             ->select('p.id_product, pl.name, p.reference')
@@ -338,13 +328,13 @@ class AdminBeesBlogPostController extends ModuleAdminController
                 ],
                 [
                     'type'          => 'file',
-                    'label'         => $this->l('Image'),
+                    'label'         => $this->l('Default image'),
                     'name'          => 'post_image',
                     'display_image' => true,
                     'image'         => $imageUrl ? $imageUrl : false,
                     'size'          => $imageSize,
-                    'delete_url'    => self::$currentIndex.'&'.$this->identifier.'='. Tools::getValue(BeesBlogPost::PRIMARY).'&token='.$this->token.'&deleteImage=1',
-                    'hint'          => $this->l('Upload an image from your computer.'),
+                    'delete_url'    => self::$currentIndex.'&'.$this->identifier.'='.Tools::getValue(BeesBlogPost::PRIMARY).'&token='.$this->token.'&deleteImage=1&image_scope=shop',
+                    'hint'          => $this->l('Fallback image for every language. It is applied to all shops in the current shop context.'),
                 ],
                 [
                     'type'    => 'select',
@@ -488,6 +478,40 @@ class AdminBeesBlogPostController extends ModuleAdminController
             ];
         }
 
+        foreach (Language::getLanguages(true, $idShop) as $language) {
+            $idLang = (int) $language['id_lang'];
+            $languageImagePath = BeesBlogImage::getScopedImagePath(
+                BeesBlogImage::ENTITY_POST,
+                $id,
+                'post_default',
+                $idShop,
+                $idLang
+            );
+            $languageImageUrl = $languageImagePath
+                ? ImageManager::thumbnail(
+                    $languageImagePath,
+                    $this->table."_{$id}_s{$idShop}_l{$idLang}.jpg",
+                    200,
+                    'jpg',
+                    true,
+                    true
+                )
+                : false;
+            $this->fields_form['input'][] = [
+                'type' => 'file',
+                'label' => sprintf($this->l('%s image override'), $language['name']),
+                'name' => 'post_image_lang_'.$idLang,
+                'display_image' => true,
+                'image' => $languageImageUrl,
+                'size' => $languageImagePath && file_exists($languageImagePath)
+                    ? filesize($languageImagePath) / 1000
+                    : false,
+                'delete_url' => self::$currentIndex.'&'.$this->identifier.'='.Tools::getValue(BeesBlogPost::PRIMARY).
+                    '&token='.$this->token.'&deleteImage=1&image_scope=language&id_lang='.$idLang,
+                'hint' => $this->l('Optional. When empty, this language uses the default image above.'),
+            ];
+        }
+
         $this->fields_value = [
             'post_image' => $imageUrl,
             'products' => $products,
@@ -527,45 +551,29 @@ class AdminBeesBlogPostController extends ModuleAdminController
      * @throws PrestaShopDatabaseException
      * @throws PrestaShopException
      */
-    public function processImage($files, $id)
+    public function processImage($files, $id, array $shopIds = [])
     {
-        $postImageInput = 'post_image';
+        $shopIds = $shopIds ?: BeesBlogMultistore::getSubmittedShopIds($this->table);
+        $uploads = ['post_image' => 0];
+        foreach (Language::getLanguages(false, false, true) as $idLang) {
+            $uploads['post_image_lang_'.(int) $idLang] = (int) $idLang;
+        }
 
-        if (isset($files[$postImageInput]) && isset($files[$postImageInput]['tmp_name']) && !empty($files[$postImageInput]['tmp_name'])) {
-            if ($error = ImageManager::validateUpload($files[$postImageInput], 4000000)) {
-                $this->errors[] = $error;
-
+        foreach ($uploads as $input => $idLang) {
+            if (empty($files[$input]['tmp_name']) || (int) $files[$input]['error'] === UPLOAD_ERR_NO_FILE) {
+                continue;
+            }
+            $error = null;
+            if (!BeesBlogImage::saveUploadedImage(
+                $files[$input],
+                BeesBlogImage::ENTITY_POST,
+                (int) $id,
+                $shopIds,
+                $idLang,
+                $error
+            )) {
+                $this->errors[] = $error ?: $this->l('An error occurred while attempting to upload the image.');
                 return false;
-            } else {
-                $ext = substr($files[$postImageInput]['name'], strrpos($files[$postImageInput]['name'], '.') + 1);
-                $path = _PS_IMG_DIR_."beesblog/posts/";
-                if (!file_exists($path)) {
-                    if (!mkdir($path, 0777, true)) {
-                        $this->errors[] = sprintf($this->l('Unable to create image directory: `%s`'), $path);
-                    }
-                }
-                $path .= "$id.$ext";
-                if (!move_uploaded_file($files[$postImageInput]['tmp_name'], $path)) {
-                    $this->errors[] = $this->l('An error occurred while attempting to upload the file.');
-
-                    return false;
-                } else {
-                    $imageTypes = BeesBlogImageType::getImagesTypes('posts');
-                    foreach ($imageTypes as $imageType) {
-                        $dir = _PS_IMG_DIR_."beesblog/posts/$id-{$imageType['name']}.$ext";
-                        if (file_exists($dir)) {
-                            @unlink($dir);
-                        }
-                        ImageManager::resize(
-                            $path,
-                            _PS_IMG_DIR_."beesblog/posts/$id-{$imageType['name']}.$ext",
-                            (int) $imageType['width'],
-                            (int) $imageType['height'],
-                            $ext,
-                            true
-                        );
-                    }
-                }
             }
         }
 
@@ -659,7 +667,9 @@ class AdminBeesBlogPostController extends ModuleAdminController
         }
 
         if ($blogPost->add()) {
-            $this->processImage($_FILES, $blogPost->id);
+            if (!$this->processImage($_FILES, $blogPost->id, $shopIds)) {
+                return false;
+            }
             $this->processProducts($blogPost->id, $shopIds);
             $this->confirmations[] = $this->l('Successfully added post');
             if (Tools::isSubmit('submitAdd'.$this->table.'AndStay')) {
@@ -732,7 +742,9 @@ class AdminBeesBlogPostController extends ModuleAdminController
         }
 
         if ($blogPost->update()) {
-            $this->processImage($_FILES, $blogPost->id);
+            if (!$this->processImage($_FILES, $blogPost->id, $shopIds)) {
+                return false;
+            }
             $this->processProducts($blogPost->id, $shopIds);
             $this->confirmations[] = $this->l('Successfully updated post');
             if (Tools::isSubmit('submitAdd'.$this->table.'AndStay')) {
@@ -810,16 +822,18 @@ class AdminBeesBlogPostController extends ModuleAdminController
         $idPost = (int) Tools::getValue(BeesBlogPost::PRIMARY);
         $idShop = BeesBlogMultistore::getObjectRepresentativeShopId(BeesBlogPost::TABLE, BeesBlogPost::PRIMARY, $idPost);
         $blogPost = new BeesBlogPost($idPost, null, $idShop);
-        $blogPost->id_shop_list = BeesBlogMultistore::getSubmittedShopIds($this->table);
+        $shopIds = BeesBlogMultistore::getSubmittedShopIds($this->table);
+        $blogPost->id_shop_list = $shopIds;
 
         if (!$blogPost->delete()) {
             $this->errors[] = $this->l('An error occurred while deleting the object.').' <strong>'.$this->table.' ('. Db::getInstance()->getMsgError().')</strong>';
             return false;
         } else {
+            BeesBlogImage::deleteForShops(BeesBlogImage::ENTITY_POST, $blogPost->id, $shopIds);
             if (!Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue(
                 'SELECT 1 FROM `'._DB_PREFIX_.BeesBlogPost::TABLE.'` WHERE `'.BeesBlogPost::PRIMARY.'` = '.(int) $blogPost->id
             )) {
-                $this->deleteImage($blogPost->id);
+                BeesBlogImage::deleteLegacyImages(BeesBlogImage::ENTITY_POST, $blogPost->id);
             }
             Tools::redirectAdmin($this->context->link->getAdminLink('AdminBeesBlogPost'));
             return true;
@@ -870,10 +884,11 @@ class AdminBeesBlogPostController extends ModuleAdminController
                 $this->errors[] = sprintf($this->l('Cannot delete post #%d.'), $idPost);
                 continue;
             }
+            BeesBlogImage::deleteForShops(BeesBlogImage::ENTITY_POST, $idPost, $shopIds);
             if (!Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue(
                 'SELECT 1 FROM `'._DB_PREFIX_.BeesBlogPost::TABLE.'` WHERE `'.BeesBlogPost::PRIMARY.'` = '.$idPost
             )) {
-                $this->deleteImage($idPost);
+                BeesBlogImage::deleteLegacyImages(BeesBlogImage::ENTITY_POST, $idPost);
             }
         }
 

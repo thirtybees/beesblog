@@ -20,14 +20,26 @@ context selector defines the write scope.
 | Post/category status, position, dates, category/parent, author, comments and views | Shop |
 | Titles, content, SEO fields, language status and URL rewrite | Shop + language |
 | Related products | Shop |
+| Default post/category image | Shop |
+| Optional post/category image override | Shop + language |
 | Module configuration | Native thirty bees global/group/shop configuration inheritance |
 | Blog route prefix | Global/group/shop configuration + language |
 | Entity identifier and creation date | Global |
-| Image files and image-type definitions | Shared by entity; image-type associations are per shop |
+| Image-type definitions | Global definitions with per-shop associations |
 
-The physical image filename is based on the global entity identifier. Shops
-needing different images should use different post/category entities. This
-avoids two shops overwriting the same generated thumbnail set.
+The image form contains a default image and optional overrides for each active
+language. Uploads follow the native back-office shop context: All Shops writes
+independent files for every authorized shop, group context writes the shops in
+that group, and single-shop context writes only that shop. Front-office image
+resolution uses the language override first, then the shop default, then the
+legacy entity image. Existing theme templates remain compatible because the
+public image helper performs this resolution from the current context.
+
+Legacy global files are not copied during migration. They remain the fallback
+until a scoped image is uploaded. Deleting a legacy fallback in one shop
+stores an empty shop-level override, so the file remains available to other
+shops. Uploaded files are re-encoded using their detected image format and
+all configured thumbnails are generated under shop/language-specific names.
 
 ## URL rewrites
 
@@ -52,14 +64,16 @@ templates do not need to pass or render this internal route parameter.
 
 The 1.9.0 upgrade copies legacy translations to every existing association,
 moves mutable values into the shop tables, scopes related products, repairs
-missing associations, and adds shop-aware keys. It also copies every legacy
+missing associations, adds shop-aware keys, and creates the scoped image
+association table. It also copies every legacy
 scalar blog prefix into missing language rows at the same global, group, or
 shop scope. The migration is idempotent: rerunning it preserves existing
 shop-specific edits and translated route prefixes.
 
 When thirty bees duplicates a shop, the module's native
 `actionShopDataDuplication` hook copies post, category, translation,
-image-type, and related-product associations to the new shop.
+image-type, related-product, and explicit image associations to the new shop.
+Image files are duplicated under target-shop filenames rather than shared.
 
 ## Verification
 
@@ -68,6 +82,7 @@ Run against a disposable/local thirty bees installation:
 ```text
 php modules/beesblog/tests/run_multistore_integration.php <thirty-bees-root>
 php modules/beesblog/tests/run_runtime_smoke.php <thirty-bees-root>
+php modules/beesblog/tests/run_admin_form_smoke.php <thirty-bees-root>
 ```
 
 The integration test retains the schema upgrade but removes all temporary blog

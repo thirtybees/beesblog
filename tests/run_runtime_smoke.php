@@ -21,6 +21,7 @@ require $root.'/config/config.inc.php';
 require_once $root.'/modules/beesblog/beesblog.php';
 
 use BeesBlogModule\BeesBlogCategory;
+use BeesBlogModule\BeesBlogImage;
 use BeesBlogModule\BeesBlogPost;
 
 function assertSmoke($condition, $message)
@@ -61,6 +62,8 @@ try {
     assertSmoke((bool) $postRow, 'a migrated post translation is available');
     $post = new BeesBlogPost((int) $postRow[BeesBlogPost::PRIMARY], $idLang, $idShop);
     assertSmoke(Validate::isLoadedObject($post), 'front-office post ObjectModel loads for an explicit shop');
+    $postImagePath = BeesBlogPost::getImagePath($post->id, 'post_default', $idShop, $idLang);
+    assertSmoke(!$postImagePath || file_exists($postImagePath), 'post image resolver returns an existing language/shop-aware file');
     assertSmoke(
         (int) BeesBlogPost::getIdByRewrite($postRow['link_rewrite'], true, $idLang, $idShop) === (int) $post->id,
         'front-office post slug lookup is shop-scoped'
@@ -74,6 +77,13 @@ try {
         ' WHERE cl.`id_shop` = '.$idShop.' AND cl.`id_lang` = '.$idLang
     );
     assertSmoke((bool) $categoryRow, 'a migrated category translation is available');
+    assertSmoke(
+        (bool) Db::getInstance()->getValue(
+            'SELECT 1 FROM `information_schema`.`tables` WHERE `table_schema` = DATABASE()'.
+            ' AND `table_name` = \''.pSQL(_DB_PREFIX_.BeesBlogImage::TABLE).'\''
+        ),
+        'shop/language image association table is available'
+    );
     assertSmoke(
         (int) BeesBlogCategory::getIdByRewrite($categoryRow['link_rewrite'], true, $idLang, $idShop) === (int) $categoryRow[BeesBlogCategory::PRIMARY],
         'front-office category slug lookup is shop-scoped'

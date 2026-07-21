@@ -18,6 +18,7 @@
  */
 
 use BeesBlogModule\BeesBlogCategory;
+use BeesBlogModule\BeesBlogImage;
 use BeesBlogModule\BeesBlogImageType;
 use BeesBlogModule\BeesBlogMultistore;
 use BeesBlogModule\BeesBlogPost;
@@ -315,7 +316,8 @@ class BeesBlog extends Module
         if ($removeTables) {
             if (!(BeesBlogPost::dropDatabase()
                 && BeesBlogCategory::dropDatabase()
-                && BeesBlogImageType::dropDatabase())
+                && BeesBlogImageType::dropDatabase()
+                && BeesBlogImage::dropDatabase())
             ) {
                 return false;
             }
@@ -744,11 +746,19 @@ class BeesBlog extends Module
         if ($controller instanceof BeesBlogPostModuleFrontController) {
             $post = $controller->getBeesBlogPost();
             if ($post) {
+                $imagePath = BeesBlogPost::getImagePath(
+                    $post->id,
+                    'original',
+                    (int) $this->context->shop->id,
+                    (int) $this->context->language->id
+                );
                 Context::getContext()->smarty->assign([
                     'bb_og_link' => $post->link,
                     'bb_og_title' => $post->meta_title . ' - ' . Configuration::get('PS_SHOP_NAME'),
                     'bb_og_description' => $post->meta_description,
-                    'bb_og_image' => Tools::getHttpHost(true) . '/img/beesblog/posts/' . (int)$post->id . '.jpg',
+                    'bb_og_image' => $imagePath
+                        ? $this->context->link->getMediaLink(Media::getMediaPath($imagePath))
+                        : '',
                 ]);
                 return $this->display(__FILE__, 'views/templates/hooks/post-header.tpl');
             }
@@ -856,7 +866,7 @@ class BeesBlog extends Module
             }
         }
 
-        return true;
+        return BeesBlogImage::duplicateShop($oldShopId, $newShopId);
     }
 
     /**
@@ -1373,9 +1383,9 @@ class BeesBlog extends Module
      *
      * @since 1.0.0
      */
-    public static function getPostImagePath($id, $type = 'post_default')
+    public static function getPostImagePath($id, $type = 'post_default', $idShop = null, $idLang = null)
     {
-        return BeesBlogPost::getImagePath($id, $type);
+        return BeesBlogPost::getImagePath($id, $type, $idShop, $idLang);
     }
 
     /**
@@ -1389,9 +1399,9 @@ class BeesBlog extends Module
      *
      * @since 1.0.0
      */
-    public static function getCategoryImagePath($id, $type = 'category_default')
+    public static function getCategoryImagePath($id, $type = 'category_default', $idShop = null, $idLang = null)
     {
-        return BeesBlogCategory::getImagePath($id, $type);
+        return BeesBlogCategory::getImagePath($id, $type, $idShop, $idLang);
     }
 
     /**

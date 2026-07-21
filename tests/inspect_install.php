@@ -32,6 +32,7 @@ foreach ([
     'bees_blog_category',
     'bees_blog_category_shop',
     'bees_blog_category_lang',
+    'bees_blog_image',
     'bees_blog_image_type',
     'bees_blog_image_type_shop',
 ] as $table) {
