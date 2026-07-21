@@ -17,6 +17,7 @@
  * @license   Academic Free License (AFL 3.0)
  */
 
+use BeesBlogModule\BeesBlogLanguageLink;
 use BeesBlogModule\BeesBlogPost;
 
 if (!defined('_TB_VERSION_')) {
@@ -56,6 +57,12 @@ class BeesBlogPostModuleFrontController extends ModuleFrontController
      */
     public function initContent()
     {
+        BeesBlogLanguageLink::install(
+            BeesBlogLanguageLink::ENTITY_POST,
+            $this->getBeesBlogPostId(),
+            (int) $this->context->shop->id
+        );
+
         parent::initContent();
 
         $post = $this->getBeesBlogPost();
@@ -71,10 +78,19 @@ class BeesBlogPostModuleFrontController extends ModuleFrontController
             $this->context->controller->addCSS(_PS_MODULE_DIR_.'beesblog/views/css/socialmedia.css', 'all');
             $this->context->controller->addJS(_PS_MODULE_DIR_.'beesblog/views/js/socialmedia.js');
         }
+        $sharingImagePath = BeesBlogPost::getImagePath(
+            $post->id,
+            'original',
+            (int) $this->context->shop->id,
+            (int) $this->context->language->id
+        );
+        $sharingImageUrl = $sharingImagePath
+            ? $this->context->link->getMediaLink(Media::getMediaPath($sharingImagePath))
+            : '';
         Media::addJsDef([
             'sharing_name' => addcslashes($post->title, "'"),
             'sharing_url' => addcslashes($post->link, "'"),
-            'sharing_img' => addcslashes(Tools::getHttpHost(true).'/img/beesblog/posts/'.(int) $post->id.'.jpg', "'"),
+            'sharing_img' => addcslashes($sharingImageUrl, "'"),
         ]);
 
         $postProperties = [
@@ -133,7 +149,7 @@ class BeesBlogPostModuleFrontController extends ModuleFrontController
         if (is_null($this->blogPost)) {
             $postId = $this->getBeesBlogPostId();
             if ($postId) {
-                $blogPost = new BeesBlogPost($postId, $this->context->language->id);
+                $blogPost = new BeesBlogPost($postId, $this->context->language->id, (int) $this->context->shop->id);
                 if (Validate::isLoadedObject($blogPost) && $blogPost->active && $blogPost->lang_active) {
                     $blogPost->content = BeesBlog::processText($blogPost->content);
                     $this->blogPost = $blogPost;

@@ -37,6 +37,8 @@ use Validate;
  */
 class BeesBlogImageType extends ObjectModel
 {
+    use BeesBlogMultistoreObjectModelTrait;
+
     const PRIMARY = 'id_bees_blog_image_type';
     const TABLE = 'bees_blog_image_type';
     const LANG_TABLE = 'bees_blog_image_type_lang';
@@ -93,10 +95,15 @@ class BeesBlogImageType extends ObjectModel
         'multishop' => true,
         'fields'    => [
             'name'       => ['type' => self::TYPE_STRING, 'validate' => 'isImageTypeName', 'required' => true, 'size' => 64, 'db_type' => 'VARCHAR(64)'],
-            'width'      => ['type' => self::TYPE_INT,    'validate' => 'isImageSize',     'required' => true,               'db_type' => 'INT(11) UNSIGNED'],
-            'height'     => ['type' => self::TYPE_INT,    'validate' => 'isImageSize',     'required' => true,               'db_type' => 'INT(11) UNSIGNED'],
-            'posts'      => ['type' => self::TYPE_BOOL,   'validate' => 'isBool',          'required' => true,               'db_type' => 'TINYINT(1)'],
-            'categories' => ['type' => self::TYPE_BOOL,   'validate' => 'isBool',          'required' => true,               'db_type' => 'TINYINT(1)'],
+            'width'      => ['type' => self::TYPE_INT,  'validate' => 'isImageSize', 'required' => true, 'db_type' => 'INT(11) UNSIGNED'],
+            'height'     => ['type' => self::TYPE_INT,  'validate' => 'isImageSize', 'required' => true, 'db_type' => 'INT(11) UNSIGNED'],
+            'posts'      => ['type' => self::TYPE_BOOL, 'validate' => 'isBool',      'required' => true, 'db_type' => 'TINYINT(1)'],
+            'categories' => ['type' => self::TYPE_BOOL, 'validate' => 'isBool',      'required' => true, 'db_type' => 'TINYINT(1)'],
+        ],
+        'keys' => [
+            self::SHOP_TABLE => [
+                'primary' => ['type' => self::PRIMARY_KEY, 'columns' => [self::PRIMARY, 'id_shop']],
+            ],
         ],
     ];
 
@@ -104,6 +111,18 @@ class BeesBlogImageType extends ObjectModel
      * @var array
      */
     protected $webserviceParameters = [];
+
+    /**
+     * @param int|null $id
+     * @param int|null $idLang
+     * @param int|null $idShop
+     * @throws PrestaShopException
+     */
+    public function __construct($id = null, $idLang = null, $idShop = null)
+    {
+        BeesBlogMultistore::registerAssociations();
+        parent::__construct($id, $idLang, $idShop);
+    }
 
     /**
      * Returns image type definitions
@@ -119,22 +138,28 @@ class BeesBlogImageType extends ObjectModel
      */
     public static function getImagesTypes($type = null, $orderBySize = false)
     {
-        if (!isset(static::$imagesTypesCache[$type])) {
-            $where = 'WHERE 1';
+        $idShop = (int) Context::getContext()->shop->id;
+        $cacheKey = $idShop.'|'.(string) $type.'|'.(int) $orderBySize;
+        if (!isset(static::$imagesTypesCache[$cacheKey])) {
+            $where = 'WHERE its.`id_shop` = '.(int) $idShop;
             if (!empty($type)) {
-                $where .= ' AND `'.bqSQL($type).'` = 1 ';
+                $where .= ' AND it.`'.bqSQL($type).'` = 1 ';
             }
 
             if ($orderBySize) {
-                $query = 'SELECT * FROM `'._DB_PREFIX_.bqSQL(static::$definition['table']).'` '.$where.' ORDER BY `width` DESC, `height` DESC, `name`ASC';
+                $order = 'it.`width` DESC, it.`height` DESC, it.`name` ASC';
             } else {
-                $query = 'SELECT * FROM `'._DB_PREFIX_.bqSQL(static::$definition['table']).'` '.$where.' ORDER BY `name` ASC';
+                $order = 'it.`name` ASC';
             }
-
-            static::$imagesTypesCache[$type] = Db::getInstance()->executeS($query);
+            $query = 'SELECT it.`'.static::PRIMARY.'`, it.`name`, it.`width`, it.`height`, it.`posts`, it.`categories`'.
+                ' FROM `'._DB_PREFIX_.bqSQL(static::TABLE).'` it'.
+                ' INNER JOIN `'._DB_PREFIX_.bqSQL(static::SHOP_TABLE).'` its'.
+                ' ON its.`'.static::PRIMARY.'` = it.`'.static::PRIMARY.'`'.
+                ' '.$where.' ORDER BY '.$order;
+            static::$imagesTypesCache[$cacheKey] = Db::getInstance()->executeS($query);
         }
 
-        return static::$imagesTypesCache[$type];
+        return static::$imagesTypesCache[$cacheKey];
     }
 
     /**
@@ -207,31 +232,19 @@ class BeesBlogImageType extends ObjectModel
      */
     public static function getByNameNType($name, $type = null, $order = 0)
     {
-        static $isPassed = false;
-
-        if (!isset(static::$imagesTypesNameCache["{$name}_{$type}_{$order}"]) && !$isPassed) {
-            $results = Db::getInstance()->ExecuteS('SELECT * FROM `'._DB_PREFIX_.bqSQL(static::$definition['table']).'`');
-
-            $types = ['posts', 'categories'];
-            $total = count($types);
-
-            foreach ($results as $result) {
-                foreach ($result as $value) {
-                    for ($i = 0; $i < $total; ++$i) {
-                        static::$imagesTypesNameCache["{$result['name']}_{$types[$i]}_{$value}"] = $result;
-                    }
+        $idShop = (int) Context::getContext()->shop->id;
+        $key = $idShop."_{$name}_{$type}_{$order}";
+        if (!array_key_exists($key, static::$imagesTypesNameCache)) {
+            static::$imagesTypesNameCache[$key] = false;
+            foreach (static::getImagesTypes($type, (bool) $order) as $result) {
+                if ($result['name'] === $name) {
+                    static::$imagesTypesNameCache[$key] = $result;
+                    break;
                 }
             }
-
-            $isPassed = true;
         }
 
-        $return = false;
-        if (isset(static::$imagesTypesNameCache["{$name}_{$type}_{$order}"])) {
-            $return = static::$imagesTypesNameCache["{$name}_{$type}_{$order}"];
-        }
-
-        return $return;
+        return static::$imagesTypesNameCache[$key];
     }
 
     /**
@@ -280,32 +293,33 @@ class BeesBlogImageType extends ObjectModel
 
         foreach ($basicTypes as $basicType) {
             foreach ($shops as $idShop) {
-                $sql = new DbQuery();
-                $sql->select('it.'.static::PRIMARY);
-                $sql->from(static::TABLE, 'it');
-                $sql->innerJoin(static::SHOP_TABLE, 'its', 'its.`'.static::PRIMARY.'` = it.`'.static::PRIMARY.'`');
-                $sql->where('its.`id_shop` = '.(int) $idShop);
-                $sql->where("name = '{$basicType}'");
-
-                if (!Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql)) {
+                $idType = (int) Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue(
+                    'SELECT `'.static::PRIMARY.'` FROM `'._DB_PREFIX_.static::TABLE.'`'.
+                    ' WHERE `name` = \''.pSQL($basicType).'\''
+                );
+                if (!$idType) {
                     Db::getInstance()->insert(
                         static::TABLE,
                         [
-                            'name'       => $basicType,
-                            'width'      => $consts[strtoupper($basicType).'_WIDTH'],
-                            'height'     => $consts[strtoupper($basicType).'_HEIGHT'],
-                            'posts'      => substr($basicType, 0, 4) === 'post',
-                            'categories' => substr($basicType, 0, 4) !== 'post',
+                            'name' => pSQL($basicType),
+                            'width' => (int) $consts[strtoupper($basicType).'_WIDTH'],
+                            'height' => (int) $consts[strtoupper($basicType).'_HEIGHT'],
+                            'posts' => (int) (substr($basicType, 0, 4) === 'post'),
+                            'categories' => (int) (substr($basicType, 0, 4) !== 'post'),
                         ]
                     );
-                    Db::getInstance()->insert(
-                        static::SHOP_TABLE,
-                        [
-                            static::PRIMARY => (int) Db::getInstance()->Insert_ID(),
-                            'id_shop'       => (int) $idShop,
-                        ]
-                    );
+                    $idType = (int) Db::getInstance()->Insert_ID();
                 }
+                Db::getInstance()->insert(
+                    static::SHOP_TABLE,
+                    [
+                        static::PRIMARY => $idType,
+                        'id_shop' => (int) $idShop,
+                    ],
+                    false,
+                    true,
+                    Db::INSERT_IGNORE
+                );
             }
         }
     }

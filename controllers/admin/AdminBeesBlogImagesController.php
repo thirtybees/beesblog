@@ -17,7 +17,9 @@
  * @license   Academic Free License (AFL 3.0)
  */
 
+use BeesBlogModule\BeesBlogImage;
 use BeesBlogModule\BeesBlogImageType;
+use BeesBlogModule\BeesBlogMultistore;
 
 if (!defined('_TB_VERSION_')) {
     exit;
@@ -47,11 +49,8 @@ class AdminBeesBlogImagesController extends ModuleAdminController
         // Retrieve the context from a static context, just because
         $this->context = Context::getContext();
 
-        // Only display this page in single store context
-        $this->multishop_context = Shop::CONTEXT_SHOP;
-
-        // Make sure that when we save the `BeesBlogCategory` ObjectModel, the `_shop` table is set, too (primary => id_shop relation)
-        Shop::addTableAssociation(BeesBlogImageType::TABLE, ['type' => 'shop']);
+        $this->multishop_context = Shop::CONTEXT_ALL | Shop::CONTEXT_GROUP | Shop::CONTEXT_SHOP;
+        BeesBlogMultistore::registerAssociations();
 
         $this->addRowAction('edit');
         $this->addRowAction('delete');
@@ -170,6 +169,14 @@ class AdminBeesBlogImagesController extends ModuleAdminController
             ],
         ];
 
+        if (Shop::isFeatureActive()) {
+            $this->fields_form['input'][] = [
+                'type' => 'shop',
+                'label' => $this->l('Shop association'),
+                'name' => 'checkBoxShopAsso',
+            ];
+        }
+
         $this->fields_options = [
             'regenerate' => [
                 'title'  => $this->l('Regenerate images'),
@@ -275,6 +282,53 @@ class AdminBeesBlogImagesController extends ModuleAdminController
     }
 
     /**
+     * Associations are derived from the native BO shop context by the model.
+     * This avoids AdminController removing other authorized associations based
+     * on form checkboxes after a context-wide write.
+     *
+     * @param int $idObject
+     * @return bool
+     */
+    protected function updateAssoShop($idObject)
+    {
+        return true;
+    }
+
+    /**
+     * Preserve mandatory presets during bulk operations as well as row-level
+     * deletes, while removing custom presets only from the current context.
+     *
+     * @return bool
+     * @throws PrestaShopException
+     */
+    protected function processBulkDelete()
+    {
+        $result = true;
+        $mandatoryIds = array_map('intval', (array) BeesBlogImageType::getBasicTypeIds());
+        $shopIds = BeesBlogMultistore::getContextShopIds();
+        foreach ((array) $this->boxes as $idType) {
+            $idType = (int) $idType;
+            if (in_array($idType, $mandatoryIds, true)) {
+                $result = false;
+                $this->errors[] = sprintf($this->l('Image type #%d is mandatory and cannot be deleted.'), $idType);
+                continue;
+            }
+            $imageType = new BeesBlogImageType($idType);
+            $imageType->id_shop_list = $shopIds;
+            if (!Validate::isLoadedObject($imageType) || !$imageType->delete()) {
+                $result = false;
+                $this->errors[] = sprintf($this->l('Cannot delete image type #%d.'), $idType);
+            }
+        }
+
+        if ($result) {
+            $this->redirect_after = static::$currentIndex.'&conf=2&token='.$this->token;
+        }
+
+        return $result;
+    }
+
+    /**
      * Regenerate thumbnails
      *
      * @param string $type
@@ -312,15 +366,13 @@ class AdminBeesBlogImagesController extends ModuleAdminController
                 }
             }
 
-            if ($deleteOldImages) {
-                $this->deleteOldImages($proc['dir'], $formats);
-            }
-            if (($return = $this->regenerateNewImages($proc['dir'], $formats)) === true) {
-                if (!count($this->errors)) {
-                    $this->errors[] = sprintf(Tools::displayError('Cannot write images for this type: %s. Please check the %s folder\'s writing permissions.'), $proc['type'], $proc['dir']);
-                }
-            } elseif ($return == 'timeout') {
-                $this->errors[] = Tools::displayError('Only part of the images have been regenerated. The server timed out before finishing.');
+            foreach (BeesBlogImage::regenerateThumbnails(
+                $proc['type'],
+                $formats,
+                BeesBlogMultistore::getContextShopIds(),
+                $deleteOldImages
+            ) as $error) {
+                $this->errors[] = Tools::displayError($error);
             }
         }
 

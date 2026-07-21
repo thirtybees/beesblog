@@ -18,6 +18,7 @@
  */
 
 use BeesBlogModule\BeesBlogCategory;
+use BeesBlogModule\BeesBlogLanguageLink;
 use BeesBlogModule\BeesBlogPost;
 
 if (!defined('_TB_VERSION_')) {
@@ -46,13 +47,19 @@ class BeesBlogCategoryModuleFrontController extends ModuleFrontController
      */
     public function initContent()
     {
+        $categoryId = $this->getCategoryId();
+        BeesBlogLanguageLink::install(
+            BeesBlogLanguageLink::ENTITY_CATEGORY,
+            $categoryId,
+            (int) $this->context->shop->id
+        );
+
         parent::initContent();
 
         $totalPages = 0;
         $postsPerPage = Configuration::get(BeesBlog::POSTS_PER_PAGE);
         $limit = $postsPerPage;
 
-        $categoryId = $this->getCategoryId();
         $category = $this->loadCategory($categoryId);
 
         $page = (int) Tools::getValue('page');
@@ -112,7 +119,7 @@ class BeesBlogCategoryModuleFrontController extends ModuleFrontController
     {
         $categoryId = (int)$categoryId;
         if ($categoryId) {
-            $category = new BeesBlogCategory($categoryId, $this->context->language->id);
+            $category = new BeesBlogCategory($categoryId, $this->context->language->id, (int) $this->context->shop->id);
             if (Validate::isLoadedObject($category) && $category->active) {
                 return $category;
             }

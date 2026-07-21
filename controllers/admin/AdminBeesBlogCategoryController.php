@@ -22,7 +22,9 @@ if (!defined('_TB_VERSION_')) {
 }
 
 use BeesBlogModule\BeesBlogCategory;
-use BeesBlogModule\BeesBlogImageType;
+use BeesBlogModule\BeesBlogImage;
+use BeesBlogModule\BeesBlogMultistore;
+use BeesBlogModule\BeesBlogPost;
 
 /**
  * Class AdminBeesBlogCategoryController
@@ -53,14 +55,12 @@ class AdminBeesBlogCategoryController extends ModuleAdminController
         // Retrieve the context from a static context, just because
         $this->context = Context::getContext();
 
-        // Only display this page in single store context
-        $this->multishop_context = Shop::CONTEXT_SHOP;
-
-        // Make sure that when we save the `BeesBlogCategory` ObjectModel, the `_shop` table is set, too (primary => id_shop relation)
-        Shop::addTableAssociation(BeesBlogCategory::TABLE, ['type' => 'shop']);
+        $this->multishop_context = Shop::CONTEXT_ALL | Shop::CONTEXT_GROUP | Shop::CONTEXT_SHOP;
+        BeesBlogMultistore::registerAssociations();
 
         // We are going to use multilang ObjectModels but there is just one language to display
-        $this->lang = true;
+        $this->lang = false;
+        $this->explicitSelect = true;
 
         // Allow bulk delete
         $this->bulk_actions = [
@@ -82,13 +82,14 @@ class AdminBeesBlogCategoryController extends ModuleAdminController
                 'title' => $this->l('Title'),
                 'width' => 440,
                 'type'  => 'text',
-                'lang'  => true,
+                'filter_key' => 'bbcl!title',
             ],
             'id_parent'              => [
                 'title'   => $this->l('Parent'),
                 'width'   => 200,
                 'type'    => 'text',
                 'callback' => 'getParentTitleById',
+                'filter_key' => 'bbcs!id_parent',
             ],
             'active'                  => [
                 'title'   => $this->l('Status'),
@@ -97,8 +98,25 @@ class AdminBeesBlogCategoryController extends ModuleAdminController
                 'active'  => 'status',
                 'type'    => 'bool',
                 'orderby' => false,
+                'filter_key' => 'bbcs!active',
             ],
         ];
+
+        $contextShopIds = BeesBlogMultistore::getContextShopIds();
+        $shopList = $contextShopIds ? implode(', ', array_map('intval', $contextShopIds)) : '0';
+        $this->_join = 'INNER JOIN `'._DB_PREFIX_.BeesBlogCategory::SHOP_TABLE.'` bbcs'.
+            ' ON bbcs.`'.BeesBlogCategory::PRIMARY.'` = a.`'.BeesBlogCategory::PRIMARY.'`'.
+            ' AND bbcs.`id_shop` = (SELECT MIN(bbcs_scope.`id_shop`)'.
+            ' FROM `'._DB_PREFIX_.BeesBlogCategory::SHOP_TABLE.'` bbcs_scope'.
+            ' WHERE bbcs_scope.`'.BeesBlogCategory::PRIMARY.'` = a.`'.BeesBlogCategory::PRIMARY.'`'.
+            ' AND bbcs_scope.`id_shop` IN ('.$shopList.'))'.
+            ' INNER JOIN `'._DB_PREFIX_.BeesBlogCategory::LANG_TABLE.'` bbcl'.
+            ' ON bbcl.`'.BeesBlogCategory::PRIMARY.'` = a.`'.BeesBlogCategory::PRIMARY.'`'.
+            ' AND bbcl.`id_shop` = bbcs.`id_shop`'.
+            ' AND bbcl.`id_lang` = '.(int) $this->context->language->id;
+        $this->_select = 'bbcs.`id_shop` AS `list_shop_id`, bbcs.`id_parent`, bbcs.`active`, bbcl.`title`';
+        $this->_defaultOrderBy = 'a.'.BeesBlogCategory::PRIMARY;
+        $this->_defaultOrderWay = 'DESC';
 
         // With all this info set, it's about time to call the parent constructor
         parent::__construct();
@@ -112,10 +130,21 @@ class AdminBeesBlogCategoryController extends ModuleAdminController
      */
     public function renderForm()
     {
+        if (!$this->loadObject(true)) {
+            return '';
+        }
         $id = (int) Tools::getValue(BeesBlogCategory::PRIMARY);
+        $idShop = BeesBlogMultistore::getObjectRepresentativeShopId(
+            BeesBlogCategory::TABLE,
+            BeesBlogCategory::PRIMARY,
+            $id
+        );
 
-        $imageUrl = ImageManager::thumbnail(BeesBlogCategory::getImagePath($id), $this->table."_{$id}.jpg", 200, 'jpg', true, true);
-        $imageSize = file_exists(BeesBlogCategory::getImagePath($id)) ? filesize(BeesBlogCategory::getImagePath($id)) / 1000 : false;
+        $imagePath = BeesBlogCategory::getImagePath($id, 'category_default', $idShop, 0);
+        $imageUrl = $imagePath
+            ? ImageManager::thumbnail($imagePath, $this->table."_{$id}_s{$idShop}_default.jpg", 200, 'jpg', true, true)
+            : false;
+        $imageSize = $imagePath && file_exists($imagePath) ? filesize($imagePath) / 1000 : false;
 
         $this->fields_form = [
             'legend' => [
@@ -147,13 +176,13 @@ class AdminBeesBlogCategoryController extends ModuleAdminController
                 ],
                 [
                     'type'          => 'file',
-                    'label'         => $this->l('Category image'),
+                    'label'         => $this->l('Default category image'),
                     'name'          => 'category_image',
                     'display_image' => true,
                     'image'         => $imageUrl ? $imageUrl : false,
                     'size'          => $imageSize,
-                    'delete_url'    => self::$currentIndex.'&'.$this->identifier.'='. Tools::getValue(BeesBlogCategory::PRIMARY).'&token='.$this->token.'&deleteImage=1',
-                    'hint'          => $this->l('Upload an image from your computer.'),
+                    'delete_url'    => self::$currentIndex.'&'.$this->identifier.'='.Tools::getValue(BeesBlogCategory::PRIMARY).'&token='.$this->token.'&deleteImage=1&image_scope=shop',
+                    'hint'          => $this->l('Fallback image for every language. It is applied to all shops in the current shop context.'),
                 ],
                 [
                     'type'     => 'text',
@@ -233,6 +262,56 @@ class AdminBeesBlogCategoryController extends ModuleAdminController
             ],
         ];
 
+        if (Shop::isFeatureActive()) {
+            $this->fields_form['input'][] = [
+                'type' => 'shop',
+                'label' => $this->l('Shop association'),
+                'name' => 'checkBoxShopAsso',
+            ];
+        }
+
+        $languageImageInputs = [];
+        foreach (Language::getLanguages(true, $idShop) as $language) {
+            $idLang = (int) $language['id_lang'];
+            $languageImagePath = BeesBlogImage::getScopedImagePath(
+                BeesBlogImage::ENTITY_CATEGORY,
+                $id,
+                'category_default',
+                $idShop,
+                $idLang
+            );
+            $languageImageUrl = $languageImagePath
+                ? ImageManager::thumbnail(
+                    $languageImagePath,
+                    $this->table."_{$id}_s{$idShop}_l{$idLang}.jpg",
+                    200,
+                    'jpg',
+                    true,
+                    true
+                )
+                : false;
+            $languageImageInputs[] = [
+                'type' => 'file',
+                'label' => sprintf($this->l('%s image override'), $language['name']),
+                'name' => 'category_image_lang_'.$idLang,
+                'display_image' => true,
+                'image' => $languageImageUrl,
+                'size' => $languageImagePath && file_exists($languageImagePath)
+                    ? filesize($languageImagePath) / 1000
+                    : false,
+                'delete_url' => self::$currentIndex.'&'.$this->identifier.'='.Tools::getValue(BeesBlogCategory::PRIMARY).
+                    '&token='.$this->token.'&deleteImage=1&image_scope=language&id_lang='.$idLang,
+                'hint' => $this->l('Optional. When empty, this language uses the default image above.'),
+            ];
+        }
+
+        foreach ($this->fields_form['input'] as $index => $input) {
+            if (isset($input['name']) && $input['name'] === 'category_image') {
+                array_splice($this->fields_form['input'], $index + 1, 0, $languageImageInputs);
+                break;
+            }
+        }
+
         $this->fields_value = [
             'category_image' => $imageUrl
         ];
@@ -284,45 +363,29 @@ class AdminBeesBlogCategoryController extends ModuleAdminController
      * @throws PrestaShopDatabaseException
      * @throws PrestaShopException
      */
-    public function processImage($files, $id)
+    public function processImage($files, $id, array $shopIds = [])
     {
-        $categoryImageInput = 'category_image';
+        $shopIds = $shopIds ?: BeesBlogMultistore::getSubmittedShopIds($this->table);
+        $uploads = ['category_image' => 0];
+        foreach (Language::getLanguages(false, false, true) as $idLang) {
+            $uploads['category_image_lang_'.(int) $idLang] = (int) $idLang;
+        }
 
-        if (isset($files[$categoryImageInput]) && isset($files[$categoryImageInput]['tmp_name']) && !empty($files[$categoryImageInput]['tmp_name'])) {
-            if ($error = ImageManager::validateUpload($files[$categoryImageInput], 4000000)) {
-                $this->errors[] = $error;
-
+        foreach ($uploads as $input => $idLang) {
+            if (empty($files[$input]['tmp_name']) || (int) $files[$input]['error'] === UPLOAD_ERR_NO_FILE) {
+                continue;
+            }
+            $error = null;
+            if (!BeesBlogImage::saveUploadedImage(
+                $files[$input],
+                BeesBlogImage::ENTITY_CATEGORY,
+                (int) $id,
+                $shopIds,
+                $idLang,
+                $error
+            )) {
+                $this->errors[] = $error ?: $this->l('An error occurred while attempting to upload the image.');
                 return false;
-            } else {
-                $ext = substr($files[$categoryImageInput]['name'], strrpos($files[$categoryImageInput]['name'], '.') + 1);
-                $path = _PS_IMG_DIR_."beesblog/categories/";
-                if (!file_exists($path)) {
-                    if (!mkdir($path, 0777, true)) {
-                        $this->errors[] = sprintf($this->l('Unable to create image directory: `%s`'), $path);
-                    }
-                }
-                $path .= "$id.$ext";
-                if (!move_uploaded_file($files[$categoryImageInput]['tmp_name'], $path)) {
-                    $this->errors[] = $this->l('An error occurred while attempting to upload the file.');
-
-                    return false;
-                } else {
-                    $imageTypes = BeesBlogImageType::getImagesTypes('categories');
-                    foreach ($imageTypes as $imageType) {
-                        $dir = _PS_IMG_DIR_."beesblog/categories/{$id}-{$imageType['name']}.{$ext}";
-                        if (file_exists($dir)) {
-                            unlink($dir);
-                        }
-                        ImageManager::resize(
-                            $path,
-                            _PS_IMG_DIR_."beesblog/categories/{$id}-{$imageType['name']}.{$ext}",
-                            (int) $imageType['width'],
-                            (int) $imageType['height'],
-                            $ext,
-                            true
-                        );
-                    }
-                }
             }
         }
 
@@ -336,10 +399,16 @@ class AdminBeesBlogCategoryController extends ModuleAdminController
      */
     public function processForceDeleteImage()
     {
-        $blogPost = $this->loadObject(true);
+        $blogCategory = $this->loadObject(true);
 
-        if (Validate::isLoadedObject($blogPost)) {
-            $this->deleteImage($blogPost->id);
+        if (Validate::isLoadedObject($blogCategory)) {
+            $shopIds = BeesBlogMultistore::getSubmittedShopIds($this->table);
+            $idLang = Tools::getValue('image_scope') === 'language'
+                ? max(1, (int) Tools::getValue('id_lang'))
+                : 0;
+            if (BeesBlogImage::deleteForShops(BeesBlogImage::ENTITY_CATEGORY, $blogCategory->id, $shopIds, $idLang)) {
+                $this->confirmations[] = $this->l('Successfully deleted image');
+            }
         }
     }
 
@@ -352,38 +421,14 @@ class AdminBeesBlogCategoryController extends ModuleAdminController
      * @throws PrestaShopException
      * @since 1.0.0
      */
-    public function deleteImage($idBeesBlogCategory)
+    public function deleteImage($idBeesBlogCategory, array $shopIds = [])
     {
-        $deleted = false;
-        // Delete base image
-        foreach (['png', 'jpg'] as $extension) {
-            if (file_exists(_PS_IMG_DIR_."beesblog/categories/{$idBeesBlogCategory}.{$extension}")) {
-                unlink(_PS_IMG_DIR_."beesblog/categories/{$idBeesBlogCategory}.{$extension}");
-            }
-
-            // now we need to delete the image type of post
-
-            $filesToDelete = [];
-
-            // Delete auto-generated images
-            $imageTypes = BeesBlogImageType::getImagesTypes('categories');
-            foreach ($imageTypes as $imageType) {
-                $filesToDelete[] = _PS_IMG_DIR_."beesblog/categories/{$idBeesBlogCategory}-{$imageType['name']}.{$extension}";
-            }
-
-            foreach ($filesToDelete as $file) {
-                if (file_exists($file)) {
-                    @unlink($file);
-                    $deleted = true;
-                }
-            }
-        }
-
-        if ($deleted) {
-            $this->confirmations[] = $this->l('Successfully deleted image');
-        }
-
-        return true;
+        $shopIds = $shopIds ?: BeesBlogMultistore::getSubmittedShopIds($this->table);
+        return BeesBlogImage::deleteForShops(
+            BeesBlogImage::ENTITY_CATEGORY,
+            (int) $idBeesBlogCategory,
+            $shopIds
+        );
     }
 
 
@@ -402,6 +447,7 @@ class AdminBeesBlogCategoryController extends ModuleAdminController
             return false;
         }
 
+        $this->normalizeTranslatedCategoryRequest();
         $this->validateRules();
         if ($this->errors) {
             $this->display = 'add';
@@ -418,10 +464,21 @@ class AdminBeesBlogCategoryController extends ModuleAdminController
         if (!$blogCategory->position) {
             $blogCategory->position = 0;
         }
-        $blogCategory->id_shop = (int) Context::getContext()->shop->id;
-        // TODO: check if link_rewrite is unique
+        $shopIds = BeesBlogMultistore::getSubmittedShopIds($this->table);
+        if (!$shopIds) {
+            $this->errors[] = $this->l('No authorized shop is available in the selected context.');
+            return false;
+        }
+        $blogCategory->id_shop_list = $shopIds;
+        $blogCategory->id_shop = (int) reset($shopIds);
+        if (!$this->validateParentAssociations($blogCategory, $shopIds) || !$this->validateShopSlugs($blogCategory, $shopIds)) {
+            $this->display = 'add';
+            return false;
+        }
         if ($blogCategory->add()) {
-            $this->processImage($_FILES, $blogCategory->id);
+            if (!$this->processImage($_FILES, $blogCategory->id, $shopIds)) {
+                return false;
+            }
             $this->confirmations[] = $this->l('Successfully added a new category');
 
             if (Tools::isSubmit('submitAdd'.$this->table.'AndStay')) {
@@ -484,13 +541,20 @@ class AdminBeesBlogCategoryController extends ModuleAdminController
             return false;
         }
 
+        $this->normalizeTranslatedCategoryRequest();
         $this->validateRules();
         if ($this->errors) {
             $this->display = 'edit';
             return false;
         }
 
-        $blogCategory = new BeesBlogCategory((int) Tools::getValue(BeesBlogCategory::PRIMARY));
+        $idCategory = (int) Tools::getValue(BeesBlogCategory::PRIMARY);
+        $idShop = BeesBlogMultistore::getObjectRepresentativeShopId(BeesBlogCategory::TABLE, BeesBlogCategory::PRIMARY, $idCategory);
+        $blogCategory = new BeesBlogCategory($idCategory, null, $idShop);
+        if (!Validate::isLoadedObject($blogCategory)) {
+            $this->errors[] = $this->l('The category cannot be loaded in the selected shop context.');
+            return false;
+        }
         $this->copyFromPost($blogCategory, $this->table);
         $this->normalizeTranslatedCategoryFields($blogCategory);
         if (!$blogCategory->id_parent) {
@@ -500,13 +564,22 @@ class AdminBeesBlogCategoryController extends ModuleAdminController
         if (!$blogCategory->position) {
             $blogCategory->position = 0;
         }
-        $blogCategory->id_shop = (int) Context::getContext()->shop->id;
-
-        $this->processImage($_FILES, $blogCategory->id);
-
-        // TODO: check if link_rewrite is unique
+        $shopIds = BeesBlogMultistore::getSubmittedShopIds($this->table);
+        if (!$shopIds) {
+            $this->errors[] = $this->l('No authorized shop is available in the selected context.');
+            return false;
+        }
+        $blogCategory->id_shop_list = $shopIds;
+        $blogCategory->id_shop = $idShop;
+        if (!$this->validateParentAssociations($blogCategory, $shopIds) || !$this->validateShopSlugs($blogCategory, $shopIds)) {
+            $this->display = 'edit';
+            return false;
+        }
 
         if ($blogCategory->update()) {
+            if (!$this->processImage($_FILES, $blogCategory->id, $shopIds)) {
+                return false;
+            }
             $this->confirmations[] = $this->l('Successfully updated the category');
 
             if (Tools::isSubmit('submitAdd'.$this->table.'AndStay')) {
@@ -532,10 +605,13 @@ class AdminBeesBlogCategoryController extends ModuleAdminController
      */
     public function processDelete()
     {
-        $idLang = (int) Context::getContext()->language->id;
-        $blogCategory = new BeesBlogCategory((int) Tools::getValue(BeesBlogCategory::PRIMARY));
+        $idCategory = (int) Tools::getValue(BeesBlogCategory::PRIMARY);
+        $idShop = BeesBlogMultistore::getObjectRepresentativeShopId(BeesBlogCategory::TABLE, BeesBlogCategory::PRIMARY, $idCategory);
+        $blogCategory = new BeesBlogCategory($idCategory, null, $idShop);
+        $shopIds = BeesBlogMultistore::getSubmittedShopIds($this->table);
+        $blogCategory->id_shop_list = $shopIds;
 
-        $postCount = (int) $blogCategory->getPostsInCategory($idLang, 0, 0, true);
+        $postCount = BeesBlogPost::countByCategoryInShops($idCategory, $shopIds);
         if ((int) $postCount != 0) {
             $this->errors[] = $this->l('You need to delete all posts associate with this category .');
 
@@ -546,13 +622,72 @@ class AdminBeesBlogCategoryController extends ModuleAdminController
 
                 return false;
             } else {
-                $this->deleteImage($blogCategory->id);
+                BeesBlogImage::deleteForShops(BeesBlogImage::ENTITY_CATEGORY, $blogCategory->id, $shopIds);
 
                 Tools::redirectAdmin($this->context->link->getAdminLink('AdminBeesBlogCategory'));
 
                 return true;
             }
         }
+    }
+
+    /**
+     * @param bool $status
+     * @return bool
+     * @throws PrestaShopException
+     */
+    protected function processBulkStatusSelection($status)
+    {
+        $result = true;
+        $shopIds = BeesBlogMultistore::getContextShopIds();
+        foreach ((array) $this->boxes as $idCategory) {
+            $idCategory = (int) $idCategory;
+            $idShop = BeesBlogMultistore::getObjectRepresentativeShopId($this->table, $this->identifier, $idCategory);
+            $category = new BeesBlogCategory($idCategory, null, $idShop);
+            if (!Validate::isLoadedObject($category)) {
+                $result = false;
+                continue;
+            }
+            $category->id_shop_list = $shopIds;
+            $category->setFieldsToUpdate(['active' => true]);
+            $category->active = (int) $status;
+            $result = $category->update() && $result;
+        }
+
+        return $result;
+    }
+
+    /**
+     * @return bool
+     * @throws PrestaShopException
+     */
+    protected function processBulkDelete()
+    {
+        $result = true;
+        $shopIds = BeesBlogMultistore::getContextShopIds();
+        foreach ((array) $this->boxes as $idCategory) {
+            $idCategory = (int) $idCategory;
+            if (BeesBlogPost::countByCategoryInShops($idCategory, $shopIds)) {
+                $result = false;
+                $this->errors[] = sprintf($this->l('Category #%d still contains posts in this shop context.'), $idCategory);
+                continue;
+            }
+            $idShop = BeesBlogMultistore::getObjectRepresentativeShopId($this->table, $this->identifier, $idCategory);
+            $category = new BeesBlogCategory($idCategory, null, $idShop);
+            $category->id_shop_list = $shopIds;
+            if (!Validate::isLoadedObject($category) || !$category->delete()) {
+                $result = false;
+                $this->errors[] = sprintf($this->l('Cannot delete category #%d.'), $idCategory);
+                continue;
+            }
+            BeesBlogImage::deleteForShops(BeesBlogImage::ENTITY_CATEGORY, $idCategory, $shopIds);
+        }
+
+        if ($result) {
+            $this->redirect_after = static::$currentIndex.'&conf=2&token='.$this->token;
+        }
+
+        return $result;
     }
 
     /**
@@ -565,9 +700,9 @@ class AdminBeesBlogCategoryController extends ModuleAdminController
      * @throws PrestaShopDatabaseException
      * @throws PrestaShopException
      */
-    static public function getParentTitleById($id) {
+    static public function getParentTitleById($id, $row = []) {
 
-        return BeesBlogCategory::getNameById($id);
+        return BeesBlogCategory::getNameById($id, null, isset($row['list_shop_id']) ? (int) $row['list_shop_id'] : null);
     }
 
     /**
@@ -601,12 +736,125 @@ class AdminBeesBlogCategoryController extends ModuleAdminController
     {
         $id = (int)Tools::getValue(BeesBlogCategory::PRIMARY);
         if ($id) {
-            $category = new BeesBlogCategory($id, $this->context->language->id);
+            $idShop = BeesBlogMultistore::getObjectRepresentativeShopId(BeesBlogCategory::TABLE, BeesBlogCategory::PRIMARY, $id);
+            $category = new BeesBlogCategory($id, $this->context->language->id, $idShop);
             if (Validate::isLoadedObject($category)) {
                 return $category->link;
             }
         }
         return null;
+    }
+
+    /**
+     * @param bool $opt
+     * @return BeesBlogCategory|bool
+     * @throws PrestaShopException
+     */
+    protected function loadObject($opt = false)
+    {
+        if ($this->object) {
+            return $this->object;
+        }
+
+        $id = Tools::getIntValue($this->identifier);
+        if ($id && Validate::isUnsignedId($id)) {
+            $idShop = BeesBlogMultistore::getObjectRepresentativeShopId($this->table, $this->identifier, $id);
+            $this->object = new BeesBlogCategory($id, null, $idShop);
+            if (Validate::isLoadedObject($this->object)) {
+                return $this->object;
+            }
+            $this->errors[] = Tools::displayError('The object cannot be loaded in the selected shop context.');
+            return false;
+        }
+
+        if ($opt) {
+            $this->object = new BeesBlogCategory(null, null, BeesBlogMultistore::getRepresentativeShopId());
+            return $this->object;
+        }
+
+        $this->errors[] = Tools::displayError('The object identifier is missing or invalid.');
+        return false;
+    }
+
+    /** @return void */
+    protected function normalizeTranslatedCategoryRequest()
+    {
+        $defaultLang = (int) Configuration::get('PS_LANG_DEFAULT');
+        $defaultTitle = trim((string) Tools::getValue('title_'.$defaultLang, ''));
+        foreach (Language::getLanguages(false, false, true) as $idLang) {
+            $idLang = (int) $idLang;
+            $titleKey = 'title_'.$idLang;
+            $rewriteKey = 'link_rewrite_'.$idLang;
+            $title = trim((string) Tools::getValue($titleKey, $defaultTitle));
+            if ($title === '') {
+                $title = $defaultTitle;
+            }
+            if (!isset($_POST[$titleKey]) || trim((string) $_POST[$titleKey]) === '') {
+                $_POST[$titleKey] = $title;
+            }
+            $rewrite = trim((string) Tools::getValue($rewriteKey, ''));
+            $_POST[$rewriteKey] = Tools::link_rewrite($rewrite !== '' ? $rewrite : $title);
+        }
+    }
+
+    /**
+     * @param BeesBlogCategory $category
+     * @param int[] $shopIds
+     * @return bool
+     * @throws PrestaShopException
+     */
+    protected function validateShopSlugs(BeesBlogCategory $category, array $shopIds)
+    {
+        $conflicts = BeesBlogMultistore::findSlugConflicts(
+            BeesBlogCategory::TABLE,
+            BeesBlogCategory::PRIMARY,
+            (int) $category->id,
+            (array) $category->link_rewrite,
+            $shopIds
+        );
+        foreach ($conflicts as $conflict) {
+            $shop = Shop::getShop((int) $conflict['id_shop']);
+            $this->errors[] = sprintf(
+                $this->l('URL rewrite "%s" is already used in shop "%s" for this language.'),
+                $conflict['slug'],
+                isset($shop['name']) ? $shop['name'] : (int) $conflict['id_shop']
+            );
+        }
+
+        return !$conflicts;
+    }
+
+    /**
+     * @param BeesBlogCategory $category
+     * @param int[] $shopIds
+     * @return bool
+     * @throws PrestaShopException
+     */
+    protected function validateParentAssociations(BeesBlogCategory $category, array $shopIds)
+    {
+        if (!(int) $category->id_parent) {
+            return true;
+        }
+        if ((int) $category->id_parent === (int) $category->id) {
+            $this->errors[] = $this->l('A category cannot be its own parent.');
+            return false;
+        }
+
+        $missing = BeesBlogMultistore::getMissingAssociationShopIds(
+            BeesBlogCategory::TABLE,
+            BeesBlogCategory::PRIMARY,
+            (int) $category->id_parent,
+            $shopIds
+        );
+        foreach ($missing as $idShop) {
+            $shop = Shop::getShop($idShop);
+            $this->errors[] = sprintf(
+                $this->l('The selected parent category is not associated with shop "%s".'),
+                isset($shop['name']) ? $shop['name'] : $idShop
+            );
+        }
+
+        return !$missing;
     }
 
     /**

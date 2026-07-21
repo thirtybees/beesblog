@@ -18,7 +18,9 @@
  */
 
 use BeesBlogModule\BeesBlogCategory;
+use BeesBlogModule\BeesBlogImage;
 use BeesBlogModule\BeesBlogImageType;
+use BeesBlogModule\BeesBlogMultistore;
 use BeesBlogModule\BeesBlogPost;
 
 if (!defined('_TB_VERSION_')) {
@@ -36,6 +38,7 @@ class BeesBlog extends Module
     const POSTS_PER_PAGE = 'BEESBLOG_POSTS_PER_PAGE';
     const AUTHOR_STYLE = 'BEESBLOG_SHOW_AUTHOR_STYLE';
     const MAIN_URL_KEY = 'BEESBLOG_MAIN_URL_KEY';
+    const MAIN_URL_ROUTE_PARAM = 'blog_url_key';
     const USE_HTML = 'BEESBLOG_USE_HTML';
     const ENABLE_COMMENT = 'BEESBLOG_ENABLE_COMMENT';
     const SHOW_AUTHOR = 'BEESBLOG_SHOW_AUTHOR';
@@ -87,7 +90,7 @@ class BeesBlog extends Module
     {
         $this->name = 'beesblog';
         $this->tab = 'front_office_features';
-        $this->version = '1.8.0';
+        $this->version = '1.9.0';
         $this->author = 'thirty bees';
         $this->tb_min_version = '1.0.0';
         $this->tb_versions_compliancy = '> 1.0.0';
@@ -98,6 +101,7 @@ class BeesBlog extends Module
         $this->badges = ['beta'];
 
         parent::__construct();
+        BeesBlogMultistore::registerAssociations();
         $this->displayName = $this->l('Bees Blog');
         $this->description = $this->l('thirty bees blog module');
     }
@@ -124,7 +128,7 @@ class BeesBlog extends Module
         Configuration::updateGlobalValue(static::SHOW_DATE, true);
         Configuration::updateGlobalValue(static::SOCIAL_SHARING, true);
         Configuration::updateGlobalValue(static::AUTHOR_STYLE, 1);
-        Configuration::updateGlobalValue(static::MAIN_URL_KEY, 'blog');
+        Configuration::updateGlobalValue(static::MAIN_URL_KEY, $this->getTranslatedDefaults('blog'));
         Configuration::updateGlobalValue(static::USE_HTML, true);
         Configuration::updateGlobalValue(static::SHOW_POST_COUNT, true);
         Configuration::updateGlobalValue(static::SHOW_NO_IMAGE, false);
@@ -136,7 +140,8 @@ class BeesBlog extends Module
         if ($createTables) {
             if (!(BeesBlogPost::createDatabase()
                 && BeesBlogCategory::createDatabase()
-                && BeesBlogImageType::createDatabase())
+                && BeesBlogImageType::createDatabase()
+                && BeesBlogMultistore::migrateSchema())
             ) {
                 return false;
             }
@@ -173,6 +178,7 @@ class BeesBlog extends Module
             $this->registerHook('actionRegisterShortcodes') &&
             $this->registerHook('actionRegisterShortcodeEntityTypes') &&
             $this->registerHook('actionGetWebserviceResources') &&
+            $this->registerHook('actionShopDataDuplication') &&
             $this->insertBlogHooks()
         );
     }
@@ -310,7 +316,8 @@ class BeesBlog extends Module
         if ($removeTables) {
             if (!(BeesBlogPost::dropDatabase()
                 && BeesBlogCategory::dropDatabase()
-                && BeesBlogImageType::dropDatabase())
+                && BeesBlogImageType::dropDatabase()
+                && BeesBlogImage::dropDatabase())
             ) {
                 return false;
             }
@@ -367,15 +374,24 @@ class BeesBlog extends Module
      * @return array Array with routes
      * @throws PrestaShopException
      */
-    public function hookModuleRoutes()
+    public function hookModuleRoutes($params = [])
     {
-        $alias = Configuration::get(static::MAIN_URL_KEY);
+        $idShop = isset($params['id_shop'])
+            ? (int) $params['id_shop']
+            : (int) Context::getContext()->shop->id;
+        $alias = '{'.static::MAIN_URL_ROUTE_PARAM.'}';
+        $aliasKeyword = [
+            static::MAIN_URL_ROUTE_PARAM => [
+                'regexp' => static::getBlogUrlKeyRegexp($idShop),
+                'param' => static::MAIN_URL_ROUTE_PARAM,
+            ],
+        ];
 
         return [
             'beesblog'                     => [
                 'controller' => 'category',
                 'rule'       => $alias,
-                'keywords'   => [],
+                'keywords'   => $aliasKeyword,
                 'params'     => [
                     'fc'     => 'module',
                     'module' => $this->name,
@@ -384,7 +400,7 @@ class BeesBlog extends Module
             'beesblog_list'                => [
                 'controller' => 'category',
                 'rule'       => "{$alias}/category",
-                'keywords'   => [],
+                'keywords'   => $aliasKeyword,
                 'params'     => [
                     'fc'     => 'module',
                     'module' => $this->name,
@@ -393,7 +409,7 @@ class BeesBlog extends Module
             'beesblog_list_module'         => [
                 'controller' => 'category',
                 'rule'       => "module/{$alias}/category",
-                'keywords'   => [],
+                'keywords'   => $aliasKeyword,
                 'params'     => [
                     'fc'     => 'module',
                     'module' => $this->name,
@@ -402,9 +418,9 @@ class BeesBlog extends Module
             'beesblog_list_pagination'     => [
                 'controller' => 'category',
                 'rule'       => "{$alias}/category/page/{page}",
-                'keywords'   => [
+                'keywords'   => array_merge($aliasKeyword, [
                     'page' => ['regexp' => '[_a-zA-Z0-9-\pL]*', 'param' => 'page'],
-                ],
+                ]),
                 'params'     => [
                     'fc'     => 'module',
                     'module' => $this->name,
@@ -413,9 +429,9 @@ class BeesBlog extends Module
             'beesblog_pagination'          => [
                 'controller' => 'category',
                 'rule'       => "{$alias}/page/{page}",
-                'keywords'   => [
+                'keywords'   => array_merge($aliasKeyword, [
                     'page' => ['regexp' => '[_a-zA-Z0-9-\pL]*', 'param' => 'page'],
-                ],
+                ]),
                 'params'     => [
                     'fc'     => 'module',
                     'module' => $this->name,
@@ -424,9 +440,9 @@ class BeesBlog extends Module
             'beesblog_category'            => [
                 'controller' => 'category',
                 'rule'       => "{$alias}/category/{cat_rewrite}",
-                'keywords'   => [
+                'keywords'   => array_merge($aliasKeyword, [
                     'cat_rewrite' => ['regexp' => '[_a-zA-Z0-9-\pL]*', 'param' => 'cat_rewrite'],
-                ],
+                ]),
                 'params'     => [
                     'fc'     => 'module',
                     'module' => $this->name,
@@ -435,10 +451,10 @@ class BeesBlog extends Module
             'beesblog_category_pagination' => [
                 'controller' => 'category',
                 'rule'       => "{$alias}/category/{cat_rewrite}/page/{page}",
-                'keywords'   => [
+                'keywords'   => array_merge($aliasKeyword, [
                     'page'        => ['regexp' => '[_a-zA-Z0-9-\pL]*', 'param' => 'page'],
                     'cat_rewrite' => ['regexp' => '[_a-zA-Z0-9-\pL]*', 'param' => 'cat_rewrite'],
-                ],
+                ]),
                 'params'     => [
                     'fc'     => 'module',
                     'module' => $this->name,
@@ -447,10 +463,10 @@ class BeesBlog extends Module
             'beesblog_cat_page_mod'        => [
                 'controller' => 'category',
                 'rule'       => "module/{$alias}/category/{blog_rewrite}/page/{page}",
-                'keywords'   => [
+                'keywords'   => array_merge($aliasKeyword, [
                     'page'         => ['regexp' => '[_a-zA-Z0-9-\pL]*', 'param' => 'page'],
                     'blog_rewrite' => ['regexp' => '[_a-zA-Z0-9-\pL]*'],
-                ],
+                ]),
                 'params'     => [
                     'fc'     => 'module',
                     'module' => $this->name,
@@ -459,15 +475,160 @@ class BeesBlog extends Module
             'beesblog_post'                => [
                 'controller' => 'post',
                 'rule'       => "{$alias}/{blog_rewrite}",
-                'keywords'   => [
+                'keywords'   => array_merge($aliasKeyword, [
                     'blog_rewrite' => ['regexp' => '[_a-zA-Z0-9-\pL]+', 'param' => 'blog_rewrite'],
-                ],
+                ]),
                 'params'     => [
                     'fc'     => 'module',
                     'module' => $this->name,
                 ],
             ],
         ];
+    }
+
+    /**
+     * Return the translated route prefix for a shop and language.
+     *
+     * Configuration::get() needs the target shop group explicitly when links
+     * are generated for a shop outside the current context. Otherwise a group
+     * fallback could be read from the current shop instead of the target shop.
+     *
+     * @param int|null $idLang
+     * @param int|null $idShop
+     * @return string
+     * @throws PrestaShopException
+     */
+    public static function getBlogUrlKey($idLang = null, $idShop = null)
+    {
+        $context = Context::getContext();
+        if ($idShop === null) {
+            $idShop = isset($context->shop) ? (int) $context->shop->id : 0;
+        }
+        $idShopGroup = $idShop ? (int) Shop::getGroupFromShop($idShop) : null;
+        if ($idLang === null) {
+            $idLang = isset($context->language)
+                ? (int) $context->language->id
+                : (int) Configuration::get('PS_LANG_DEFAULT', null, $idShopGroup, $idShop);
+        }
+
+        $value = Configuration::get(static::MAIN_URL_KEY, (int) $idLang, $idShopGroup, $idShop);
+        if ($value === false || trim((string) $value) === '') {
+            $defaultLang = (int) Configuration::get('PS_LANG_DEFAULT', null, $idShopGroup, $idShop);
+            if ($defaultLang && $defaultLang !== (int) $idLang) {
+                $value = Configuration::get(static::MAIN_URL_KEY, $defaultLang, $idShopGroup, $idShop);
+            }
+        }
+        if ($value === false || trim((string) $value) === '') {
+            $value = Configuration::get(static::MAIN_URL_KEY, null, $idShopGroup, $idShop);
+        }
+
+        $value = static::normalizeBlogUrlKey($value);
+        return $value !== '' ? $value : 'blog';
+    }
+
+    /**
+     * Build the safe alternation used by the shared module route definition.
+     * The dispatcher registers this definition for every language, so it must
+     * recognize every configured prefix in the target shop. URL generation
+     * still injects only the prefix of the requested language.
+     *
+     * @param int|null $idShop
+     * @return string
+     * @throws PrestaShopException
+     */
+    public static function getBlogUrlKeyRegexp($idShop = null)
+    {
+        if ($idShop === null) {
+            $idShop = isset(Context::getContext()->shop) ? (int) Context::getContext()->shop->id : 0;
+        }
+
+        $keys = [];
+        $languageIds = Language::getLanguages(true, $idShop ?: false, true);
+        if (!$languageIds) {
+            $languageIds = Language::getLanguages(true, false, true);
+        }
+        foreach ($languageIds as $idLang) {
+            $keys[] = static::getBlogUrlKey((int) $idLang, $idShop);
+        }
+        $keys = array_values(array_unique(array_filter($keys, function ($key) {
+            return $key !== '';
+        })));
+        if (!$keys) {
+            $keys = ['blog'];
+        }
+
+        return implode('|', array_map(function ($key) {
+            return preg_quote($key, '#');
+        }, $keys));
+    }
+
+    /**
+     * @param mixed $value
+     * @return string
+     */
+    public static function normalizeBlogUrlKey($value)
+    {
+        $value = Tools::link_rewrite(trim((string) $value));
+        return mb_substr(trim($value, '-'), 0, 255);
+    }
+
+    /**
+     * Copy every legacy scalar route prefix to missing language rows at the
+     * same global, group or shop configuration scope. Existing translations
+     * are deliberately preserved, making the migration safe to rerun.
+     *
+     * @return bool
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
+     */
+    public static function migrateMainUrlKeyTranslations()
+    {
+        $languageIds = Language::getLanguages(false, false, true);
+        $db = Db::getInstance();
+        $rows = $db->executeS(
+            'SELECT `id_configuration`, `id_shop_group`, `id_shop`, `value`'.
+            ' FROM `'._DB_PREFIX_.'configuration`'.
+            ' WHERE `name` = \''.pSQL(static::MAIN_URL_KEY).'\''
+        );
+
+        if (!$rows) {
+            return Configuration::updateGlobalValue(
+                static::MAIN_URL_KEY,
+                array_fill_keys($languageIds, 'blog')
+            );
+        }
+
+        $result = true;
+        foreach ($rows as $row) {
+            $idConfiguration = (int) $row['id_configuration'];
+            $idShopGroup = (int) $row['id_shop_group'] ?: null;
+            $idShop = (int) $row['id_shop'] ?: null;
+            $legacyValue = static::normalizeBlogUrlKey($row['value']);
+            if ($legacyValue === '') {
+                $legacyValue = static::normalizeBlogUrlKey($db->getValue(
+                    'SELECT `value` FROM `'._DB_PREFIX_.'configuration_lang`'.
+                    ' WHERE `id_configuration` = '.$idConfiguration.' AND `value` IS NOT NULL AND `value` != \'\''.
+                    ' ORDER BY `id_lang` ASC'
+                ));
+            }
+            if ($legacyValue === '') {
+                $legacyValue = 'blog';
+            }
+            foreach ($languageIds as $idLang) {
+                $idLang = (int) $idLang;
+                if (!Configuration::hasKey(static::MAIN_URL_KEY, $idLang, $idShopGroup, $idShop)) {
+                    $result = $db->execute(
+                        'INSERT IGNORE INTO `'._DB_PREFIX_.'configuration_lang`'.
+                        ' (`id_configuration`, `id_lang`, `value`, `date_upd`) VALUES'.
+                        ' ('.$idConfiguration.', '.$idLang.', \''.pSQL($legacyValue).'\', NOW())'
+                    ) && $result;
+                }
+            }
+        }
+
+        Configuration::loadConfiguration();
+
+        return $result;
     }
 
     /**
@@ -485,9 +646,7 @@ class BeesBlog extends Module
         $langId = (int)Context::getContext()->language->id;
 
         // Blog posts
-        $results = (new PrestaShopCollection('BeesBlogModule\\BeesBlogPost', $langId))
-            ->where('active', '=', 1)
-            ->getResults();
+        $results = BeesBlogPost::getPosts($langId);
         if ($results) {
             /** @var BeesBlogPost $result */
             foreach ($results as $result) {
@@ -503,13 +662,14 @@ class BeesBlog extends Module
         }
 
         // Categories
-        $results = (new PrestaShopCollection('BeesBlogModule\\BeesBlogCategory', $langId))
-            ->where('active', '=', 1)
-            ->getResults();
+        $results = BeesBlogCategory::getCategories($langId);
 
         if ($results) {
             /** @var BeesBlogCategory $result */
             foreach ($results as $result) {
+                if (!$result->active) {
+                    continue;
+                }
                 $link = [];
                 $link['link'] = $result->link;
                 $link['lastmod'] = $result->date_upd;
@@ -560,6 +720,13 @@ class BeesBlog extends Module
         $dispatcher = Dispatcher::getInstance();
         $context = Context::getContext();
         $link = $context->link;
+        if ($idShop === null) {
+            $idShop = (int) $context->shop->id;
+        }
+        if ($idLang === null) {
+            $idLang = (int) $context->language->id;
+        }
+        $params[static::MAIN_URL_ROUTE_PARAM] = static::getBlogUrlKey($idLang, $idShop);
         return $link->getBaseLink($idShop) . $link->getLangLink($idLang, $context, $idShop) . $dispatcher->createUrl($rewrite, $idLang, $params, false, '', $idShop);
     }
 
@@ -579,11 +746,19 @@ class BeesBlog extends Module
         if ($controller instanceof BeesBlogPostModuleFrontController) {
             $post = $controller->getBeesBlogPost();
             if ($post) {
+                $imagePath = BeesBlogPost::getImagePath(
+                    $post->id,
+                    'original',
+                    (int) $this->context->shop->id,
+                    (int) $this->context->language->id
+                );
                 Context::getContext()->smarty->assign([
                     'bb_og_link' => $post->link,
                     'bb_og_title' => $post->meta_title . ' - ' . Configuration::get('PS_SHOP_NAME'),
                     'bb_og_description' => $post->meta_description,
-                    'bb_og_image' => Tools::getHttpHost(true) . '/img/beesblog/posts/' . (int)$post->id . '.jpg',
+                    'bb_og_image' => $imagePath
+                        ? $this->context->link->getMediaLink(Media::getMediaPath($imagePath))
+                        : '',
                 ]);
                 return $this->display(__FILE__, 'views/templates/hooks/post-header.tpl');
             }
@@ -628,10 +803,7 @@ class BeesBlog extends Module
      */
     public function hookActionGetWebserviceResources()
     {
-        // shop associations are normally registered by the admin controllers;
-        // the webservice bypasses those, so register them here as well
-        Shop::addTableAssociation(BeesBlogCategory::TABLE, ['type' => 'shop']);
-        Shop::addTableAssociation(BeesBlogPost::TABLE, ['type' => 'shop']);
+        BeesBlogMultistore::registerAssociations();
 
         return [
             'bees_blog_posts'      => [
@@ -643,6 +815,58 @@ class BeesBlog extends Module
                 'class'       => BeesBlogCategory::class,
             ],
         ];
+    }
+
+    /**
+     * Copy all shop-specific blog data when thirty bees duplicates a shop.
+     * Explicit images are copied to independent files for the new shop.
+     *
+     * @param array $params
+     * @return bool
+     * @throws PrestaShopException
+     */
+    public function hookActionShopDataDuplication($params)
+    {
+        $oldShopId = (int) ($params['old_id_shop'] ?? 0);
+        $newShopId = (int) ($params['new_id_shop'] ?? 0);
+        if (!$oldShopId || !$newShopId) {
+            return false;
+        }
+
+        $queries = [
+            'INSERT IGNORE INTO `'._DB_PREFIX_.BeesBlogCategory::SHOP_TABLE.'`'.
+            ' (`'.BeesBlogCategory::PRIMARY.'`, `id_shop`, `id_parent`, `position`, `active`, `date_upd`)'.
+            ' SELECT `'.BeesBlogCategory::PRIMARY.'`, '.$newShopId.', `id_parent`, `position`, `active`, `date_upd`'.
+            ' FROM `'._DB_PREFIX_.BeesBlogCategory::SHOP_TABLE.'` WHERE `id_shop` = '.$oldShopId,
+            'INSERT IGNORE INTO `'._DB_PREFIX_.BeesBlogCategory::LANG_TABLE.'`'.
+            ' (`'.BeesBlogCategory::PRIMARY.'`, `id_lang`, `id_shop`, `title`, `description`, `link_rewrite`, `meta_title`, `meta_description`, `meta_keywords`)'.
+            ' SELECT `'.BeesBlogCategory::PRIMARY.'`, `id_lang`, '.$newShopId.', `title`, `description`, `link_rewrite`, `meta_title`, `meta_description`, `meta_keywords`'.
+            ' FROM `'._DB_PREFIX_.BeesBlogCategory::LANG_TABLE.'` WHERE `id_shop` = '.$oldShopId,
+            'INSERT IGNORE INTO `'._DB_PREFIX_.BeesBlogPost::SHOP_TABLE.'`'.
+            ' (`'.BeesBlogPost::PRIMARY.'`, `id_shop`, `active`, `comments_enabled`, `date_upd`, `published`, `id_category`, `id_employee`, `position`, `post_type`, `viewed`)'.
+            ' SELECT `'.BeesBlogPost::PRIMARY.'`, '.$newShopId.', `active`, `comments_enabled`, `date_upd`, `published`, `id_category`, `id_employee`, `position`, `post_type`, `viewed`'.
+            ' FROM `'._DB_PREFIX_.BeesBlogPost::SHOP_TABLE.'` WHERE `id_shop` = '.$oldShopId,
+            'INSERT IGNORE INTO `'._DB_PREFIX_.BeesBlogPost::LANG_TABLE.'`'.
+            ' (`'.BeesBlogPost::PRIMARY.'`, `id_lang`, `id_shop`, `title`, `content`, `link_rewrite`, `meta_title`, `meta_description`, `meta_keywords`, `lang_active`)'.
+            ' SELECT `'.BeesBlogPost::PRIMARY.'`, `id_lang`, '.$newShopId.', `title`, `content`, `link_rewrite`, `meta_title`, `meta_description`, `meta_keywords`, `lang_active`'.
+            ' FROM `'._DB_PREFIX_.BeesBlogPost::LANG_TABLE.'` WHERE `id_shop` = '.$oldShopId,
+            'INSERT IGNORE INTO `'._DB_PREFIX_.BeesBlogImageType::SHOP_TABLE.'`'.
+            ' (`'.BeesBlogImageType::PRIMARY.'`, `id_shop`)'.
+            ' SELECT `'.BeesBlogImageType::PRIMARY.'`, '.$newShopId.
+            ' FROM `'._DB_PREFIX_.BeesBlogImageType::SHOP_TABLE.'` WHERE `id_shop` = '.$oldShopId,
+            'INSERT IGNORE INTO `'._DB_PREFIX_.'bees_blog_post_product`'.
+            ' (`id_product`, `'.BeesBlogPost::PRIMARY.'`, `id_shop`)'.
+            ' SELECT `id_product`, `'.BeesBlogPost::PRIMARY.'`, '.$newShopId.
+            ' FROM `'._DB_PREFIX_.'bees_blog_post_product` WHERE `id_shop` = '.$oldShopId,
+        ];
+
+        foreach ($queries as $query) {
+            if (!Db::getInstance()->execute($query)) {
+                return false;
+            }
+        }
+
+        return BeesBlogImage::duplicateShop($oldShopId, $newShopId);
     }
 
     /**
@@ -678,28 +902,38 @@ class BeesBlog extends Module
     protected function postProcess()
     {
         if (Tools::isSubmit('submit'.$this->name)) {
-            Configuration::updateValue(static::HOME_TITLE, $this->getTranslatedFormValues(
-                static::HOME_TITLE,
-                $this->getTranslatedConfiguration(static::HOME_TITLE, (int) Configuration::get('PS_LANG_DEFAULT'))
-            ));
-            Configuration::updateValue(static::HOME_KEYWORDS, $this->getTranslatedFormValues(
-                static::HOME_KEYWORDS,
-                $this->getTranslatedConfiguration(static::HOME_KEYWORDS, (int) Configuration::get('PS_LANG_DEFAULT'))
-            ));
-            Configuration::updateValue(static::HOME_DESCRIPTION, $this->getTranslatedFormValues(
-                static::HOME_DESCRIPTION,
-                $this->getTranslatedConfiguration(static::HOME_DESCRIPTION, (int) Configuration::get('PS_LANG_DEFAULT'))
-            ));
-            Configuration::updateValue(static::POSTS_PER_PAGE, Tools::getValue(static::POSTS_PER_PAGE));
-            Configuration::updateValue(static::SHOW_POST_COUNT, Tools::getValue(static::SHOW_POST_COUNT));
-            Configuration::updateValue(static::SHOW_CATEGORY_IMAGE, Tools::getValue(static::SHOW_CATEGORY_IMAGE));
-            Configuration::updateValue(static::SHOW_AUTHOR, Tools::getValue(static::SHOW_AUTHOR));
-            Configuration::updateValue(static::SHOW_DATE, Tools::getValue(static::SHOW_DATE));
-            Configuration::updateValue(static::SOCIAL_SHARING, Tools::getValue(static::SOCIAL_SHARING));
-            Configuration::updateValue(static::AUTHOR_STYLE, Tools::getValue(static::AUTHOR_STYLE));
-            Configuration::updateValue(static::MAIN_URL_KEY, Tools::getValue(static::MAIN_URL_KEY));
-            Configuration::updateValue(static::USE_HTML, Tools::getValue(static::USE_HTML));
-            Configuration::updateValue(static::SHOW_NO_IMAGE, Tools::getValue(static::SHOW_NO_IMAGE));
+            $blogUrlKeys = $this->getBlogUrlKeyFormValues();
+            if (!$blogUrlKeys) {
+                $this->_errors[] = $this->l('The blog URL key must contain at least one letter or number.');
+                return;
+            }
+            $saved = $this->updateConfigurationValuesForContext([
+                static::HOME_TITLE => $this->getTranslatedFormValues(
+                    static::HOME_TITLE,
+                    $this->getTranslatedConfiguration(static::HOME_TITLE, (int) Configuration::get('PS_LANG_DEFAULT'))
+                ),
+                static::HOME_KEYWORDS => $this->getTranslatedFormValues(
+                    static::HOME_KEYWORDS,
+                    $this->getTranslatedConfiguration(static::HOME_KEYWORDS, (int) Configuration::get('PS_LANG_DEFAULT'))
+                ),
+                static::HOME_DESCRIPTION => $this->getTranslatedFormValues(
+                    static::HOME_DESCRIPTION,
+                    $this->getTranslatedConfiguration(static::HOME_DESCRIPTION, (int) Configuration::get('PS_LANG_DEFAULT'))
+                ),
+                static::POSTS_PER_PAGE => Tools::getValue(static::POSTS_PER_PAGE),
+                static::SHOW_POST_COUNT => Tools::getValue(static::SHOW_POST_COUNT),
+                static::SHOW_CATEGORY_IMAGE => Tools::getValue(static::SHOW_CATEGORY_IMAGE),
+                static::SHOW_AUTHOR => Tools::getValue(static::SHOW_AUTHOR),
+                static::SHOW_DATE => Tools::getValue(static::SHOW_DATE),
+                static::SOCIAL_SHARING => Tools::getValue(static::SOCIAL_SHARING),
+                static::AUTHOR_STYLE => Tools::getValue(static::AUTHOR_STYLE),
+                static::MAIN_URL_KEY => $blogUrlKeys,
+                static::USE_HTML => Tools::getValue(static::USE_HTML),
+                static::SHOW_NO_IMAGE => Tools::getValue(static::SHOW_NO_IMAGE),
+            ]);
+            if (!$saved) {
+                $this->_errors[] = $this->l('The blog settings could not be saved.');
+            }
         }
 
         if (Tools::isSubmit('submitOptionsconfiguration') || Tools::isSubmit('submitOptions')) {
@@ -715,7 +949,87 @@ class BeesBlog extends Module
     protected function postProcessDisqusOptions()
     {
         $username = Tools::getValue(static::DISQUS_USERNAME);
-        Configuration::updateValue(static::DISQUS_USERNAME, $username);
+        if (!$this->updateConfigurationValuesForContext([static::DISQUS_USERNAME => $username])) {
+            $this->_errors[] = $this->l('The Disqus settings could not be saved.');
+        }
+    }
+
+    /**
+     * Save configuration values in the selected shop context and remove more
+     * specific values which would otherwise continue to override this save.
+     *
+     * All Shops replaces group and shop overrides. A shop-group save replaces
+     * overrides belonging to shops in that group. A dedicated-shop save only
+     * updates that shop.
+     *
+     * @param array $values Configuration key/value pairs
+     *
+     * @return bool
+     * @throws PrestaShopException
+     */
+    protected function updateConfigurationValuesForContext(array $values)
+    {
+        if (!$values) {
+            return true;
+        }
+
+        $context = Shop::getContext();
+        $idShopGroup = $context === Shop::CONTEXT_ALL ? 0 : (int) Shop::getContextShopGroupID(true);
+        $idShop = $context === Shop::CONTEXT_SHOP ? (int) Shop::getContextShopID(true) : 0;
+        $connection = Db::getInstance();
+        $connection->execute('START TRANSACTION');
+
+        try {
+            foreach ($values as $key => $value) {
+                if (!Configuration::updateValue($key, $value, false, $idShopGroup, $idShop)) {
+                    throw new PrestaShopException('Unable to update configuration key '.$key);
+                }
+            }
+
+            $descendantRestriction = '';
+            if ($context === Shop::CONTEXT_ALL) {
+                $descendantRestriction = ' AND (`id_shop_group` IS NOT NULL AND `id_shop_group` != 0'.
+                    ' OR `id_shop` IS NOT NULL AND `id_shop` != 0)';
+            } elseif ($context === Shop::CONTEXT_GROUP && $idShopGroup) {
+                $descendantRestriction = ' AND `id_shop` IN ('.
+                    'SELECT `id_shop` FROM `'._DB_PREFIX_.'shop`'.
+                    ' WHERE `id_shop_group` = '.$idShopGroup.
+                    ')';
+            }
+
+            if ($descendantRestriction !== '') {
+                $escapedKeys = [];
+                foreach (array_keys($values) as $key) {
+                    $escapedKeys[] = '\''.pSQL($key).'\'';
+                }
+                $configurationIds = array_map('intval', array_column((array) $connection->executeS(
+                    'SELECT `id_configuration` FROM `'._DB_PREFIX_.'configuration`'.
+                    ' WHERE `name` IN ('.implode(', ', $escapedKeys).')'.
+                    $descendantRestriction
+                ), 'id_configuration'));
+
+                if ($configurationIds) {
+                    $idList = implode(', ', $configurationIds);
+                    if (!$connection->delete('configuration_lang', '`id_configuration` IN ('.$idList.')')
+                        || !$connection->delete('configuration', '`id_configuration` IN ('.$idList.')')
+                    ) {
+                        throw new PrestaShopException('Unable to replace more specific blog settings');
+                    }
+                }
+            }
+
+            if (!$connection->execute('COMMIT')) {
+                throw new PrestaShopException('Unable to commit blog settings');
+            }
+            Configuration::loadConfiguration();
+
+            return true;
+        } catch (Throwable $e) {
+            $connection->execute('ROLLBACK');
+            Configuration::loadConfiguration();
+
+            return false;
+        }
     }
 
     /**
@@ -770,6 +1084,8 @@ class BeesBlog extends Module
                     'name'     => static::MAIN_URL_KEY,
                     'size'     => 15,
                     'required' => true,
+                    'lang'     => true,
+                    'desc'     => $this->l('Language-specific URL prefix for the blog. It is saved in the current shop context.'),
                 ],
                 [
                     'type'     => 'select',
@@ -956,7 +1272,6 @@ class BeesBlog extends Module
                 static::SHOW_DATE,
                 static::SOCIAL_SHARING,
                 static::AUTHOR_STYLE,
-                static::MAIN_URL_KEY,
                 static::USE_HTML,
                 static::SHOW_POST_COUNT,
                 static::SHOW_CATEGORY_IMAGE,
@@ -967,6 +1282,7 @@ class BeesBlog extends Module
         $values[static::HOME_TITLE] = $this->getTranslatedConfigurationValues(static::HOME_TITLE);
         $values[static::HOME_KEYWORDS] = $this->getTranslatedConfigurationValues(static::HOME_KEYWORDS);
         $values[static::HOME_DESCRIPTION] = $this->getTranslatedConfigurationValues(static::HOME_DESCRIPTION);
+        $values[static::MAIN_URL_KEY] = $this->getTranslatedConfigurationValues(static::MAIN_URL_KEY);
 
         return $values;
     }
@@ -1060,6 +1376,33 @@ class BeesBlog extends Module
     }
 
     /**
+     * Read and normalize the translated route-prefix fields. Empty secondary
+     * languages inherit the submitted default-language value.
+     *
+     * @return array<int,string>
+     * @throws PrestaShopException
+     */
+    protected function getBlogUrlKeyFormValues()
+    {
+        $defaultLang = (int) Configuration::get('PS_LANG_DEFAULT');
+        $values = $this->getTranslatedFormValues(
+            static::MAIN_URL_KEY,
+            static::getTranslatedConfiguration(static::MAIN_URL_KEY, $defaultLang)
+        );
+        $defaultValue = static::normalizeBlogUrlKey($values[$defaultLang] ?? '');
+        if ($defaultValue === '') {
+            return [];
+        }
+
+        foreach ($values as $idLang => $value) {
+            $value = static::normalizeBlogUrlKey($value);
+            $values[(int) $idLang] = $value !== '' ? $value : $defaultValue;
+        }
+
+        return $values;
+    }
+
+    /**
      * Render the General options form
      *
      * @return string HTML
@@ -1125,9 +1468,9 @@ class BeesBlog extends Module
      *
      * @since 1.0.0
      */
-    public static function getPostImagePath($id, $type = 'post_default')
+    public static function getPostImagePath($id, $type = 'post_default', $idShop = null, $idLang = null)
     {
-        return BeesBlogPost::getImagePath($id, $type);
+        return BeesBlogPost::getImagePath($id, $type, $idShop, $idLang);
     }
 
     /**
@@ -1141,9 +1484,9 @@ class BeesBlog extends Module
      *
      * @since 1.0.0
      */
-    public static function getCategoryImagePath($id, $type = 'category_default')
+    public static function getCategoryImagePath($id, $type = 'category_default', $idShop = null, $idLang = null)
     {
-        return BeesBlogCategory::getImagePath($id, $type);
+        return BeesBlogCategory::getImagePath($id, $type, $idShop, $idLang);
     }
 
     /**
@@ -1154,13 +1497,14 @@ class BeesBlog extends Module
      */
     protected function installFixtures()
     {
-        Shop::addTableAssociation(BeesBlogCategory::TABLE, ['type' => 'shop']);
-        Shop::addTableAssociation(BeesBlogPost::TABLE, ['type' => 'shop']);
+        BeesBlogMultistore::registerAssociations();
+        $shopIds = array_map('intval', Shop::getShops(false, null, true));
 
         $category = new BeesBlogCategory();
         $category->active = true;
         $category->id_parent = 0;
         $category->position = 1;
+        $category->id_shop_list = $shopIds;
         $this->setLangValues($category, [
             'title' => 'News',
             'description' => 'thirty bees news',
@@ -1208,6 +1552,7 @@ class BeesBlog extends Module
         $post->post_type = '0';
         $post->viewed = 0;
         $post->published = date('Y-m-d H:i:s');
+        $post->id_shop_list = array_map('intval', Shop::getShops(false, null, true));
         $this->setLangValues($post, array_merge($texts, [
             'content' => $this->getPostFixtureContent($id . '.html'),
             'meta_keywords' => '',
@@ -1250,28 +1595,18 @@ class BeesBlog extends Module
         if (! file_exists($sourceFile)) {
             throw new PrestaShopException(sprintf($this->l('File with fixture image not found: `%s`'), $sourceFile));
         }
-        $dir = _PS_IMG_DIR_ . "beesblog/posts/";
-        if (!file_exists($dir)) {
-            if (!mkdir($dir, 0777, true)) {
-                throw new PrestaShopException(sprintf($this->l('Unable to create image directory: `%s`'), $dir));
-            }
-        }
-        $targetFile = $dir . $postId . ".jpg";
-        copy($sourceFile, $targetFile);
 
-        $imageTypes = BeesBlogImageType::getImagesTypes('posts');
-        foreach ($imageTypes as $imageType) {
-            $targetFile = $dir . $postId . '-' . $imageType['name'] . '.jpg';
-            if (file_exists($targetFile)) {
-                @unlink($targetFile);
-            }
-            ImageManager::resize(
-                $sourceFile,
-                $targetFile,
-                (int) $imageType['width'],
-                (int) $imageType['height'],
-                'jpg',
-                true
+        $error = null;
+        if (!BeesBlogImage::saveImageFile(
+            $sourceFile,
+            BeesBlogImage::ENTITY_POST,
+            (int) $postId,
+            array_map('intval', Shop::getShops(false, null, true)),
+            0,
+            $error
+        )) {
+            throw new PrestaShopException(
+                $this->l('Unable to install fixture image').($error ? ': '.$error : '')
             );
         }
     }
