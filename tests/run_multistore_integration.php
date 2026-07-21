@@ -30,6 +30,7 @@ $db = Db::getInstance();
 $module = Module::getInstanceByName('beesblog');
 $createdPosts = [];
 $createdCategories = [];
+$testConfigurationKeys = [];
 $testShopId = 0;
 $originalContext = Shop::getContext();
 $originalContextShopId = (int) Shop::getContextShopID();
@@ -97,6 +98,96 @@ try {
     );
     Shop::cacheShops(true);
     Language::loadLanguages();
+
+    if (Shop::isFeatureActive()) {
+        $configurationKey = 'BEESBLOG_TEST_'.strtoupper(substr(sha1($token), 0, 12));
+        $testConfigurationKeys[] = $configurationKey;
+        $configurationLanguageId = (int) Configuration::get('PS_LANG_DEFAULT');
+        $configurationUpdater = new ReflectionMethod(BeesBlog::class, 'updateConfigurationValuesForContext');
+        $configurationUpdater->setAccessible(true);
+
+        assertTest(Configuration::updateGlobalValue(
+            $configurationKey,
+            [$configurationLanguageId => 'global-old']
+        ), 'test global translated configuration can be created');
+        assertTest(Configuration::updateValue(
+            $configurationKey,
+            [$configurationLanguageId => 'group-old'],
+            false,
+            $sourceGroupId,
+            0
+        ), 'test group translated configuration can be created');
+        foreach ([$sourceShopId, $testShopId] as $idShop) {
+            assertTest(Configuration::updateValue(
+                $configurationKey,
+                [$configurationLanguageId => 'shop-old-'.$idShop],
+                false,
+                $sourceGroupId,
+                $idShop
+            ), 'test shop translated configuration can be created for shop '.$idShop);
+        }
+
+        Shop::setContext(Shop::CONTEXT_ALL);
+        assertTest($configurationUpdater->invoke(
+            $module,
+            [$configurationKey => [$configurationLanguageId => 'global-new']]
+        ), 'all-shops configuration save succeeds');
+        assertTest((int) $db->getValue(
+            'SELECT COUNT(*) FROM `'._DB_PREFIX_.'configuration`'.
+            ' WHERE `name` = \''.pSQL($configurationKey).'\''.
+            ' AND (`id_shop_group` IS NOT NULL AND `id_shop_group` != 0'.
+            ' OR `id_shop` IS NOT NULL AND `id_shop` != 0)'
+        ) === 0, 'all-shops configuration save removes existing group and shop overrides');
+        foreach ([$sourceShopId, $testShopId] as $idShop) {
+            assertTest(
+                Configuration::get($configurationKey, $configurationLanguageId, $sourceGroupId, $idShop) === 'global-new',
+                'all-shops configuration value is effective in shop '.$idShop
+            );
+        }
+
+        foreach ([$sourceShopId, $testShopId] as $idShop) {
+            assertTest(Configuration::updateValue(
+                $configurationKey,
+                [$configurationLanguageId => 'shop-stale-'.$idShop],
+                false,
+                $sourceGroupId,
+                $idShop
+            ), 'stale shop override can be recreated for shop '.$idShop);
+        }
+        Shop::setContext(Shop::CONTEXT_GROUP, $sourceGroupId);
+        assertTest($configurationUpdater->invoke(
+            $module,
+            [$configurationKey => [$configurationLanguageId => 'group-new']]
+        ), 'shop-group configuration save succeeds');
+        assertTest((int) $db->getValue(
+            'SELECT COUNT(*) FROM `'._DB_PREFIX_.'configuration`'.
+            ' WHERE `name` = \''.pSQL($configurationKey).'\''.
+            ' AND `id_shop` IN ('.$sourceShopId.', '.$testShopId.')'
+        ) === 0, 'shop-group configuration save removes existing overrides for shops in the group');
+        foreach ([$sourceShopId, $testShopId] as $idShop) {
+            assertTest(
+                Configuration::get($configurationKey, $configurationLanguageId, $sourceGroupId, $idShop) === 'group-new',
+                'shop-group configuration value is effective in shop '.$idShop
+            );
+        }
+
+        Shop::setContext(Shop::CONTEXT_SHOP, $sourceShopId);
+        Context::getContext()->shop = new Shop($sourceShopId);
+        assertTest($configurationUpdater->invoke(
+            $module,
+            [$configurationKey => [$configurationLanguageId => 'source-shop-new']]
+        ), 'dedicated-shop configuration save succeeds');
+        assertTest(
+            Configuration::get($configurationKey, $configurationLanguageId, $sourceGroupId, $sourceShopId) === 'source-shop-new',
+            'dedicated-shop configuration save updates the selected shop'
+        );
+        assertTest(
+            Configuration::get($configurationKey, $configurationLanguageId, $sourceGroupId, $testShopId) === 'group-new',
+            'dedicated-shop configuration save does not change another shop'
+        );
+    } else {
+        echo "SKIP: configuration hierarchy propagation requires multistore to be active before bootstrap\n";
+    }
 
     if (Shop::isFeatureActive()) {
         $routeLanguageIds = Language::getLanguages(true, $testShopId, true);
@@ -201,9 +292,70 @@ try {
     $sharedCategory = addCategoryForTest($token.'-shared-category', $groupShopIds);
     $createdCategories[] = (int) $sharedCategory->id;
 
+    $languageId = (int) Configuration::get('PS_LANG_DEFAULT');
+    $shopCategory = new BeesBlogCategory((int) $sharedCategory->id, null, $testShopId);
+    $shopCategory->active = false;
+    $shopCategory->title[$languageId] = 'Stale shop category title';
+    $shopCategory->link_rewrite[$languageId] = $token.'-stale-shop-category';
+    $shopCategory->id_shop_list = [$testShopId];
+    assertTest($shopCategory->update(), 'dedicated-shop category override can be created');
+
+    $groupCategoryTitle = 'Group category '.$token;
+    $groupCategorySlug = $token.'-group-category';
+    $groupCategory = new BeesBlogCategory((int) $sharedCategory->id, null, $sourceShopId);
+    $groupCategory->active = true;
+    $groupCategory->title[$languageId] = $groupCategoryTitle;
+    $groupCategory->link_rewrite[$languageId] = $groupCategorySlug;
+    $groupCategory->id_shop_list = $groupShopIds;
+    assertTest($groupCategory->update(), 'shop-group category update succeeds');
+    assertTest((int) $db->getValue(
+        'SELECT COUNT(*) FROM `'._DB_PREFIX_.BeesBlogCategory::SHOP_TABLE.'`'.
+        ' WHERE `'.BeesBlogCategory::PRIMARY.'` = '.(int) $sharedCategory->id.
+        ' AND `id_shop` IN ('.implode(', ', $groupShopIds).') AND `active` = 1'
+    ) === count($groupShopIds), 'shop-group category update replaces existing shop field values in the group');
+    assertTest((int) $db->getValue(
+        'SELECT COUNT(*) FROM `'._DB_PREFIX_.BeesBlogCategory::LANG_TABLE.'`'.
+        ' WHERE `'.BeesBlogCategory::PRIMARY.'` = '.(int) $sharedCategory->id.
+        ' AND `id_shop` IN ('.implode(', ', $groupShopIds).') AND `id_lang` = '.$languageId.
+        ' AND `title` = \''.pSQL($groupCategoryTitle).'\''.
+        ' AND `link_rewrite` = \''.pSQL($groupCategorySlug).'\''
+    ) === count($groupShopIds), 'shop-group category update replaces existing translated values in the group');
+
     Shop::setContext(Shop::CONTEXT_ALL);
     $allShopIds = BeesBlogMultistore::getSubmittedShopIds(BeesBlogPost::TABLE);
     assertTest(in_array($sourceShopId, $allShopIds, true) && in_array($testShopId, $allShopIds, true), 'all-shops context resolves every authorized shop');
+
+    $allShopsCategory = addCategoryForTest($token.'-all-shops-category', $allShopIds);
+    $createdCategories[] = (int) $allShopsCategory->id;
+    $allShopsPost = addPostForTest($token.'-all-shops-post', $allShopsCategory->id, $allShopIds);
+    $createdPosts[] = (int) $allShopsPost->id;
+    $shopPost = new BeesBlogPost((int) $allShopsPost->id, null, $testShopId);
+    $shopPost->active = false;
+    $shopPost->title[$languageId] = 'Stale shop post title';
+    $shopPost->link_rewrite[$languageId] = $token.'-stale-shop-post';
+    $shopPost->id_shop_list = [$testShopId];
+    assertTest($shopPost->update(), 'dedicated-shop post override can be created');
+
+    $allShopsPostTitle = 'All shops post '.$token;
+    $allShopsPostSlug = $token.'-all-shops-post-new';
+    $globalPost = new BeesBlogPost((int) $allShopsPost->id, null, $sourceShopId);
+    $globalPost->active = true;
+    $globalPost->title[$languageId] = $allShopsPostTitle;
+    $globalPost->link_rewrite[$languageId] = $allShopsPostSlug;
+    $globalPost->id_shop_list = $allShopIds;
+    assertTest($globalPost->update(), 'all-shops post update succeeds');
+    assertTest((int) $db->getValue(
+        'SELECT COUNT(*) FROM `'._DB_PREFIX_.BeesBlogPost::SHOP_TABLE.'`'.
+        ' WHERE `'.BeesBlogPost::PRIMARY.'` = '.(int) $allShopsPost->id.
+        ' AND `id_shop` IN ('.implode(', ', $allShopIds).') AND `active` = 1'
+    ) === count($allShopIds), 'all-shops post update replaces existing shop field values');
+    assertTest((int) $db->getValue(
+        'SELECT COUNT(*) FROM `'._DB_PREFIX_.BeesBlogPost::LANG_TABLE.'`'.
+        ' WHERE `'.BeesBlogPost::PRIMARY.'` = '.(int) $allShopsPost->id.
+        ' AND `id_shop` IN ('.implode(', ', $allShopIds).') AND `id_lang` = '.$languageId.
+        ' AND `title` = \''.pSQL($allShopsPostTitle).'\''.
+        ' AND `link_rewrite` = \''.pSQL($allShopsPostSlug).'\''
+    ) === count($allShopIds), 'all-shops post update replaces existing translated values');
 
     $statusPost = addPostForTest($token.'-status-seed', $sharedCategory->id, [$sourceShopId]);
     $createdPosts[] = (int) $statusPost->id;
@@ -284,7 +436,6 @@ try {
         echo "SKIP: language-switch regression requires two active languages\n";
     }
 
-    $languageId = (int) Configuration::get('PS_LANG_DEFAULT');
     $shopOneSlug = (string) $db->getValue(
         'SELECT `link_rewrite` FROM `'._DB_PREFIX_.BeesBlogPost::LANG_TABLE.'`'.
         ' WHERE `'.BeesBlogPost::PRIMARY.'` = '.(int) $sharedPost->id.
@@ -365,6 +516,10 @@ try {
     $exitCode = 1;
 } finally {
     Shop::setContext(Shop::CONTEXT_ALL);
+
+    foreach ($testConfigurationKeys as $configurationKey) {
+        Configuration::deleteByName($configurationKey);
+    }
 
     foreach (array_unique(array_map('intval', $createdPosts)) as $idPost) {
         $db->delete('bees_blog_post_product', '`'.BeesBlogPost::PRIMARY.'` = '.$idPost);

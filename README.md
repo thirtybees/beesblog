@@ -46,6 +46,13 @@ associated shop in the active context and are propagated to the complete
 context when saved. The native shop-association tree remains visible, while
 the native context selector defines the write scope.
 
+Module settings follow the same overwrite rule. Saving in All Shops removes
+older group- and shop-specific Bees Blog configuration rows, so values such as
+the meta title and translated blog URL prefix become effective everywhere.
+Saving in a shop-group context removes the shop-specific overrides belonging
+to shops in that group. Saving in a single-shop context keeps all other shops
+unchanged.
+
 ### Data ownership
 
 | Data | Scope |
@@ -159,7 +166,8 @@ php modules/beesblog/tests/run_admin_form_smoke.php <thirty-bees-root>
 ```
 
 The multistore suite covers schema upgrades, shop contexts and associations,
-shop-specific slugs, routes, duplication, updates, and deletion. The image
+configuration precedence, propagation over existing shop rows, shop-specific
+slugs, routes, duplication, updates, and deletion. The image
 suite independently covers legacy migration, original-file preservation,
 thumbnail formats, shop/language resolution, scoped replacements, duplication,
 fallbacks, and deletion. Both retain schema upgrades but remove their temporary

@@ -907,28 +907,33 @@ class BeesBlog extends Module
                 $this->_errors[] = $this->l('The blog URL key must contain at least one letter or number.');
                 return;
             }
-            Configuration::updateValue(static::HOME_TITLE, $this->getTranslatedFormValues(
-                static::HOME_TITLE,
-                $this->getTranslatedConfiguration(static::HOME_TITLE, (int) Configuration::get('PS_LANG_DEFAULT'))
-            ));
-            Configuration::updateValue(static::HOME_KEYWORDS, $this->getTranslatedFormValues(
-                static::HOME_KEYWORDS,
-                $this->getTranslatedConfiguration(static::HOME_KEYWORDS, (int) Configuration::get('PS_LANG_DEFAULT'))
-            ));
-            Configuration::updateValue(static::HOME_DESCRIPTION, $this->getTranslatedFormValues(
-                static::HOME_DESCRIPTION,
-                $this->getTranslatedConfiguration(static::HOME_DESCRIPTION, (int) Configuration::get('PS_LANG_DEFAULT'))
-            ));
-            Configuration::updateValue(static::POSTS_PER_PAGE, Tools::getValue(static::POSTS_PER_PAGE));
-            Configuration::updateValue(static::SHOW_POST_COUNT, Tools::getValue(static::SHOW_POST_COUNT));
-            Configuration::updateValue(static::SHOW_CATEGORY_IMAGE, Tools::getValue(static::SHOW_CATEGORY_IMAGE));
-            Configuration::updateValue(static::SHOW_AUTHOR, Tools::getValue(static::SHOW_AUTHOR));
-            Configuration::updateValue(static::SHOW_DATE, Tools::getValue(static::SHOW_DATE));
-            Configuration::updateValue(static::SOCIAL_SHARING, Tools::getValue(static::SOCIAL_SHARING));
-            Configuration::updateValue(static::AUTHOR_STYLE, Tools::getValue(static::AUTHOR_STYLE));
-            Configuration::updateValue(static::MAIN_URL_KEY, $blogUrlKeys);
-            Configuration::updateValue(static::USE_HTML, Tools::getValue(static::USE_HTML));
-            Configuration::updateValue(static::SHOW_NO_IMAGE, Tools::getValue(static::SHOW_NO_IMAGE));
+            $saved = $this->updateConfigurationValuesForContext([
+                static::HOME_TITLE => $this->getTranslatedFormValues(
+                    static::HOME_TITLE,
+                    $this->getTranslatedConfiguration(static::HOME_TITLE, (int) Configuration::get('PS_LANG_DEFAULT'))
+                ),
+                static::HOME_KEYWORDS => $this->getTranslatedFormValues(
+                    static::HOME_KEYWORDS,
+                    $this->getTranslatedConfiguration(static::HOME_KEYWORDS, (int) Configuration::get('PS_LANG_DEFAULT'))
+                ),
+                static::HOME_DESCRIPTION => $this->getTranslatedFormValues(
+                    static::HOME_DESCRIPTION,
+                    $this->getTranslatedConfiguration(static::HOME_DESCRIPTION, (int) Configuration::get('PS_LANG_DEFAULT'))
+                ),
+                static::POSTS_PER_PAGE => Tools::getValue(static::POSTS_PER_PAGE),
+                static::SHOW_POST_COUNT => Tools::getValue(static::SHOW_POST_COUNT),
+                static::SHOW_CATEGORY_IMAGE => Tools::getValue(static::SHOW_CATEGORY_IMAGE),
+                static::SHOW_AUTHOR => Tools::getValue(static::SHOW_AUTHOR),
+                static::SHOW_DATE => Tools::getValue(static::SHOW_DATE),
+                static::SOCIAL_SHARING => Tools::getValue(static::SOCIAL_SHARING),
+                static::AUTHOR_STYLE => Tools::getValue(static::AUTHOR_STYLE),
+                static::MAIN_URL_KEY => $blogUrlKeys,
+                static::USE_HTML => Tools::getValue(static::USE_HTML),
+                static::SHOW_NO_IMAGE => Tools::getValue(static::SHOW_NO_IMAGE),
+            ]);
+            if (!$saved) {
+                $this->_errors[] = $this->l('The blog settings could not be saved.');
+            }
         }
 
         if (Tools::isSubmit('submitOptionsconfiguration') || Tools::isSubmit('submitOptions')) {
@@ -944,7 +949,87 @@ class BeesBlog extends Module
     protected function postProcessDisqusOptions()
     {
         $username = Tools::getValue(static::DISQUS_USERNAME);
-        Configuration::updateValue(static::DISQUS_USERNAME, $username);
+        if (!$this->updateConfigurationValuesForContext([static::DISQUS_USERNAME => $username])) {
+            $this->_errors[] = $this->l('The Disqus settings could not be saved.');
+        }
+    }
+
+    /**
+     * Save configuration values in the selected shop context and remove more
+     * specific values which would otherwise continue to override this save.
+     *
+     * All Shops replaces group and shop overrides. A shop-group save replaces
+     * overrides belonging to shops in that group. A dedicated-shop save only
+     * updates that shop.
+     *
+     * @param array $values Configuration key/value pairs
+     *
+     * @return bool
+     * @throws PrestaShopException
+     */
+    protected function updateConfigurationValuesForContext(array $values)
+    {
+        if (!$values) {
+            return true;
+        }
+
+        $context = Shop::getContext();
+        $idShopGroup = $context === Shop::CONTEXT_ALL ? 0 : (int) Shop::getContextShopGroupID(true);
+        $idShop = $context === Shop::CONTEXT_SHOP ? (int) Shop::getContextShopID(true) : 0;
+        $connection = Db::getInstance();
+        $connection->execute('START TRANSACTION');
+
+        try {
+            foreach ($values as $key => $value) {
+                if (!Configuration::updateValue($key, $value, false, $idShopGroup, $idShop)) {
+                    throw new PrestaShopException('Unable to update configuration key '.$key);
+                }
+            }
+
+            $descendantRestriction = '';
+            if ($context === Shop::CONTEXT_ALL) {
+                $descendantRestriction = ' AND (`id_shop_group` IS NOT NULL AND `id_shop_group` != 0'.
+                    ' OR `id_shop` IS NOT NULL AND `id_shop` != 0)';
+            } elseif ($context === Shop::CONTEXT_GROUP && $idShopGroup) {
+                $descendantRestriction = ' AND `id_shop` IN ('.
+                    'SELECT `id_shop` FROM `'._DB_PREFIX_.'shop`'.
+                    ' WHERE `id_shop_group` = '.$idShopGroup.
+                    ')';
+            }
+
+            if ($descendantRestriction !== '') {
+                $escapedKeys = [];
+                foreach (array_keys($values) as $key) {
+                    $escapedKeys[] = '\''.pSQL($key).'\'';
+                }
+                $configurationIds = array_map('intval', array_column((array) $connection->executeS(
+                    'SELECT `id_configuration` FROM `'._DB_PREFIX_.'configuration`'.
+                    ' WHERE `name` IN ('.implode(', ', $escapedKeys).')'.
+                    $descendantRestriction
+                ), 'id_configuration'));
+
+                if ($configurationIds) {
+                    $idList = implode(', ', $configurationIds);
+                    if (!$connection->delete('configuration_lang', '`id_configuration` IN ('.$idList.')')
+                        || !$connection->delete('configuration', '`id_configuration` IN ('.$idList.')')
+                    ) {
+                        throw new PrestaShopException('Unable to replace more specific blog settings');
+                    }
+                }
+            }
+
+            if (!$connection->execute('COMMIT')) {
+                throw new PrestaShopException('Unable to commit blog settings');
+            }
+            Configuration::loadConfiguration();
+
+            return true;
+        } catch (Throwable $e) {
+            $connection->execute('ROLLBACK');
+            Configuration::loadConfiguration();
+
+            return false;
+        }
     }
 
     /**
