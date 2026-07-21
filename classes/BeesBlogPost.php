@@ -28,6 +28,9 @@ use DbQuery;
 use ObjectModel;
 use PrestaShopDatabaseException;
 use PrestaShopException;
+use Tools;
+use Validate;
+use WebserviceRequest;
 
 if (!defined('_TB_VERSION_')) {
     exit;
@@ -65,12 +68,24 @@ class BeesBlogPost extends ObjectModel
             'post_type'         => ['type' => self::TYPE_STRING,                 'validate' => 'isString',      'required' => true,                                      'db_type' => 'VARCHAR(45)',  'size' => 45],
             'viewed'            => ['type' => self::TYPE_INT,                    'validate' => 'isUnsignedInt', 'required' => true,  'default' => '0',                   'db_type' => 'INT(20) UNSIGNED'],
             'title'             => ['type' => self::TYPE_STRING, 'lang' => true, 'validate' => 'isString',      'required' => true,                                      'db_type' => 'VARCHAR(255)'],
-            'content'           => ['type' => self::TYPE_HTML,   'lang' => true, 'validate' => 'isString',      'required' => false,                                     'db_type' => 'TEXT'],
-            'link_rewrite'      => ['type' => self::TYPE_STRING, 'lang' => true, 'validate' => 'isString',      'required' => true,                                      'db_type' => 'VARCHAR(255)'],
+            'content'           => ['type' => self::TYPE_HTML,   'lang' => true, 'validate' => 'isCleanHtml',   'required' => false,                                     'db_type' => 'TEXT'],
+            'link_rewrite'      => ['type' => self::TYPE_STRING, 'lang' => true, 'validate' => 'isLinkRewrite', 'required' => true,                                      'db_type' => 'VARCHAR(255)', 'ws_modifier' => ['http_method' => WebserviceRequest::HTTP_POST, 'modifier' => 'modifierWsLinkRewrite']],
             'meta_title'        => ['type' => self::TYPE_STRING, 'lang' => true, 'validate' => 'isGenericName', 'required' => false,                                     'db_type' => 'VARCHAR(128)'],
             'meta_description'  => ['type' => self::TYPE_STRING, 'lang' => true, 'validate' => 'isGenericName', 'required' => false,                                     'db_type' => 'VARCHAR(255)'],
             'meta_keywords'     => ['type' => self::TYPE_STRING, 'lang' => true, 'validate' => 'isGenericName', 'required' => false,                                     'db_type' => 'VARCHAR(255)'],
-            'lang_active'       => ['type' => self::TYPE_BOOL,   'lang' => true, 'validate' => 'isBool', 'db_type' => 'TINYINT(1) UNSIGNED'],
+            'lang_active'       => ['type' => self::TYPE_BOOL,   'lang' => true, 'validate' => 'isBool', 'db_type' => 'TINYINT(1) UNSIGNED', 'ws_modifier' => ['http_method' => WebserviceRequest::HTTP_POST | WebserviceRequest::HTTP_PUT, 'modifier' => 'modifierWsLangActive']],
+        ],
+    ];
+
+    /**
+     * @var array Webservice parameters
+     */
+    protected $webserviceParameters = [
+        'objectNodeName'  => 'bees_blog_post',
+        'objectsNodeName' => 'bees_blog_posts',
+        'fields'          => [
+            'id_category' => ['xlink_resource' => 'bees_blog_categories'],
+            'id_employee' => ['xlink_resource' => 'employees'],
         ],
     ];
 
@@ -314,6 +329,7 @@ class BeesBlogPost extends ObjectModel
         $postCollection->setPageNumber($page);
         $postCollection->orderBy('viewed', 'desc');
         $postCollection->where('published', '<=', date('Y-m-d H:i:s'));
+        $postCollection->where('active', '=', '1');
         $postCollection->sqlWhere('lang_active = \'1\'');
 
         if ($count) {
@@ -584,5 +600,50 @@ class BeesBlogPost extends ObjectModel
     public static function dropRelatedProductsTable()
     {
         return Db::getInstance()->execute('DROP TABLE IF EXISTS `'._DB_PREFIX_.'bees_blog_post_product`');
+    }
+
+    /**
+     * Derives or sanitizes link_rewrite values on webservice creation, same
+     * pattern as Product::modifierWsLinkRewrite()
+     *
+     * @return bool
+     */
+    public function modifierWsLinkRewrite()
+    {
+        if (!is_array($this->link_rewrite)) {
+            $this->link_rewrite = [];
+        }
+        foreach ((array) $this->title as $idLang => $title) {
+            if (empty($this->link_rewrite[$idLang])) {
+                $this->link_rewrite[$idLang] = Tools::link_rewrite($title);
+            } elseif (!Validate::isLinkRewrite($this->link_rewrite[$idLang])) {
+                $this->link_rewrite[$idLang] = Tools::link_rewrite($this->link_rewrite[$idLang]);
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Defaults omitted lang_active values to enabled on webservice writes;
+     * the webservice assigns an empty string to omitted i18n fields, which
+     * would otherwise be stored as 0 and hide the post in the front office
+     * while the API reports success
+     *
+     * @return bool
+     */
+    public function modifierWsLangActive()
+    {
+        if (is_array($this->lang_active)) {
+            foreach ($this->lang_active as $idLang => $value) {
+                if ($value === '' || $value === null) {
+                    $this->lang_active[$idLang] = 1;
+                }
+            }
+        } elseif ($this->lang_active === '' || $this->lang_active === null) {
+            $this->lang_active = 1;
+        }
+
+        return true;
     }
 }

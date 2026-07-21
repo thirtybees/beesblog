@@ -87,7 +87,7 @@ class BeesBlog extends Module
     {
         $this->name = 'beesblog';
         $this->tab = 'front_office_features';
-        $this->version = '1.7.0';
+        $this->version = '1.8.0';
         $this->author = 'thirty bees';
         $this->tb_min_version = '1.0.0';
         $this->tb_versions_compliancy = '> 1.0.0';
@@ -127,12 +127,11 @@ class BeesBlog extends Module
         Configuration::updateGlobalValue(static::MAIN_URL_KEY, 'blog');
         Configuration::updateGlobalValue(static::USE_HTML, true);
         Configuration::updateGlobalValue(static::SHOW_POST_COUNT, true);
-
         Configuration::updateGlobalValue(static::SHOW_NO_IMAGE, false);
         Configuration::updateGlobalValue(static::SHOW_CATEGORY_IMAGE, false);
-        Configuration::updateGlobalValue(static::HOME_TITLE, 'Bees blog title');
-        Configuration::updateGlobalValue(static::HOME_KEYWORDS, 'thirty bees blog,thirty bees');
-        Configuration::updateGlobalValue(static::HOME_DESCRIPTION, 'The beesiest blog for thirty bees');
+        Configuration::updateValue(static::HOME_TITLE, $this->getTranslatedDefaults('Bees blog title'));
+        Configuration::updateValue(static::HOME_KEYWORDS, $this->getTranslatedDefaults('thirty bees blog,thirty bees'));
+        Configuration::updateValue(static::HOME_DESCRIPTION, $this->getTranslatedDefaults('The beesiest blog for thirty bees'));
 
         if ($createTables) {
             if (!(BeesBlogPost::createDatabase()
@@ -173,6 +172,7 @@ class BeesBlog extends Module
             $this->registerHook('GSitemapAppendUrls') &&
             $this->registerHook('actionRegisterShortcodes') &&
             $this->registerHook('actionRegisterShortcodeEntityTypes') &&
+            $this->registerHook('actionGetWebserviceResources') &&
             $this->insertBlogHooks()
         );
     }
@@ -621,8 +621,31 @@ class BeesBlog extends Module
         ];
     }
 
+    /**
+     * Registers blog entities as webservice (API) resources
+     *
+     * @return array
+     */
+    public function hookActionGetWebserviceResources()
+    {
+        // shop associations are normally registered by the admin controllers;
+        // the webservice bypasses those, so register them here as well
+        Shop::addTableAssociation(BeesBlogCategory::TABLE, ['type' => 'shop']);
+        Shop::addTableAssociation(BeesBlogPost::TABLE, ['type' => 'shop']);
 
-        /**
+        return [
+            'bees_blog_posts'      => [
+                'description' => $this->l('Bees Blog posts'),
+                'class'       => BeesBlogPost::class,
+            ],
+            'bees_blog_categories' => [
+                'description' => $this->l('Bees Blog categories'),
+                'class'       => BeesBlogCategory::class,
+            ],
+        ];
+    }
+
+    /**
      * Get module configuration page
      *
      * @return string HTML
@@ -655,9 +678,18 @@ class BeesBlog extends Module
     protected function postProcess()
     {
         if (Tools::isSubmit('submit'.$this->name)) {
-            Configuration::updateValue(static::HOME_TITLE, Tools::getValue(static::HOME_TITLE));
-            Configuration::updateValue(static::HOME_KEYWORDS, Tools::getValue(static::HOME_KEYWORDS));
-            Configuration::updateValue(static::HOME_DESCRIPTION, Tools::getValue(static::HOME_DESCRIPTION));
+            Configuration::updateValue(static::HOME_TITLE, $this->getTranslatedFormValues(
+                static::HOME_TITLE,
+                $this->getTranslatedConfiguration(static::HOME_TITLE, (int) Configuration::get('PS_LANG_DEFAULT'))
+            ));
+            Configuration::updateValue(static::HOME_KEYWORDS, $this->getTranslatedFormValues(
+                static::HOME_KEYWORDS,
+                $this->getTranslatedConfiguration(static::HOME_KEYWORDS, (int) Configuration::get('PS_LANG_DEFAULT'))
+            ));
+            Configuration::updateValue(static::HOME_DESCRIPTION, $this->getTranslatedFormValues(
+                static::HOME_DESCRIPTION,
+                $this->getTranslatedConfiguration(static::HOME_DESCRIPTION, (int) Configuration::get('PS_LANG_DEFAULT'))
+            ));
             Configuration::updateValue(static::POSTS_PER_PAGE, Tools::getValue(static::POSTS_PER_PAGE));
             Configuration::updateValue(static::SHOW_POST_COUNT, Tools::getValue(static::SHOW_POST_COUNT));
             Configuration::updateValue(static::SHOW_CATEGORY_IMAGE, Tools::getValue(static::SHOW_CATEGORY_IMAGE));
@@ -715,6 +747,7 @@ class BeesBlog extends Module
                     'name'     => static::HOME_TITLE,
                     'size'     => 70,
                     'required' => true,
+                    'lang'     => true,
                 ],
                 [
                     'type'     => 'textarea',
@@ -723,6 +756,13 @@ class BeesBlog extends Module
                     'rows'     => 7,
                     'cols'     => 66,
                     'required' => true,
+                    'lang'     => true,
+                ],
+                [
+                    'type'     => 'tags',
+                    'label'    => $this->l('Meta keywords'),
+                    'name'     => static::HOME_KEYWORDS,
+                    'lang'     => true,
                 ],
                 [
                     'type'     => 'text',
@@ -909,7 +949,7 @@ class BeesBlog extends Module
      */
     protected function getFormValues()
     {
-        return Configuration::getMultiple(
+        $values = Configuration::getMultiple(
             [
                 static::POSTS_PER_PAGE,
                 static::SHOW_AUTHOR,
@@ -918,15 +958,105 @@ class BeesBlog extends Module
                 static::AUTHOR_STYLE,
                 static::MAIN_URL_KEY,
                 static::USE_HTML,
-                static::HOME_TITLE,
-                static::HOME_KEYWORDS,
-                static::HOME_DESCRIPTION,
-                static::SHOW_POST_COUNT,
                 static::SHOW_POST_COUNT,
                 static::SHOW_CATEGORY_IMAGE,
                 static::SHOW_NO_IMAGE,
             ]
         );
+
+        $values[static::HOME_TITLE] = $this->getTranslatedConfigurationValues(static::HOME_TITLE);
+        $values[static::HOME_KEYWORDS] = $this->getTranslatedConfigurationValues(static::HOME_KEYWORDS);
+        $values[static::HOME_DESCRIPTION] = $this->getTranslatedConfigurationValues(static::HOME_DESCRIPTION);
+
+        return $values;
+    }
+
+    /**
+     * @param string $key
+     * @param int|null $idLang
+     *
+     * @return string
+     * @throws PrestaShopException
+     */
+    public static function getTranslatedConfiguration($key, $idLang = null)
+    {
+        if ($idLang === null) {
+            $idLang = (int) Context::getContext()->language->id;
+        }
+
+        $value = Configuration::get($key, $idLang);
+        if (($value === false || $value === null || $value === '')
+            && (int) $idLang !== (int) Configuration::get('PS_LANG_DEFAULT')
+        ) {
+            $value = Configuration::get($key, (int) Configuration::get('PS_LANG_DEFAULT'));
+        }
+
+        return (string) $value;
+    }
+
+    /**
+     * @param string $key
+     *
+     * @return array
+     * @throws PrestaShopException
+     */
+    protected function getTranslatedConfigurationValues($key)
+    {
+        $values = [];
+        foreach (Language::getLanguages(false, false, true) as $idLang) {
+            $values[(int) $idLang] = Configuration::get($key, (int) $idLang);
+        }
+
+        return $values;
+    }
+
+    /**
+     * @param string $defaultValue
+     *
+     * @return array
+     * @throws PrestaShopException
+     */
+    protected function getTranslatedDefaults($defaultValue)
+    {
+        $values = [];
+        foreach (Language::getLanguages(false, false, true) as $idLang) {
+            $values[(int) $idLang] = $defaultValue;
+        }
+
+        return $values;
+    }
+
+    /**
+     * @param string $key
+     * @param string $defaultValue
+     *
+     * @return array
+     * @throws PrestaShopException
+     */
+    protected function getTranslatedFormValues($key, $defaultValue = '')
+    {
+        $values = Tools::getValue($key);
+        $defaultLang = (int) Configuration::get('PS_LANG_DEFAULT');
+        $normalized = [];
+
+        if (!is_array($values)) {
+            $values = [];
+        }
+
+        foreach (Language::getLanguages(false, false, true) as $idLang) {
+            $idLang = (int) $idLang;
+            if (array_key_exists($idLang, $values)) {
+                $value = trim((string) $values[$idLang]);
+            } else {
+                $value = trim((string) Tools::getValue($key.'_'.$idLang, ''));
+            }
+            if ($idLang === $defaultLang && $value === '') {
+                $value = $defaultValue;
+            }
+            $normalized[$idLang] = $value;
+        }
+
+        return $normalized;
     }
 
     /**

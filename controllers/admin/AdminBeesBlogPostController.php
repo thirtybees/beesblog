@@ -611,47 +611,7 @@ class AdminBeesBlogPostController extends ModuleAdminController
 
         $blogPost = new BeesBlogPost();
         $this->copyFromPost($blogPost, $this->table);
-        $idLangDefault = (int) Configuration::get('PS_LANG_DEFAULT');
-        foreach (BeesBlogPost::$definition['fields'] as $name => $field) {
-            if (isset($field['lang']) && $field['lang']) {
-                foreach (Language::getLanguages(false, false, true) as $idLang) {
-                    if ((int) $idLang !== $idLangDefault) {
-                        switch (BeesBlogPost::$definition['fields'][$name]['type']) {
-                            case ObjectModel::TYPE_INT:
-                            case ObjectModel::TYPE_FLOAT:
-                                $defaultValue = 0;
-                                break;
-                            case ObjectModel::TYPE_BOOL:
-                                $defaultValue = false;
-                                break;
-                            case ObjectModel::TYPE_STRING:
-                            case ObjectModel::TYPE_HTML:
-                            case ObjectModel::TYPE_SQL:
-                                $defaultValue = '';
-                                break;
-                            case ObjectModel::TYPE_DATE:
-                                $defaultValue = '1970-01-01 00:00:00';
-                                break;
-                            case ObjectModel::TYPE_NOTHING:
-                                $defaultValue = null;
-                                break;
-                            default:
-                                $defaultValue = '';
-                                break;
-                        }
-                        if (!is_array($blogPost->{$name})) {
-                            $blogPost->$name = [
-                                $idLangDefault => $defaultValue,
-                            ];
-                        } elseif (!isset($blogPost->$name[$idLangDefault])) {
-                            $blogPost->$name[$idLangDefault] = $defaultValue;
-                        }
-
-                        $blogPost->$name[$idLang] = $blogPost->$name[$idLangDefault];
-                    }
-                }
-            }
-        }
+        $this->normalizeTranslatedPostFields($blogPost);
 
         $blogPost->id_employee = $this->context->employee->id;
         $blogPost->viewed = 0;
@@ -709,6 +669,7 @@ class AdminBeesBlogPostController extends ModuleAdminController
         $blogPost = new BeesBlogPost((int) Tools::getValue(BeesBlogPost::PRIMARY));
         $blogPost->lang_active = [];
         $this->copyFromPost($blogPost, $this->table);
+        $this->normalizeTranslatedPostFields($blogPost);
 
         $blogPost->id_shop = (int) Context::getContext()->shop->id;
         $this->processImage($_FILES, $blogPost->id);
@@ -856,5 +817,58 @@ class AdminBeesBlogPostController extends ModuleAdminController
             return $post->link;
         }
         return null;
+    }
+
+    /**
+     * @param BeesBlogPost $blogPost
+     *
+     * @return void
+     * @throws PrestaShopException
+     */
+    protected function normalizeTranslatedPostFields(BeesBlogPost $blogPost)
+    {
+        $defaultLang = (int) Configuration::get('PS_LANG_DEFAULT');
+        $defaultTitle = trim((string) $this->getTranslatedFieldValue($blogPost->title, $defaultLang));
+
+        if (!is_array($blogPost->title)) {
+            $blogPost->title = [];
+        }
+        if (!is_array($blogPost->link_rewrite)) {
+            $blogPost->link_rewrite = [];
+        }
+        if (!is_array($blogPost->lang_active)) {
+            $blogPost->lang_active = [];
+        }
+
+        foreach (Language::getLanguages(false, false, true) as $idLang) {
+            $idLang = (int) $idLang;
+            $title = trim((string) $this->getTranslatedFieldValue($blogPost->title, $idLang));
+            if ($title === '') {
+                $title = $defaultTitle;
+            }
+            $blogPost->title[$idLang] = $title;
+
+            $linkRewrite = trim((string) $this->getTranslatedFieldValue($blogPost->link_rewrite, $idLang));
+            if ($linkRewrite === '') {
+                $linkRewrite = Tools::link_rewrite($title ?: $defaultTitle);
+            }
+            $blogPost->link_rewrite[$idLang] = $linkRewrite;
+            $blogPost->lang_active[$idLang] = (bool) $this->getTranslatedFieldValue($blogPost->lang_active, $idLang);
+        }
+    }
+
+    /**
+     * @param mixed $value
+     * @param int $idLang
+     *
+     * @return mixed
+     */
+    protected function getTranslatedFieldValue($value, $idLang)
+    {
+        if (is_array($value)) {
+            return $value[$idLang] ?? null;
+        }
+
+        return $value;
     }
 }

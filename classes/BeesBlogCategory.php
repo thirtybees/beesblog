@@ -27,6 +27,9 @@ use DbQuery;
 use ObjectModel;
 use PrestaShopDatabaseException;
 use PrestaShopException;
+use Tools;
+use Validate;
+use WebserviceRequest;
 
 if (!defined('_TB_VERSION_')) {
     exit;
@@ -59,10 +62,21 @@ class BeesBlogCategory extends ObjectModel
             'date_upd'          => ['type' => self::TYPE_DATE,                   'validate' => 'isString',      'required' => true,  'default' => '1970-01-01 00:00:00', 'db_type' => 'DATETIME'],
             'title'             => ['type' => self::TYPE_STRING, 'lang' => true, 'validate' => 'isString',      'required' => true,                                      'db_type' => 'VARCHAR(255)'],
             'description'       => ['type' => self::TYPE_STRING, 'lang' => true, 'validate' => 'isString',      'required' => false,                                     'db_type' => 'VARCHAR(512)'],
-            'link_rewrite'      => ['type' => self::TYPE_STRING, 'lang' => true, 'validate' => 'isString',      'required' => true,                                      'db_type' => 'VARCHAR(256)'],
+            'link_rewrite'      => ['type' => self::TYPE_STRING, 'lang' => true, 'validate' => 'isLinkRewrite', 'required' => true,                                      'db_type' => 'VARCHAR(256)', 'ws_modifier' => ['http_method' => WebserviceRequest::HTTP_POST, 'modifier' => 'modifierWsLinkRewrite']],
             'meta_title'        => ['type' => self::TYPE_STRING, 'lang' => true, 'validate' => 'isGenericName', 'required' => false,                                     'db_type' => 'VARCHAR(128)'],
             'meta_description'  => ['type' => self::TYPE_STRING, 'lang' => true, 'validate' => 'isGenericName', 'required' => false,                                     'db_type' => 'VARCHAR(255)'],
             'meta_keywords'     => ['type' => self::TYPE_STRING, 'lang' => true, 'validate' => 'isGenericName', 'required' => false,                                     'db_type' => 'VARCHAR(255)'],
+        ],
+    ];
+
+    /**
+     * @var array Webservice parameters
+     */
+    protected $webserviceParameters = [
+        'objectNodeName'  => 'bees_blog_category',
+        'objectsNodeName' => 'bees_blog_categories',
+        'fields'          => [
+            'id_parent' => ['xlink_resource' => 'bees_blog_categories'],
         ],
     ];
 
@@ -182,7 +196,7 @@ class BeesBlogCategory extends ObjectModel
             $this->link = [];
             if (is_array($this->link_rewrite)) {
                 foreach ($this->link_rewrite as $lang => $rewrite) {
-                    $this->link[$lang] = BeesBlog::getBeesBlogLink('beesblog_category', ['cat_rewrite' => $rewrite], $idShop, $idLang);
+                    $this->link[$lang] = BeesBlog::getBeesBlogLink('beesblog_category', ['cat_rewrite' => $rewrite], $idShop, $lang);
                 }
             }
         }
@@ -366,12 +380,12 @@ class BeesBlogCategory extends ObjectModel
      * Return the category title by id
      *
      * @param int $id
-     * @param int|null $id_lang
+     * @param int|null $idLang
      * @return string single array string (title of category)
      * @throws PrestaShopDatabaseException
      * @throws PrestaShopException
      */
-    public static function getNameById($id, $id_lang = null)
+    public static function getNameById($id, $idLang = null)
     {
         if (empty($idLang)) {
             $idLang = (int) Context::getContext()->language->id;
@@ -386,5 +400,27 @@ class BeesBlogCategory extends ObjectModel
         $sql->where('sbcl.`'.static::PRIMARY.'` = \''.pSQL($id).'\'');
 
         return Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql);
+    }
+
+    /**
+     * Derives or sanitizes link_rewrite values on webservice creation, same
+     * pattern as Product::modifierWsLinkRewrite()
+     *
+     * @return bool
+     */
+    public function modifierWsLinkRewrite()
+    {
+        if (!is_array($this->link_rewrite)) {
+            $this->link_rewrite = [];
+        }
+        foreach ((array) $this->title as $idLang => $title) {
+            if (empty($this->link_rewrite[$idLang])) {
+                $this->link_rewrite[$idLang] = Tools::link_rewrite($title);
+            } elseif (!Validate::isLinkRewrite($this->link_rewrite[$idLang])) {
+                $this->link_rewrite[$idLang] = Tools::link_rewrite($this->link_rewrite[$idLang]);
+            }
+        }
+
+        return true;
     }
 }
