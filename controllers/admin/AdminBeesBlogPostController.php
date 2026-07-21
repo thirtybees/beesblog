@@ -78,7 +78,7 @@ class AdminBeesBlogPostController extends ModuleAdminController
                 'title'   => $this->l('View'),
                 'width'   => 50,
                 'type'    => 'text',
-                'filter_key' => 'sbs!viewed',
+                'filter_key' => 'bbps!viewed',
                 'orderby' => true,
                 'filter'  => false,
                 'search'  => false,
@@ -87,7 +87,7 @@ class AdminBeesBlogPostController extends ModuleAdminController
                 'title'   => $this->l('Category'),
                 'width'   => 50,
                 'type'    => 'text',
-                'filter_key' => 'sbs!id_category',
+                'filter_key' => 'bbps!id_category',
                 'orderby' => true,
                 'filter'  => true,
                 'search'  => true,
@@ -97,7 +97,7 @@ class AdminBeesBlogPostController extends ModuleAdminController
                 'title'   => $this->l('Title'),
                 'width'   => 440,
                 'type'    => 'text',
-                'filter_key' => 'sbl!title',
+                'filter_key' => 'bbpl!title',
                 'orderby' => true,
                 'filter'  => true,
                 'search'  => true,
@@ -106,7 +106,7 @@ class AdminBeesBlogPostController extends ModuleAdminController
                 'title'   => $this->l('Posted Date'),
                 'width'   => 100,
                 'type'    => 'date',
-                'filter_key' => 'sbs!published',
+                'filter_key' => 'bbps!published',
                 'orderby' => true,
                 'filter'  => true,
                 'search'  => true,
@@ -121,24 +121,24 @@ class AdminBeesBlogPostController extends ModuleAdminController
                 'orderby' => true,
                 'filter'  => true,
                 'search'  => true,
-                'filter_key' => 'sbs!active',
+                'filter_key' => 'bbps!active',
             ],
         ];
 
         $contextShopIds = BeesBlogMultistore::getContextShopIds();
         $shopList = $contextShopIds ? implode(', ', array_map('intval', $contextShopIds)) : '0';
-        $this->_join = 'INNER JOIN `'._DB_PREFIX_.BeesBlogPost::SHOP_TABLE.'` sbs'.
-            ' ON sbs.`'.BeesBlogPost::PRIMARY.'` = a.`'.BeesBlogPost::PRIMARY.'`'.
-            ' AND sbs.`id_shop` = (SELECT MIN(sbs_scope.`id_shop`)'.
-            ' FROM `'._DB_PREFIX_.BeesBlogPost::SHOP_TABLE.'` sbs_scope'.
-            ' WHERE sbs_scope.`'.BeesBlogPost::PRIMARY.'` = a.`'.BeesBlogPost::PRIMARY.'`'.
-            ' AND sbs_scope.`id_shop` IN ('.$shopList.'))'.
-            ' INNER JOIN `'._DB_PREFIX_.BeesBlogPost::LANG_TABLE.'` sbl'.
-            ' ON sbl.`'.BeesBlogPost::PRIMARY.'` = a.`'.BeesBlogPost::PRIMARY.'`'.
-            ' AND sbl.`id_shop` = sbs.`id_shop`'.
-            ' AND sbl.`id_lang` = '.(int) $this->context->language->id;
-        $this->_select = 'sbs.`id_shop` AS `list_shop_id`, sbs.`viewed`, sbs.`id_category`,'.
-            ' sbs.`published`, sbs.`active`, sbl.`title`';
+        $this->_join = 'INNER JOIN `'._DB_PREFIX_.BeesBlogPost::SHOP_TABLE.'` bbps'.
+            ' ON bbps.`'.BeesBlogPost::PRIMARY.'` = a.`'.BeesBlogPost::PRIMARY.'`'.
+            ' AND bbps.`id_shop` = (SELECT MIN(bbps_scope.`id_shop`)'.
+            ' FROM `'._DB_PREFIX_.BeesBlogPost::SHOP_TABLE.'` bbps_scope'.
+            ' WHERE bbps_scope.`'.BeesBlogPost::PRIMARY.'` = a.`'.BeesBlogPost::PRIMARY.'`'.
+            ' AND bbps_scope.`id_shop` IN ('.$shopList.'))'.
+            ' INNER JOIN `'._DB_PREFIX_.BeesBlogPost::LANG_TABLE.'` bbpl'.
+            ' ON bbpl.`'.BeesBlogPost::PRIMARY.'` = a.`'.BeesBlogPost::PRIMARY.'`'.
+            ' AND bbpl.`id_shop` = bbps.`id_shop`'.
+            ' AND bbpl.`id_lang` = '.(int) $this->context->language->id;
+        $this->_select = 'bbps.`id_shop` AS `list_shop_id`, bbps.`viewed`, bbps.`id_category`,'.
+            ' bbps.`published`, bbps.`active`, bbpl.`title`';
         $this->_defaultOrderBy = 'a.id_bees_blog_post';
         $this->_defaultOrderWay = 'DESC';
 
@@ -224,19 +224,14 @@ class AdminBeesBlogPostController extends ModuleAdminController
      * @throws PrestaShopException
      * @since 1.0.0
      */
-    public function deleteImage($idBeesBlogPost, array $shopIds = [], $deleteLegacy = false)
+    public function deleteImage($idBeesBlogPost, array $shopIds = [])
     {
         $shopIds = $shopIds ?: BeesBlogMultistore::getSubmittedShopIds($this->table);
-        $result = BeesBlogImage::deleteForShops(
+        return BeesBlogImage::deleteForShops(
             BeesBlogImage::ENTITY_POST,
             (int) $idBeesBlogPost,
             $shopIds
         );
-        if ($deleteLegacy) {
-            BeesBlogImage::deleteLegacyImages(BeesBlogImage::ENTITY_POST, (int) $idBeesBlogPost);
-        }
-
-        return $result;
     }
 
     /**
@@ -478,6 +473,7 @@ class AdminBeesBlogPostController extends ModuleAdminController
             ];
         }
 
+        $languageImageInputs = [];
         foreach (Language::getLanguages(true, $idShop) as $language) {
             $idLang = (int) $language['id_lang'];
             $languageImagePath = BeesBlogImage::getScopedImagePath(
@@ -497,7 +493,7 @@ class AdminBeesBlogPostController extends ModuleAdminController
                     true
                 )
                 : false;
-            $this->fields_form['input'][] = [
+            $languageImageInputs[] = [
                 'type' => 'file',
                 'label' => sprintf($this->l('%s image override'), $language['name']),
                 'name' => 'post_image_lang_'.$idLang,
@@ -510,6 +506,13 @@ class AdminBeesBlogPostController extends ModuleAdminController
                     '&token='.$this->token.'&deleteImage=1&image_scope=language&id_lang='.$idLang,
                 'hint' => $this->l('Optional. When empty, this language uses the default image above.'),
             ];
+        }
+
+        foreach ($this->fields_form['input'] as $index => $input) {
+            if (isset($input['name']) && $input['name'] === 'post_image') {
+                array_splice($this->fields_form['input'], $index + 1, 0, $languageImageInputs);
+                break;
+            }
         }
 
         $this->fields_value = [
@@ -830,11 +833,6 @@ class AdminBeesBlogPostController extends ModuleAdminController
             return false;
         } else {
             BeesBlogImage::deleteForShops(BeesBlogImage::ENTITY_POST, $blogPost->id, $shopIds);
-            if (!Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue(
-                'SELECT 1 FROM `'._DB_PREFIX_.BeesBlogPost::TABLE.'` WHERE `'.BeesBlogPost::PRIMARY.'` = '.(int) $blogPost->id
-            )) {
-                BeesBlogImage::deleteLegacyImages(BeesBlogImage::ENTITY_POST, $blogPost->id);
-            }
             Tools::redirectAdmin($this->context->link->getAdminLink('AdminBeesBlogPost'));
             return true;
         }
@@ -885,11 +883,6 @@ class AdminBeesBlogPostController extends ModuleAdminController
                 continue;
             }
             BeesBlogImage::deleteForShops(BeesBlogImage::ENTITY_POST, $idPost, $shopIds);
-            if (!Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue(
-                'SELECT 1 FROM `'._DB_PREFIX_.BeesBlogPost::TABLE.'` WHERE `'.BeesBlogPost::PRIMARY.'` = '.$idPost
-            )) {
-                BeesBlogImage::deleteLegacyImages(BeesBlogImage::ENTITY_POST, $idPost);
-            }
         }
 
         if ($result) {

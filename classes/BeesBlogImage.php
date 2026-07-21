@@ -10,6 +10,7 @@ namespace BeesBlogModule;
 use Context;
 use Db;
 use ImageManager;
+use Media;
 use PrestaShopException;
 use Shop;
 
@@ -19,9 +20,7 @@ if (!defined('_TB_VERSION_')) {
 
 /**
  * Stores and resolves shop-scoped blog images with optional language overrides.
- *
- * Language ID 0 represents the default image for a shop. Existing global
- * files remain valid and are used as the final compatibility fallback.
+ * Language ID 0 represents the default image for a shop.
  */
 class BeesBlogImage
 {
@@ -34,18 +33,35 @@ class BeesBlogImage
      */
     public static function createDatabase()
     {
-        return Db::getInstance()->execute(
+        $database = Db::getInstance();
+        if (!$database->execute(
             'CREATE TABLE IF NOT EXISTS `'._DB_PREFIX_.static::TABLE.'` ('.
             ' `entity_type` VARCHAR(16) NOT NULL,'.
             ' `id_object` INT(11) UNSIGNED NOT NULL,'.
             ' `id_shop` INT(11) NOT NULL,'.
             ' `id_lang` INT(11) NOT NULL DEFAULT 0,'.
             ' `filename` VARCHAR(255) NOT NULL,'.
+            ' `thumbnail_extension` VARCHAR(16) NOT NULL DEFAULT \'\','.
             ' `date_upd` DATETIME NOT NULL,'.
             ' PRIMARY KEY (`entity_type`, `id_object`, `id_shop`, `id_lang`),'.
             ' KEY `bees_blog_image_shop` (`id_shop`, `entity_type`)'.
             ') ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
-        );
+        )) {
+            return false;
+        }
+
+        if (!$database->getValue(
+            'SELECT 1 FROM `information_schema`.`columns` WHERE `table_schema` = DATABASE()'.
+            ' AND `table_name` = \''.pSQL(_DB_PREFIX_.static::TABLE).'\''.
+            ' AND `column_name` = \'thumbnail_extension\''
+        )) {
+            return $database->execute(
+                'ALTER TABLE `'._DB_PREFIX_.static::TABLE.'`'.
+                ' ADD `thumbnail_extension` VARCHAR(16) NOT NULL DEFAULT \'\' AFTER `filename`'
+            );
+        }
+
+        return true;
     }
 
     /**
@@ -57,7 +73,7 @@ class BeesBlogImage
     }
 
     /**
-     * Resolve a language override, then a shop default, then a legacy image.
+     * Resolve a language override, then a shop default.
      *
      * @param string $entityType
      * @param int $idObject
@@ -79,40 +95,31 @@ class BeesBlogImage
         $idShop = $idShop === null ? (int) $context->shop->id : (int) $idShop;
         $idLang = $idLang === null ? (int) $context->language->id : (int) $idLang;
 
-        if ($idShop && $idLang > 0) {
-            $filename = static::getFilename($entityType, $idObject, $idShop, $idLang);
-            if ($path = static::resolveStoredPath($entityType, $filename, $imageType)) {
+        if (!$idShop) {
+            return false;
+        }
+
+        $languageIds = $idLang > 0 ? [$idLang, 0] : [0];
+        $rows = (array) Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS(
+            'SELECT `filename`, `thumbnail_extension` FROM `'._DB_PREFIX_.static::TABLE.'`'.
+            ' WHERE `entity_type` = \''.pSQL($entityType).'\''.
+            ' AND `id_object` = '.$idObject.
+            ' AND `id_shop` = '.$idShop.
+            ' AND `id_lang` IN ('.implode(', ', array_map('intval', $languageIds)).')'.
+            ' ORDER BY `id_lang` DESC'
+        );
+        foreach ($rows as $row) {
+            if ($path = static::resolveStoredPath(
+                $entityType,
+                $row['filename'],
+                $imageType,
+                $row['thumbnail_extension']
+            )) {
                 return $path;
             }
         }
 
-        if ($idShop) {
-            $filename = static::getFilename($entityType, $idObject, $idShop, 0);
-            if ($path = static::resolveStoredPath($entityType, $filename, $imageType)) {
-                return $path;
-            }
-            // An explicit empty shop-default row is a tombstone. It lets a
-            // merchant remove a legacy shared image in one shop without
-            // deleting the file still used as fallback by other shops.
-            if ($filename === '') {
-                return false;
-            }
-
-            // The post shop table already had an image column, although old
-            // module versions never populated it consistently. Honour it for
-            // installations or integrations which did use the field.
-            if ($entityType === static::ENTITY_POST) {
-                $filename = (string) Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue(
-                    'SELECT `image` FROM `'._DB_PREFIX_.BeesBlogPost::SHOP_TABLE.'`'.
-                    ' WHERE `'.BeesBlogPost::PRIMARY.'` = '.$idObject.' AND `id_shop` = '.$idShop
-                );
-                if ($path = static::resolveStoredPath($entityType, $filename, $imageType)) {
-                    return $path;
-                }
-            }
-        }
-
-        return static::resolveLegacyPath($entityType, $idObject, $imageType);
+        return false;
     }
 
     /**
@@ -129,9 +136,14 @@ class BeesBlogImage
     public static function getScopedImagePath($entityType, $idObject, $imageType, $idShop, $idLang)
     {
         static::assertEntityType($entityType);
-        $filename = static::getFilename($entityType, (int) $idObject, (int) $idShop, (int) $idLang);
+        $record = static::getRecord($entityType, (int) $idObject, (int) $idShop, (int) $idLang);
 
-        return static::resolveStoredPath($entityType, $filename, $imageType);
+        return static::resolveStoredPath(
+            $entityType,
+            $record ? $record['filename'] : null,
+            $imageType,
+            $record ? $record['thumbnail_extension'] : null
+        );
     }
 
     /**
@@ -160,7 +172,8 @@ class BeesBlogImage
             (int) $idObject,
             $shopIds,
             (int) $idLang,
-            $error
+            $error,
+            pathinfo((string) $file['name'], PATHINFO_EXTENSION)
         );
     }
 
@@ -173,23 +186,34 @@ class BeesBlogImage
      * @param int[] $shopIds
      * @param int $idLang
      * @param string|null $error
+     * @param string|null $originalExtension Extension from the original upload name
      * @return bool
      * @throws PrestaShopException
      */
-    public static function saveImageFile($sourceFile, $entityType, $idObject, array $shopIds, $idLang = 0, &$error = null)
+    public static function saveImageFile(
+        $sourceFile,
+        $entityType,
+        $idObject,
+        array $shopIds,
+        $idLang = 0,
+        &$error = null,
+        $originalExtension = null
+    )
     {
         static::assertEntityType($entityType);
         $idObject = (int) $idObject;
         $idLang = max(0, (int) $idLang);
         $shopIds = array_values(array_filter(array_unique(array_map('intval', $shopIds))));
-        $extension = strtolower((string) ImageManager::getImageExtension($sourceFile));
-        if (in_array($extension, ['jpeg', 'jpe', 'pjpeg'], true)) {
-            $extension = 'jpg';
-        } elseif ($extension === 'x-png') {
-            $extension = 'png';
-        }
+        $detectedExtension = strtolower((string) ImageManager::getImageExtension($sourceFile));
+        $extension = strtolower((string) ($originalExtension ?: pathinfo($sourceFile, PATHINFO_EXTENSION)));
         $allowed = ImageManager::getAllowedImageExtensions(false, true);
-        if (!$idObject || !$shopIds || !$extension || !in_array($extension, $allowed, true)) {
+        $thumbnailExtension = strtolower((string) ImageManager::getDefaultImageExtension());
+        $allowedThumbnailExtensions = ImageManager::getAllowedImageExtensions(true, true);
+        $extensionFamily = static::getExtensionFamily($extension);
+        if (!$idObject || !$shopIds || !$detectedExtension || !$extension || !$thumbnailExtension
+            || !in_array($extension, $allowed, true) || $extensionFamily !== $detectedExtension
+            || !in_array($thumbnailExtension, $allowedThumbnailExtensions, true)
+        ) {
             $error = 'Image format not recognized or no target shop was selected.';
             return false;
         }
@@ -212,21 +236,20 @@ class BeesBlogImage
             $temporaryOriginal = $directory.$temporaryBase.'.'.$extension;
             $generated = [];
 
-            if (!ImageManager::resize($sourceFile, $temporaryOriginal, null, null, $extension, true)) {
+            if (!copy($sourceFile, $temporaryOriginal)) {
                 $error = 'Unable to write the uploaded image.';
-                static::deleteGeneratedFiles(array_keys($generated));
                 return false;
             }
             $generated[$temporaryOriginal] = $directory.$base.'.'.$extension;
 
             foreach (static::getImageTypes($entityType, $idShop) as $imageType) {
-                $temporaryVariant = $directory.$temporaryBase.'-'.$imageType['name'].'.'.$extension;
+                $temporaryVariant = $directory.$temporaryBase.'-'.$imageType['name'].'.'.$thumbnailExtension;
                 if (!ImageManager::resize(
                     $temporaryOriginal,
                     $temporaryVariant,
                     (int) $imageType['width'],
                     (int) $imageType['height'],
-                    $extension,
+                    $thumbnailExtension,
                     true
                 )) {
                     $error = 'Unable to generate image type '.$imageType['name'].'.';
@@ -234,7 +257,25 @@ class BeesBlogImage
                     @unlink($temporaryOriginal);
                     return false;
                 }
-                $generated[$temporaryVariant] = $directory.$base.'-'.$imageType['name'].'.'.$extension;
+                $generated[$temporaryVariant] = $directory.$base.'-'.$imageType['name'].'.'.$thumbnailExtension;
+
+                if ((bool) \Configuration::get('PS_HIGHT_DPI')) {
+                    $temporaryHighDpiVariant = $directory.$temporaryBase.'-'.$imageType['name'].'2x.'.$thumbnailExtension;
+                    if (!ImageManager::resize(
+                        $temporaryOriginal,
+                        $temporaryHighDpiVariant,
+                        (int) $imageType['width'] * 2,
+                        (int) $imageType['height'] * 2,
+                        $thumbnailExtension,
+                        true
+                    )) {
+                        $error = 'Unable to generate high-DPI image type '.$imageType['name'].'.';
+                        static::deleteGeneratedFiles(array_keys($generated));
+                        @unlink($temporaryOriginal);
+                        return false;
+                    }
+                    $generated[$temporaryHighDpiVariant] = $directory.$base.'-'.$imageType['name'].'2x.'.$thumbnailExtension;
+                }
             }
 
             static::deleteFilesForBase($entityType, $base);
@@ -252,21 +293,16 @@ class BeesBlogImage
             $filename = $base.'.'.$extension;
             if (!Db::getInstance()->execute(
                 'INSERT INTO `'._DB_PREFIX_.static::TABLE.'`'.
-                ' (`entity_type`, `id_object`, `id_shop`, `id_lang`, `filename`, `date_upd`) VALUES'.
-                " ('".pSQL($entityType)."', ".$idObject.', '.$idShop.', '.$idLang.", '".pSQL($filename)."', NOW())".
-                ' ON DUPLICATE KEY UPDATE `filename` = VALUES(`filename`), `date_upd` = NOW()'
+                ' (`entity_type`, `id_object`, `id_shop`, `id_lang`, `filename`, `thumbnail_extension`, `date_upd`) VALUES'.
+                " ('".pSQL($entityType)."', ".$idObject.', '.$idShop.', '.$idLang.", '".pSQL($filename)."', '".
+                pSQL($thumbnailExtension)."', NOW())".
+                ' ON DUPLICATE KEY UPDATE `filename` = VALUES(`filename`),'.
+                ' `thumbnail_extension` = VALUES(`thumbnail_extension`), `date_upd` = NOW()'
             )) {
                 $error = 'Unable to save image association.';
                 return false;
             }
 
-            if ($entityType === static::ENTITY_POST && $idLang === 0) {
-                Db::getInstance()->update(
-                    BeesBlogPost::SHOP_TABLE,
-                    ['image' => pSQL($filename)],
-                    '`'.BeesBlogPost::PRIMARY.'` = '.$idObject.' AND `id_shop` = '.$idShop
-                );
-            }
         }
 
         return true;
@@ -303,45 +339,11 @@ class BeesBlogImage
             static::deleteFilesForFilename($entityType, $row['filename']);
         }
 
-        $result = Db::getInstance()->delete(static::TABLE, $where);
-        if ($idLang !== null && (int) $idLang === 0) {
-            foreach ($shopIds as $idShop) {
-                $result = Db::getInstance()->execute(
-                    'INSERT INTO `'._DB_PREFIX_.static::TABLE.'`'.
-                    ' (`entity_type`, `id_object`, `id_shop`, `id_lang`, `filename`, `date_upd`) VALUES'.
-                    " ('".pSQL($entityType)."', ".$idObject.', '.$idShop.", 0, '', NOW())".
-                    ' ON DUPLICATE KEY UPDATE `filename` = \'\', `date_upd` = NOW()'
-                ) && $result;
-            }
-        }
-        if ($entityType === static::ENTITY_POST && ($idLang === null || (int) $idLang === 0)) {
-            Db::getInstance()->update(
-                BeesBlogPost::SHOP_TABLE,
-                ['image' => ''],
-                '`'.BeesBlogPost::PRIMARY.'` = '.$idObject.' AND `id_shop` IN ('.implode(', ', $shopIds).')'
-            );
-        }
-
-        return $result;
-    }
-
-    /**
-     * Delete legacy global files after the final entity association is gone.
-     *
-     * @param string $entityType
-     * @param int $idObject
-     * @return void
-     * @throws PrestaShopException
-     */
-    public static function deleteLegacyImages($entityType, $idObject)
-    {
-        static::assertEntityType($entityType);
-        static::deleteFilesForBase($entityType, (string) (int) $idObject);
+        return Db::getInstance()->delete(static::TABLE, $where);
     }
 
     /**
      * Duplicate explicit source-shop images into independent target files.
-     * Legacy images need no rows and remain available through fallback.
      *
      * @param int $oldShopId
      * @param int $newShopId
@@ -358,14 +360,6 @@ class BeesBlogImage
         );
         foreach ($rows as $row) {
             if ($row['filename'] === '') {
-                if (!static::saveEmptyAssociation(
-                    $row['entity_type'],
-                    (int) $row['id_object'],
-                    $newShopId,
-                    (int) $row['id_lang']
-                )) {
-                    return false;
-                }
                 continue;
             }
             $source = static::resolveStoredPath($row['entity_type'], $row['filename'], 'original');
@@ -386,7 +380,136 @@ class BeesBlogImage
     }
 
     /**
-     * Regenerate configured variants for explicit and legacy source images.
+     * Convert pre-1.9 global/post_shop images into explicit shop defaults.
+     * Legacy files are removed only after every associated shop for an object
+     * has either been migrated or already has an explicit image record.
+     *
+     * @return bool
+     * @throws PrestaShopException
+     */
+    public static function migrateLegacyImages()
+    {
+        $entities = [
+            static::ENTITY_POST => [
+                'table' => BeesBlogPost::SHOP_TABLE,
+                'primary' => BeesBlogPost::PRIMARY,
+                'image_column' => true,
+            ],
+            static::ENTITY_CATEGORY => [
+                'table' => BeesBlogCategory::SHOP_TABLE,
+                'primary' => BeesBlogCategory::PRIMARY,
+                'image_column' => false,
+            ],
+        ];
+
+        foreach ($entities as $entityType => $definition) {
+            $rows = (array) Db::getInstance()->executeS(
+                'SELECT `'.bqSQL($definition['primary']).'` AS `id_object`, `id_shop`'.
+                ($definition['image_column'] ? ', `image`' : ", '' AS `image`").
+                ' FROM `'._DB_PREFIX_.bqSQL($definition['table']).'`'.
+                ' ORDER BY `'.bqSQL($definition['primary']).'`, `id_shop`'
+            );
+            $objects = [];
+            foreach ($rows as $row) {
+                $objects[(int) $row['id_object']][] = $row;
+            }
+
+            foreach ($objects as $idObject => $shopRows) {
+                $sharedLegacyPath = static::findLegacyOriginalPath($entityType, $idObject);
+                foreach ($shopRows as $shopRow) {
+                    $idShop = (int) $shopRow['id_shop'];
+                    $record = static::getRecord($entityType, $idObject, $idShop, 0);
+                    $filename = $record ? $record['filename'] : null;
+                    $storedPath = static::resolveStoredPath($entityType, $filename, 'original');
+                    $expectedPrefix = static::getScopeBaseName($idObject, $idShop, 0).'.';
+
+                    // Empty rows from an intermediate 1.9 build represented
+                    // an explicit deletion. Preserve that decision while the
+                    // shared legacy source still exists; the row is removed
+                    // after conversion because no fallback remains afterward.
+                    if ($filename === '') {
+                        continue;
+                    }
+                    if ($storedPath && strpos(basename($storedPath), $expectedPrefix) === 0) {
+                        continue;
+                    }
+
+                    $shopLegacyPath = static::resolveStoredPath($entityType, $shopRow['image'], 'original');
+                    $sourcePath = $storedPath ?: static::getNewestExistingPath([
+                        $shopLegacyPath,
+                        $sharedLegacyPath,
+                    ]);
+                    if (!$sourcePath) {
+                        continue;
+                    }
+
+                    $error = null;
+                    if (!static::saveImageFile(
+                        $sourcePath,
+                        $entityType,
+                        $idObject,
+                        [$idShop],
+                        0,
+                        $error
+                    )) {
+                        throw new PrestaShopException(
+                            'Unable to migrate '.$entityType.' image #'.$idObject.' for shop #'.$idShop.
+                            ($error ? ': '.$error : '')
+                        );
+                    }
+                }
+
+                // All usable legacy sources for this object are now copied to
+                // independent shop files. Removing them makes reruns naturally
+                // idempotent and keeps legacy checks out of the request path.
+                static::deleteFilesForBase($entityType, (string) $idObject);
+            }
+        }
+
+        // Intermediate 1.9 builds did not persist the derivative extension.
+        // Regenerate only those derivatives while copying each original
+        // byte-for-byte through saveImageFile().
+        foreach ((array) Db::getInstance()->executeS(
+            'SELECT `entity_type`, `id_object`, `id_shop`, `id_lang`, `filename`'.
+            ' FROM `'._DB_PREFIX_.static::TABLE.'`'.
+            ' WHERE `filename` != \'\' AND `thumbnail_extension` = \'\''
+        ) as $row) {
+            $sourcePath = static::resolveStoredPath($row['entity_type'], $row['filename'], 'original');
+            if (!$sourcePath) {
+                continue;
+            }
+            $error = null;
+            if (!static::saveImageFile(
+                $sourcePath,
+                $row['entity_type'],
+                (int) $row['id_object'],
+                [(int) $row['id_shop']],
+                (int) $row['id_lang'],
+                $error,
+                pathinfo($row['filename'], PATHINFO_EXTENSION)
+            )) {
+                throw new PrestaShopException(
+                    'Unable to regenerate migrated '.$row['entity_type'].' image #'.(int) $row['id_object'].
+                    ' for shop #'.(int) $row['id_shop'].($error ? ': '.$error : '')
+                );
+            }
+        }
+
+        if (!Db::getInstance()->delete(static::TABLE, '`filename` = \'\'')) {
+            return false;
+        }
+
+        // Kept as schema fields for ObjectModel compatibility, but no longer
+        // used as a second source of truth for image loading.
+        return Db::getInstance()->execute(
+            'UPDATE `'._DB_PREFIX_.BeesBlogPost::SHOP_TABLE.'` SET `image` = \'\''
+        ) && Db::getInstance()->execute(
+            'UPDATE `'._DB_PREFIX_.BeesBlogPost::TABLE.'` SET `image` = \'\''
+        );
+    }
+
+    /**
+     * Regenerate configured variants for explicit source images.
      *
      * @param string $entityType
      * @param array[] $formats
@@ -403,94 +526,99 @@ class BeesBlogImage
         $shopIds = array_values(array_filter(array_unique(array_map('intval', $shopIds))));
         if ($shopIds) {
             foreach ((array) Db::getInstance()->executeS(
-                'SELECT `filename` FROM `'._DB_PREFIX_.static::TABLE.'`'.
+                'SELECT `entity_type`, `id_object`, `id_shop`, `id_lang`, `filename`, `thumbnail_extension`'.
+                ' FROM `'._DB_PREFIX_.static::TABLE.'`'.
                 ' WHERE `entity_type` = \''.pSQL($entityType).'\''.
                 ' AND `id_shop` IN ('.implode(', ', $shopIds).')'
             ) as $row) {
                 $path = static::resolveStoredPath($entityType, $row['filename'], 'original');
                 if ($path) {
-                    $sources[$path] = $path;
+                    $sources[$path] = $row;
                 }
             }
         }
 
         $directory = static::getDirectory($entityType);
-        if (is_dir($directory)) {
-            $extensions = array_map('preg_quote', ImageManager::getAllowedImageExtensions(false, true));
-            foreach (scandir($directory) as $filename) {
-                if (preg_match('/^[0-9]+\.(?:'.implode('|', $extensions).')$/i', $filename)) {
-                    $sources[$directory.$filename] = $directory.$filename;
-                }
-            }
-        }
+        $configuredThumbnailExtension = strtolower((string) ImageManager::getDefaultImageExtension());
+        $imageTypesByShop = [];
 
-        foreach ($sources as $source) {
-            $extension = strtolower((string) pathinfo($source, PATHINFO_EXTENSION));
-            $base = substr(basename($source), 0, -(strlen($extension) + 1));
+        foreach ($sources as $source => $row) {
+            $originalExtension = strtolower((string) pathinfo($source, PATHINFO_EXTENSION));
+            $base = substr(basename($source), 0, -(strlen($originalExtension) + 1));
+            $sourceFailed = false;
+            $idShop = (int) $row['id_shop'];
+            if (!isset($imageTypesByShop[$idShop])) {
+                $imageTypesByShop[$idShop] = static::getImageTypes($entityType, $idShop);
+            }
+            $availableNames = array_map('strval', array_column($imageTypesByShop[$idShop], 'name'));
+            $requestedNames = array_map('strval', array_column($formats, 'name'));
+            $regeneratesEveryFormat = !array_diff($availableNames, $requestedNames);
+            $storedThumbnailExtension = strtolower((string) $row['thumbnail_extension']);
+            $thumbnailExtension = $regeneratesEveryFormat || !$storedThumbnailExtension
+                ? $configuredThumbnailExtension
+                : $storedThumbnailExtension;
             foreach ($formats as $format) {
-                $target = $directory.$base.'-'.$format['name'].'.'.$extension;
-                if ($deleteOldImages && file_exists($target)) {
-                    @unlink($target);
+                if ($deleteOldImages) {
+                    static::deleteVariantFiles($entityType, $base, $format['name']);
                 }
+                $target = $directory.$base.'-'.$format['name'].'.'.$thumbnailExtension;
                 if (!file_exists($target) && !ImageManager::resize(
                     $source,
                     $target,
                     (int) $format['width'],
                     (int) $format['height'],
-                    $extension,
+                    $thumbnailExtension,
                     true
                 )) {
                     $errors[] = 'Failed to resize image file '.$source.' to '.$format['name'].'.';
+                    $sourceFailed = true;
                 }
                 if ((bool) \Configuration::get('PS_HIGHT_DPI')) {
-                    $highDpiTarget = $directory.$base.'-'.$format['name'].'2x.'.$extension;
-                    if ($deleteOldImages && file_exists($highDpiTarget)) {
-                        @unlink($highDpiTarget);
-                    }
+                    $highDpiTarget = $directory.$base.'-'.$format['name'].'2x.'.$thumbnailExtension;
                     if (!file_exists($highDpiTarget) && !ImageManager::resize(
                         $source,
                         $highDpiTarget,
                         (int) $format['width'] * 2,
                         (int) $format['height'] * 2,
-                        $extension,
+                        $thumbnailExtension,
                         true
                     )) {
                         $errors[] = 'Failed to resize high-DPI image file '.$source.' to '.$format['name'].'.';
+                        $sourceFailed = true;
                     }
                 }
+            }
+            if (!$sourceFailed && ($regeneratesEveryFormat || !$storedThumbnailExtension)) {
+                Db::getInstance()->update(
+                    static::TABLE,
+                    ['thumbnail_extension' => pSQL($thumbnailExtension)],
+                    '`entity_type` = \''.pSQL($row['entity_type']).'\''.
+                    ' AND `id_object` = '.(int) $row['id_object'].
+                    ' AND `id_shop` = '.(int) $row['id_shop'].
+                    ' AND `id_lang` = '.(int) $row['id_lang']
+                );
             }
         }
 
         return $errors;
     }
 
-    /** @return string|null */
-    protected static function getFilename($entityType, $idObject, $idShop, $idLang)
+    /** @return array|null */
+    protected static function getRecord($entityType, $idObject, $idShop, $idLang)
     {
         $row = Db::getInstance(_PS_USE_SQL_SLAVE_)->getRow(
-            'SELECT `filename` FROM `'._DB_PREFIX_.static::TABLE.'`'.
+            'SELECT `filename`, `thumbnail_extension` FROM `'._DB_PREFIX_.static::TABLE.'`'.
             ' WHERE `entity_type` = \''.pSQL($entityType).'\''.
             ' AND `id_object` = '.(int) $idObject.
             ' AND `id_shop` = '.(int) $idShop.
             ' AND `id_lang` = '.max(0, (int) $idLang)
         );
 
-        return is_array($row) && array_key_exists('filename', $row) ? (string) $row['filename'] : null;
-    }
-
-    /** @return bool */
-    protected static function saveEmptyAssociation($entityType, $idObject, $idShop, $idLang)
-    {
-        return Db::getInstance()->execute(
-            'INSERT INTO `'._DB_PREFIX_.static::TABLE.'`'.
-            ' (`entity_type`, `id_object`, `id_shop`, `id_lang`, `filename`, `date_upd`) VALUES'.
-            " ('".pSQL($entityType)."', ".(int) $idObject.', '.(int) $idShop.', '.max(0, (int) $idLang).", '', NOW())".
-            ' ON DUPLICATE KEY UPDATE `filename` = \'\', `date_upd` = NOW()'
-        );
+        return is_array($row) && array_key_exists('filename', $row) ? $row : null;
     }
 
     /** @return string|false */
-    protected static function resolveStoredPath($entityType, $filename, $imageType)
+    protected static function resolveStoredPath($entityType, $filename, $imageType, $thumbnailExtension = null)
     {
         $filename = basename((string) $filename);
         if (!preg_match('/^[a-zA-Z0-9_-]+\.[a-zA-Z0-9]+$/', $filename)) {
@@ -511,35 +639,56 @@ class BeesBlogImage
         if (!preg_match('/^[a-zA-Z0-9_-]+$/', (string) $imageType)) {
             return false;
         }
+        $thumbnailExtension = strtolower((string) $thumbnailExtension);
+        if (!$thumbnailExtension
+            || !in_array($thumbnailExtension, ImageManager::getAllowedImageExtensions(true, true), true)
+        ) {
+            return $original;
+        }
         $base = substr($filename, 0, -(strlen($extension) + 1));
-        $variant = $directory.$base.'-'.$imageType.'.'.$extension;
+        $variant = $directory.$base.'-'.$imageType.'.'.$thumbnailExtension;
 
         return file_exists($variant) ? $variant : $original;
     }
 
     /** @return string|false */
-    protected static function resolveLegacyPath($entityType, $idObject, $imageType)
+    protected static function findLegacyOriginalPath($entityType, $idObject)
     {
         $directory = static::getDirectory($entityType);
         $candidates = [];
         foreach (ImageManager::getAllowedImageExtensions(false, true) as $extension) {
-            $original = $directory.(int) $idObject.'.'.$extension;
-            clearstatcache(true, $original);
-            if (file_exists($original)) {
-                $candidates[$original] = (int) filemtime($original);
+            $candidates[] = $directory.(int) $idObject.'.'.$extension;
+        }
+
+        return static::getNewestExistingPath($candidates);
+    }
+
+    /** @return string|false */
+    protected static function getNewestExistingPath(array $paths)
+    {
+        $candidates = [];
+        foreach (array_filter($paths, 'is_string') as $path) {
+            clearstatcache(true, $path);
+            if (file_exists($path)) {
+                $candidates[$path] = (int) filemtime($path);
             }
         }
         arsort($candidates);
-        foreach (array_keys($candidates) as $original) {
-            $extension = strtolower((string) pathinfo($original, PATHINFO_EXTENSION));
-            if ($imageType === 'original') {
-                return $original;
+
+        return $candidates ? (string) key($candidates) : false;
+    }
+
+    /** @return string|null */
+    protected static function getExtensionFamily($extension)
+    {
+        $extension = strtolower((string) $extension);
+        foreach (Media::getFileInformations('images') as $mainExtension => $information) {
+            if (in_array($extension, $information['extensions'], true)) {
+                return (string) $mainExtension;
             }
-            $variant = $directory.(int) $idObject.'-'.$imageType.'.'.$extension;
-            return file_exists($variant) ? $variant : $original;
         }
 
-        return false;
+        return null;
     }
 
     /** @return array[] */
@@ -593,6 +742,26 @@ class BeesBlogImage
         }
         foreach (ImageManager::getAllowedImageExtensions(false, true) as $extension) {
             foreach ($suffixes as $suffix) {
+                $path = $directory.$base.$suffix.'.'.$extension;
+                if (file_exists($path)) {
+                    @unlink($path);
+                }
+            }
+        }
+    }
+
+    /** @return void */
+    protected static function deleteVariantFiles($entityType, $base, $imageType)
+    {
+        $directory = static::getDirectory($entityType);
+        if (!is_dir($directory)
+            || !preg_match('/^[a-zA-Z0-9_-]+$/', (string) $base)
+            || !preg_match('/^[a-zA-Z0-9_-]+$/', (string) $imageType)
+        ) {
+            return;
+        }
+        foreach (ImageManager::getAllowedImageExtensions(false, true) as $extension) {
+            foreach (['-'.$imageType, '-'.$imageType.'2x'] as $suffix) {
                 $path = $directory.$base.$suffix.'.'.$extension;
                 if (file_exists($path)) {
                     @unlink($path);

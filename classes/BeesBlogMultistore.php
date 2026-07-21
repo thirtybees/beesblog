@@ -241,6 +241,9 @@ class BeesBlogMultistore
         static::migrateLanguageTable(BeesBlogPost::TABLE, BeesBlogPost::PRIMARY, 255);
         static::migrateLanguageTable(BeesBlogCategory::TABLE, BeesBlogCategory::PRIMARY, 256);
         static::migrateRelatedProducts();
+        if (!BeesBlogImage::migrateLegacyImages()) {
+            throw new PrestaShopException('Unable to migrate legacy blog images');
+        }
 
         return true;
     }

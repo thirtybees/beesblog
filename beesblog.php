@@ -819,7 +819,7 @@ class BeesBlog extends Module
 
     /**
      * Copy all shop-specific blog data when thirty bees duplicates a shop.
-     * Global entity rows and image files remain shared between associations.
+     * Explicit images are copied to independent files for the new shop.
      *
      * @param array $params
      * @return bool
@@ -843,8 +843,8 @@ class BeesBlog extends Module
             ' SELECT `'.BeesBlogCategory::PRIMARY.'`, `id_lang`, '.$newShopId.', `title`, `description`, `link_rewrite`, `meta_title`, `meta_description`, `meta_keywords`'.
             ' FROM `'._DB_PREFIX_.BeesBlogCategory::LANG_TABLE.'` WHERE `id_shop` = '.$oldShopId,
             'INSERT IGNORE INTO `'._DB_PREFIX_.BeesBlogPost::SHOP_TABLE.'`'.
-            ' (`'.BeesBlogPost::PRIMARY.'`, `id_shop`, `active`, `comments_enabled`, `date_upd`, `published`, `id_category`, `id_employee`, `image`, `position`, `post_type`, `viewed`)'.
-            ' SELECT `'.BeesBlogPost::PRIMARY.'`, '.$newShopId.', `active`, `comments_enabled`, `date_upd`, `published`, `id_category`, `id_employee`, `image`, `position`, `post_type`, `viewed`'.
+            ' (`'.BeesBlogPost::PRIMARY.'`, `id_shop`, `active`, `comments_enabled`, `date_upd`, `published`, `id_category`, `id_employee`, `position`, `post_type`, `viewed`)'.
+            ' SELECT `'.BeesBlogPost::PRIMARY.'`, '.$newShopId.', `active`, `comments_enabled`, `date_upd`, `published`, `id_category`, `id_employee`, `position`, `post_type`, `viewed`'.
             ' FROM `'._DB_PREFIX_.BeesBlogPost::SHOP_TABLE.'` WHERE `id_shop` = '.$oldShopId,
             'INSERT IGNORE INTO `'._DB_PREFIX_.BeesBlogPost::LANG_TABLE.'`'.
             ' (`'.BeesBlogPost::PRIMARY.'`, `id_lang`, `id_shop`, `title`, `content`, `link_rewrite`, `meta_title`, `meta_description`, `meta_keywords`, `lang_active`)'.
@@ -1510,28 +1510,18 @@ class BeesBlog extends Module
         if (! file_exists($sourceFile)) {
             throw new PrestaShopException(sprintf($this->l('File with fixture image not found: `%s`'), $sourceFile));
         }
-        $dir = _PS_IMG_DIR_ . "beesblog/posts/";
-        if (!file_exists($dir)) {
-            if (!mkdir($dir, 0777, true)) {
-                throw new PrestaShopException(sprintf($this->l('Unable to create image directory: `%s`'), $dir));
-            }
-        }
-        $targetFile = $dir . $postId . ".jpg";
-        copy($sourceFile, $targetFile);
 
-        $imageTypes = BeesBlogImageType::getImagesTypes('posts');
-        foreach ($imageTypes as $imageType) {
-            $targetFile = $dir . $postId . '-' . $imageType['name'] . '.jpg';
-            if (file_exists($targetFile)) {
-                @unlink($targetFile);
-            }
-            ImageManager::resize(
-                $sourceFile,
-                $targetFile,
-                (int) $imageType['width'],
-                (int) $imageType['height'],
-                'jpg',
-                true
+        $error = null;
+        if (!BeesBlogImage::saveImageFile(
+            $sourceFile,
+            BeesBlogImage::ENTITY_POST,
+            (int) $postId,
+            array_map('intval', Shop::getShops(false, null, true)),
+            0,
+            $error
+        )) {
+            throw new PrestaShopException(
+                $this->l('Unable to install fixture image').($error ? ': '.$error : '')
             );
         }
     }

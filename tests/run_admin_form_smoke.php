@@ -47,6 +47,7 @@ try {
             'primary' => BeesBlogPost::PRIMARY,
             'default_input' => 'post_image',
             'language_prefix' => 'post_image_lang_',
+            'following_input' => 'name="id_category"',
         ],
         [
             'class' => 'AdminBeesBlogCategoryController',
@@ -54,6 +55,7 @@ try {
             'primary' => BeesBlogCategory::PRIMARY,
             'default_input' => 'category_image',
             'language_prefix' => 'category_image_lang_',
+            'following_input' => 'name="link_rewrite_',
         ],
     ];
 
@@ -76,12 +78,25 @@ try {
             strpos($html, 'name="'.$entity['default_input'].'"') !== false,
             $entity['class'].' renders the shop-context default image input'
         );
+        $previousImagePosition = strpos($html, 'name="'.$entity['default_input'].'"');
         foreach (Language::getLanguages(true, false, true) as $idLang) {
+            $languageInput = $entity['language_prefix'].(int) $idLang;
+            $languageImagePosition = strpos($html, 'name="'.$languageInput.'"');
             assertAdminForm(
-                strpos($html, 'name="'.$entity['language_prefix'].(int) $idLang.'"') !== false,
+                $languageImagePosition !== false,
                 $entity['class'].' renders the language '.(int) $idLang.' image override input'
             );
+            assertAdminForm(
+                $languageImagePosition > $previousImagePosition,
+                $entity['class'].' renders language '.(int) $idLang.' after the preceding image input'
+            );
+            $previousImagePosition = $languageImagePosition;
         }
+        $followingInputPosition = strpos($html, $entity['following_input']);
+        assertAdminForm(
+            $followingInputPosition !== false && $followingInputPosition > $previousImagePosition,
+            $entity['class'].' keeps all language image overrides directly below the default image'
+        );
     }
 
     echo "RESULT: Back Office image form smoke checks passed\n";

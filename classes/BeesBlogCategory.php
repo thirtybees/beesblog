@@ -345,13 +345,13 @@ class BeesBlogCategory extends ObjectModel
         }
 
         $sql = new DbQuery();
-        $sql->select('sbc.`'.static::PRIMARY.'`');
-        $sql->from(static::TABLE, 'sbc');
-        $sql->innerJoin(static::SHOP_TABLE, 'sbcs', 'sbc.`'.static::PRIMARY.'` = sbcs.`'.static::PRIMARY.'` AND sbcs.`id_shop` = '.(int) $idShop);
-        $sql->innerJoin(static::LANG_TABLE, 'sbcl', 'sbc.`'.static::PRIMARY.'` = sbcl.`'.static::PRIMARY.'` AND sbcl.`id_shop` = sbcs.`id_shop`');
-        $sql->where('sbcl.`id_lang` = '.(int) $idLang);
-        $sql->where('sbcs.`active` = '.(int) $active);
-        $sql->where('sbcl.`link_rewrite` = \''.pSQL($rewrite).'\'');
+        $sql->select('bbc.`'.static::PRIMARY.'`');
+        $sql->from(static::TABLE, 'bbc');
+        $sql->innerJoin(static::SHOP_TABLE, 'bbcs', 'bbc.`'.static::PRIMARY.'` = bbcs.`'.static::PRIMARY.'` AND bbcs.`id_shop` = '.(int) $idShop);
+        $sql->innerJoin(static::LANG_TABLE, 'bbcl', 'bbc.`'.static::PRIMARY.'` = bbcl.`'.static::PRIMARY.'` AND bbcl.`id_shop` = bbcs.`id_shop`');
+        $sql->where('bbcl.`id_lang` = '.(int) $idLang);
+        $sql->where('bbcs.`active` = '.(int) $active);
+        $sql->where('bbcl.`link_rewrite` = \''.pSQL($rewrite).'\'');
 
         return Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql);
     }
@@ -424,12 +424,12 @@ class BeesBlogCategory extends ObjectModel
         }
 
         $sql = new DbQuery();
-        $sql->select('sbcl.`title`');
-        $sql->from(static::TABLE, 'sbc');
-        $sql->innerJoin(static::SHOP_TABLE, 'sbcs', 'sbc.`'.static::PRIMARY.'` = sbcs.`'.static::PRIMARY.'` AND sbcs.`id_shop` = '.(int) $idShop);
-        $sql->innerJoin(static::LANG_TABLE, 'sbcl', 'sbc.`'.static::PRIMARY.'` = sbcl.`'.static::PRIMARY.'` AND sbcl.`id_shop` = sbcs.`id_shop`');
-        $sql->where('sbcl.`id_lang` = '.(int) $idLang);
-        $sql->where('sbcl.`'.static::PRIMARY.'` = '.(int) $id);
+        $sql->select('bbcl.`title`');
+        $sql->from(static::TABLE, 'bbc');
+        $sql->innerJoin(static::SHOP_TABLE, 'bbcs', 'bbc.`'.static::PRIMARY.'` = bbcs.`'.static::PRIMARY.'` AND bbcs.`id_shop` = '.(int) $idShop);
+        $sql->innerJoin(static::LANG_TABLE, 'bbcl', 'bbc.`'.static::PRIMARY.'` = bbcl.`'.static::PRIMARY.'` AND bbcl.`id_shop` = bbcs.`id_shop`');
+        $sql->where('bbcl.`id_lang` = '.(int) $idLang);
+        $sql->where('bbcl.`'.static::PRIMARY.'` = '.(int) $id);
 
         return Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql);
     }

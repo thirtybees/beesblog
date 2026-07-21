@@ -18,6 +18,7 @@ if (!$root || !is_file($root.'/config/config.inc.php')) {
 require $root.'/config/config.inc.php';
 require_once $root.'/modules/beesblog/beesblog.php';
 require_once $root.'/modules/beesblog/upgrade/upgrade-1.9.0.php';
+require_once __DIR__.'/integration_helpers.php';
 
 use BeesBlogModule\BeesBlogCategory;
 use BeesBlogModule\BeesBlogImage;
@@ -28,99 +29,12 @@ $db = Db::getInstance();
 $module = Module::getInstanceByName('beesblog');
 $createdPosts = [];
 $createdCategories = [];
-$imageShopIds = [];
 $testShopId = 0;
 $originalContext = Shop::getContext();
 $originalContextShopId = (int) Shop::getContextShopID();
 $originalContextGroupId = (int) Shop::getContextShopGroupID();
 $originalShop = Context::getContext()->shop;
 $token = 'codex-ms-'.strtolower(substr(sha1(uniqid('', true)), 0, 10));
-
-function assertTest($condition, $message)
-{
-    if (!$condition) {
-        throw new RuntimeException($message);
-    }
-    echo "PASS: {$message}\n";
-}
-
-function columnExistsForTest($table, $column)
-{
-    return (bool) Db::getInstance()->getValue(
-        'SELECT 1 FROM `information_schema`.`columns` WHERE `table_schema` = DATABASE()'.
-        ' AND `table_name` = \''.pSQL(_DB_PREFIX_.$table).'\''.
-        ' AND `column_name` = \''.pSQL($column).'\''
-    );
-}
-
-function tableExistsForTest($table)
-{
-    return (bool) Db::getInstance()->getValue(
-        'SELECT 1 FROM `information_schema`.`tables` WHERE `table_schema` = DATABASE()'.
-        ' AND `table_name` = \''.pSQL(_DB_PREFIX_.$table).'\''
-    );
-}
-
-function primaryColumnsForTest($table)
-{
-    $columns = [];
-    foreach ((array) Db::getInstance()->executeS(
-        'SHOW INDEX FROM `'._DB_PREFIX_.bqSQL($table).'` WHERE `Key_name` = \'PRIMARY\''
-    ) as $row) {
-        $columns[(int) $row['Seq_in_index']] = $row['Column_name'];
-    }
-    ksort($columns);
-    return array_values($columns);
-}
-
-function langValuesForTest($prefix)
-{
-    $values = [];
-    foreach (Language::getLanguages(false, false, true) as $idLang) {
-        $values[(int) $idLang] = $prefix.'-'.$idLang;
-    }
-    return $values;
-}
-
-function addCategoryForTest($slug, array $shopIds)
-{
-    $category = new BeesBlogCategory();
-    $category->id_parent = 0;
-    $category->position = 0;
-    $category->active = true;
-    $category->title = langValuesForTest('Category '.$slug);
-    $category->description = langValuesForTest('Description '.$slug);
-    $category->link_rewrite = langValuesForTest($slug);
-    $category->meta_title = langValuesForTest('Meta '.$slug);
-    $category->meta_description = langValuesForTest('Description '.$slug);
-    $category->meta_keywords = langValuesForTest('keyword');
-    $category->id_shop_list = $shopIds;
-    assertTest($category->add(), 'category can be created in the requested context');
-    return $category;
-}
-
-function addPostForTest($slug, $categoryId, array $shopIds)
-{
-    $post = new BeesBlogPost();
-    $post->active = true;
-    $post->comments_enabled = true;
-    $post->published = date('Y-m-d H:i:s');
-    $post->id_category = (int) $categoryId;
-    $post->id_employee = 1;
-    $post->position = 0;
-    $post->post_type = '0';
-    $post->viewed = 0;
-    $post->title = langValuesForTest('Post '.$slug);
-    $post->content = langValuesForTest('Content '.$slug);
-    $post->link_rewrite = langValuesForTest($slug);
-    $post->meta_title = langValuesForTest('Meta '.$slug);
-    $post->meta_description = langValuesForTest('Description '.$slug);
-    $post->meta_keywords = langValuesForTest('keyword');
-    $post->lang_active = array_fill_keys(Language::getLanguages(false, false, true), 1);
-    $post->id_shop_list = $shopIds;
-    assertTest($post->add(), 'post can be created in the requested context');
-    return $post;
-}
 
 try {
     assertTest($module instanceof BeesBlog, 'installed module instance loads');
@@ -135,7 +49,6 @@ try {
     assertTest(primaryColumnsForTest(BeesBlogPost::LANG_TABLE) === [BeesBlogPost::PRIMARY, 'id_shop', 'id_lang'], 'post translation primary key is shop-aware');
     assertTest(primaryColumnsForTest(BeesBlogCategory::LANG_TABLE) === [BeesBlogCategory::PRIMARY, 'id_shop', 'id_lang'], 'category translation primary key is shop-aware');
     assertTest(columnExistsForTest('bees_blog_post_product', 'id_shop'), 'related products contain id_shop');
-    assertTest(tableExistsForTest(BeesBlogImage::TABLE), 'shop/language image association table exists');
     assertTest((int) $db->getValue('SELECT COUNT(*) FROM `'._DB_PREFIX_.BeesBlogPost::TABLE.'`') === $postCountBefore, 'migration preserves post base rows');
     assertTest((int) $db->getValue('SELECT COUNT(*) FROM `'._DB_PREFIX_.BeesBlogCategory::TABLE.'`') === $categoryCountBefore, 'migration preserves category base rows');
     if ($wasLegacy) {
@@ -289,7 +202,6 @@ try {
 
     Shop::setContext(Shop::CONTEXT_ALL);
     $allShopIds = BeesBlogMultistore::getSubmittedShopIds(BeesBlogPost::TABLE);
-    $imageShopIds = $allShopIds;
     assertTest(in_array($sourceShopId, $allShopIds, true) && in_array($testShopId, $allShopIds, true), 'all-shops context resolves every authorized shop');
 
     $statusPost = addPostForTest($token.'-status-seed', $sharedCategory->id, [$sourceShopId]);
@@ -317,171 +229,6 @@ try {
 
     $sharedPost = addPostForTest($token.'-shared-post', $sharedCategory->id, $allShopIds);
     $createdPosts[] = (int) $sharedPost->id;
-
-    $firstImageLanguage = (int) Configuration::get('PS_LANG_DEFAULT');
-    $imageLanguages = Language::getLanguages(true, $testShopId, true);
-    $secondImageLanguage = isset($imageLanguages[1]) ? (int) $imageLanguages[1] : $firstImageLanguage;
-    $fixtureOne = $root.'/modules/beesblog/fixtures/post1.jpg';
-    $fixtureTwo = $root.'/modules/beesblog/fixtures/post2.jpg';
-    $fixtureThree = $root.'/modules/beesblog/fixtures/post3.jpg';
-    $imageError = null;
-    $legacyImageDirectory = rtrim(_PS_IMG_DIR_, '/\\').'/beesblog/posts/';
-    $legacyJpg = $legacyImageDirectory.(int) $sharedPost->id.'.jpg';
-    $legacyJpeg = $legacyImageDirectory.(int) $sharedPost->id.'.jpeg';
-    assertTest(copy($fixtureOne, $legacyJpg) && copy($fixtureTwo, $legacyJpeg), 'legacy image variants can be prepared');
-    touch($legacyJpg, time() - 10);
-    touch($legacyJpeg, time());
-    $resolvedLegacyImage = BeesBlogPost::getImagePath(
-        (int) $sharedPost->id,
-        'original',
-        $sourceShopId,
-        $firstImageLanguage
-    );
-    assertTest(
-        $resolvedLegacyImage && realpath($resolvedLegacyImage) === realpath($legacyJpeg),
-        'legacy resolver selects the newest uploaded extension instead of an older default .jpg'.
-        ' (resolved: '.var_export($resolvedLegacyImage, true).')'
-    );
-    assertTest(BeesBlogImage::deleteForShops(
-        BeesBlogImage::ENTITY_POST,
-        (int) $sharedPost->id,
-        [$sourceShopId],
-        0
-    ), 'a shop can suppress its legacy fallback image');
-    assertTest(
-        BeesBlogPost::getImagePath((int) $sharedPost->id, 'original', $sourceShopId, $firstImageLanguage) === false,
-        'legacy image deletion is isolated to the selected shop'
-    );
-    $otherShopLegacyImage = BeesBlogPost::getImagePath(
-        (int) $sharedPost->id,
-        'original',
-        $testShopId,
-        $firstImageLanguage
-    );
-    assertTest(
-        $otherShopLegacyImage && realpath($otherShopLegacyImage) === realpath($legacyJpeg),
-        'another shop retains the shared legacy fallback'
-    );
-    assertTest(BeesBlogImage::saveImageFile(
-        $fixtureOne,
-        BeesBlogImage::ENTITY_POST,
-        (int) $sharedPost->id,
-        [$sourceShopId],
-        0,
-        $imageError
-    ), 'a default post image can be stored in one shop');
-    assertTest(BeesBlogImage::duplicateShop($sourceShopId, $testShopId), 'shop image associations and files can be duplicated');
-    $duplicatedImage = BeesBlogPost::getImagePath(
-        (int) $sharedPost->id,
-        'original',
-        $testShopId,
-        $firstImageLanguage
-    );
-    assertTest($duplicatedImage && file_exists($duplicatedImage), 'duplicated shop resolves an independent image file');
-    assertTest(strpos(basename($duplicatedImage), '-s'.$testShopId.'.') !== false, 'duplicated image filename is target-shop scoped');
-
-    $jpegNamedUpload = [
-        'name' => 'merchant-upload.jpeg',
-        'type' => 'image/jpeg',
-        'tmp_name' => $fixtureTwo,
-        'error' => UPLOAD_ERR_OK,
-        'size' => filesize($fixtureTwo),
-    ];
-    assertTest(BeesBlogImage::saveUploadedImage(
-        $jpegNamedUpload,
-        BeesBlogImage::ENTITY_POST,
-        (int) $sharedPost->id,
-        $allShopIds,
-        0,
-        $imageError
-    ), 'a .jpeg-named upload is accepted in all-shops context');
-    $sourceDefaultImage = BeesBlogPost::getImagePath((int) $sharedPost->id, 'original', $sourceShopId, $firstImageLanguage);
-    $targetDefaultImage = BeesBlogPost::getImagePath((int) $sharedPost->id, 'original', $testShopId, $firstImageLanguage);
-    assertTest($sourceDefaultImage && $targetDefaultImage && file_exists($sourceDefaultImage) && file_exists($targetDefaultImage), 'all-shops upload creates both physical images');
-    assertTest($sourceDefaultImage !== $targetDefaultImage, 'all-shops upload keeps independent shop files');
-    assertTest(substr($sourceDefaultImage, -4) === '.jpg' && substr($targetDefaultImage, -4) === '.jpg', 'image content detection normalizes .jpeg to a resolvable .jpg');
-    $targetDefaultThumbnail = BeesBlogPost::getImagePath(
-        (int) $sharedPost->id,
-        'post_default',
-        $testShopId,
-        $firstImageLanguage
-    );
-    assertTest(
-        $targetDefaultThumbnail && file_exists($targetDefaultThumbnail)
-        && strpos(basename($targetDefaultThumbnail), '-s'.$testShopId.'-post_default.') !== false,
-        'front-office post_default resolves the generated target-shop thumbnail'
-    );
-
-    if ($secondImageLanguage !== $firstImageLanguage) {
-        assertTest(BeesBlogImage::saveImageFile(
-            $fixtureThree,
-            BeesBlogImage::ENTITY_POST,
-            (int) $sharedPost->id,
-            [$testShopId],
-            $secondImageLanguage,
-            $imageError
-        ), 'a language-specific post image can be stored');
-        $languageOverride = BeesBlogPost::getImagePath(
-            (int) $sharedPost->id,
-            'original',
-            $testShopId,
-            $secondImageLanguage
-        );
-        assertTest($languageOverride !== $targetDefaultImage && strpos(basename($languageOverride), '-l'.$secondImageLanguage.'.') !== false, 'language override wins over the shop default');
-        $languageOverrideThumbnail = BeesBlogPost::getImagePath(
-            (int) $sharedPost->id,
-            'post_default',
-            $testShopId,
-            $secondImageLanguage
-        );
-        assertTest(
-            $languageOverrideThumbnail && file_exists($languageOverrideThumbnail)
-            && strpos(
-                basename($languageOverrideThumbnail),
-                '-s'.$testShopId.'-l'.$secondImageLanguage.'-post_default.'
-            ) !== false,
-            'front-office post_default resolves the generated language override thumbnail'
-        );
-        assertTest(
-            BeesBlogPost::getImagePath((int) $sharedPost->id, 'original', $testShopId, $firstImageLanguage) === $targetDefaultImage,
-            'another language continues to use the shop default'
-        );
-        assertTest(BeesBlogImage::deleteForShops(
-            BeesBlogImage::ENTITY_POST,
-            (int) $sharedPost->id,
-            [$testShopId],
-            $secondImageLanguage
-        ), 'language override can be removed');
-        assertTest(
-            BeesBlogPost::getImagePath((int) $sharedPost->id, 'original', $testShopId, $secondImageLanguage) === $targetDefaultImage,
-            'removing a language override restores shop-default fallback'
-        );
-    }
-
-    assertTest(BeesBlogImage::saveImageFile(
-        $fixtureOne,
-        BeesBlogImage::ENTITY_CATEGORY,
-        (int) $sharedCategory->id,
-        $allShopIds,
-        0,
-        $imageError
-    ), 'category images use the same all-shops association model');
-    assertTest(
-        BeesBlogCategory::getImagePath((int) $sharedCategory->id, 'original', $testShopId, $firstImageLanguage)
-        !== BeesBlogCategory::getImagePath((int) $sharedCategory->id, 'original', $sourceShopId, $firstImageLanguage),
-        'category image files are shop-specific'
-    );
-    $categoryThumbnail = BeesBlogCategory::getImagePath(
-        (int) $sharedCategory->id,
-        'category_default',
-        $testShopId,
-        $firstImageLanguage
-    );
-    assertTest(
-        $categoryThumbnail && file_exists($categoryThumbnail)
-        && strpos(basename($categoryThumbnail), '-s'.$testShopId.'-category_default.') !== false,
-        'front-office category_default resolves the generated target-shop thumbnail'
-    );
 
     $languageId = (int) Configuration::get('PS_LANG_DEFAULT');
     $shopOneSlug = (string) $db->getValue(
@@ -566,26 +313,29 @@ try {
     Shop::setContext(Shop::CONTEXT_ALL);
 
     foreach (array_unique(array_map('intval', $createdPosts)) as $idPost) {
-        if ($imageShopIds && tableExistsForTest(BeesBlogImage::TABLE)) {
-            BeesBlogImage::deleteForShops(BeesBlogImage::ENTITY_POST, $idPost, $imageShopIds);
-            BeesBlogImage::deleteLegacyImages(BeesBlogImage::ENTITY_POST, $idPost);
-        }
         $db->delete('bees_blog_post_product', '`'.BeesBlogPost::PRIMARY.'` = '.$idPost);
         $db->delete(BeesBlogPost::LANG_TABLE, '`'.BeesBlogPost::PRIMARY.'` = '.$idPost);
         $db->delete(BeesBlogPost::SHOP_TABLE, '`'.BeesBlogPost::PRIMARY.'` = '.$idPost);
         $db->delete(BeesBlogPost::TABLE, '`'.BeesBlogPost::PRIMARY.'` = '.$idPost);
     }
     foreach (array_unique(array_map('intval', $createdCategories)) as $idCategory) {
-        if ($imageShopIds && tableExistsForTest(BeesBlogImage::TABLE)) {
-            BeesBlogImage::deleteForShops(BeesBlogImage::ENTITY_CATEGORY, $idCategory, $imageShopIds);
-            BeesBlogImage::deleteLegacyImages(BeesBlogImage::ENTITY_CATEGORY, $idCategory);
-        }
         $db->delete(BeesBlogCategory::LANG_TABLE, '`'.BeesBlogCategory::PRIMARY.'` = '.$idCategory);
         $db->delete(BeesBlogCategory::SHOP_TABLE, '`'.BeesBlogCategory::PRIMARY.'` = '.$idCategory);
         $db->delete(BeesBlogCategory::TABLE, '`'.BeesBlogCategory::PRIMARY.'` = '.$idCategory);
     }
-
     if ($testShopId) {
+        if (tableExistsForTest(BeesBlogImage::TABLE)) {
+            foreach ((array) $db->executeS(
+                'SELECT DISTINCT `entity_type`, `id_object` FROM `'._DB_PREFIX_.BeesBlogImage::TABLE.'`'.
+                ' WHERE `id_shop` = '.(int) $testShopId
+            ) as $image) {
+                BeesBlogImage::deleteForShops(
+                    $image['entity_type'],
+                    (int) $image['id_object'],
+                    [$testShopId]
+                );
+            }
+        }
         $configurationIds = array_map('intval', array_column((array) $db->executeS(
             'SELECT `id_configuration` FROM `'._DB_PREFIX_.'configuration` WHERE `id_shop` = '.(int) $testShopId
         ), 'id_configuration'));

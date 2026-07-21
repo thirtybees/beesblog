@@ -82,14 +82,14 @@ class AdminBeesBlogCategoryController extends ModuleAdminController
                 'title' => $this->l('Title'),
                 'width' => 440,
                 'type'  => 'text',
-                'filter_key' => 'scl!title',
+                'filter_key' => 'bbcl!title',
             ],
             'id_parent'              => [
                 'title'   => $this->l('Parent'),
                 'width'   => 200,
                 'type'    => 'text',
                 'callback' => 'getParentTitleById',
-                'filter_key' => 'scs!id_parent',
+                'filter_key' => 'bbcs!id_parent',
             ],
             'active'                  => [
                 'title'   => $this->l('Status'),
@@ -98,23 +98,23 @@ class AdminBeesBlogCategoryController extends ModuleAdminController
                 'active'  => 'status',
                 'type'    => 'bool',
                 'orderby' => false,
-                'filter_key' => 'scs!active',
+                'filter_key' => 'bbcs!active',
             ],
         ];
 
         $contextShopIds = BeesBlogMultistore::getContextShopIds();
         $shopList = $contextShopIds ? implode(', ', array_map('intval', $contextShopIds)) : '0';
-        $this->_join = 'INNER JOIN `'._DB_PREFIX_.BeesBlogCategory::SHOP_TABLE.'` scs'.
-            ' ON scs.`'.BeesBlogCategory::PRIMARY.'` = a.`'.BeesBlogCategory::PRIMARY.'`'.
-            ' AND scs.`id_shop` = (SELECT MIN(scs_scope.`id_shop`)'.
-            ' FROM `'._DB_PREFIX_.BeesBlogCategory::SHOP_TABLE.'` scs_scope'.
-            ' WHERE scs_scope.`'.BeesBlogCategory::PRIMARY.'` = a.`'.BeesBlogCategory::PRIMARY.'`'.
-            ' AND scs_scope.`id_shop` IN ('.$shopList.'))'.
-            ' INNER JOIN `'._DB_PREFIX_.BeesBlogCategory::LANG_TABLE.'` scl'.
-            ' ON scl.`'.BeesBlogCategory::PRIMARY.'` = a.`'.BeesBlogCategory::PRIMARY.'`'.
-            ' AND scl.`id_shop` = scs.`id_shop`'.
-            ' AND scl.`id_lang` = '.(int) $this->context->language->id;
-        $this->_select = 'scs.`id_shop` AS `list_shop_id`, scs.`id_parent`, scs.`active`, scl.`title`';
+        $this->_join = 'INNER JOIN `'._DB_PREFIX_.BeesBlogCategory::SHOP_TABLE.'` bbcs'.
+            ' ON bbcs.`'.BeesBlogCategory::PRIMARY.'` = a.`'.BeesBlogCategory::PRIMARY.'`'.
+            ' AND bbcs.`id_shop` = (SELECT MIN(bbcs_scope.`id_shop`)'.
+            ' FROM `'._DB_PREFIX_.BeesBlogCategory::SHOP_TABLE.'` bbcs_scope'.
+            ' WHERE bbcs_scope.`'.BeesBlogCategory::PRIMARY.'` = a.`'.BeesBlogCategory::PRIMARY.'`'.
+            ' AND bbcs_scope.`id_shop` IN ('.$shopList.'))'.
+            ' INNER JOIN `'._DB_PREFIX_.BeesBlogCategory::LANG_TABLE.'` bbcl'.
+            ' ON bbcl.`'.BeesBlogCategory::PRIMARY.'` = a.`'.BeesBlogCategory::PRIMARY.'`'.
+            ' AND bbcl.`id_shop` = bbcs.`id_shop`'.
+            ' AND bbcl.`id_lang` = '.(int) $this->context->language->id;
+        $this->_select = 'bbcs.`id_shop` AS `list_shop_id`, bbcs.`id_parent`, bbcs.`active`, bbcl.`title`';
         $this->_defaultOrderBy = 'a.'.BeesBlogCategory::PRIMARY;
         $this->_defaultOrderWay = 'DESC';
 
@@ -270,6 +270,7 @@ class AdminBeesBlogCategoryController extends ModuleAdminController
             ];
         }
 
+        $languageImageInputs = [];
         foreach (Language::getLanguages(true, $idShop) as $language) {
             $idLang = (int) $language['id_lang'];
             $languageImagePath = BeesBlogImage::getScopedImagePath(
@@ -289,7 +290,7 @@ class AdminBeesBlogCategoryController extends ModuleAdminController
                     true
                 )
                 : false;
-            $this->fields_form['input'][] = [
+            $languageImageInputs[] = [
                 'type' => 'file',
                 'label' => sprintf($this->l('%s image override'), $language['name']),
                 'name' => 'category_image_lang_'.$idLang,
@@ -302,6 +303,13 @@ class AdminBeesBlogCategoryController extends ModuleAdminController
                     '&token='.$this->token.'&deleteImage=1&image_scope=language&id_lang='.$idLang,
                 'hint' => $this->l('Optional. When empty, this language uses the default image above.'),
             ];
+        }
+
+        foreach ($this->fields_form['input'] as $index => $input) {
+            if (isset($input['name']) && $input['name'] === 'category_image') {
+                array_splice($this->fields_form['input'], $index + 1, 0, $languageImageInputs);
+                break;
+            }
         }
 
         $this->fields_value = [
@@ -413,19 +421,14 @@ class AdminBeesBlogCategoryController extends ModuleAdminController
      * @throws PrestaShopException
      * @since 1.0.0
      */
-    public function deleteImage($idBeesBlogCategory, array $shopIds = [], $deleteLegacy = false)
+    public function deleteImage($idBeesBlogCategory, array $shopIds = [])
     {
         $shopIds = $shopIds ?: BeesBlogMultistore::getSubmittedShopIds($this->table);
-        $result = BeesBlogImage::deleteForShops(
+        return BeesBlogImage::deleteForShops(
             BeesBlogImage::ENTITY_CATEGORY,
             (int) $idBeesBlogCategory,
             $shopIds
         );
-        if ($deleteLegacy) {
-            BeesBlogImage::deleteLegacyImages(BeesBlogImage::ENTITY_CATEGORY, (int) $idBeesBlogCategory);
-        }
-
-        return $result;
     }
 
 
@@ -620,11 +623,6 @@ class AdminBeesBlogCategoryController extends ModuleAdminController
                 return false;
             } else {
                 BeesBlogImage::deleteForShops(BeesBlogImage::ENTITY_CATEGORY, $blogCategory->id, $shopIds);
-                if (!Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue(
-                    'SELECT 1 FROM `'._DB_PREFIX_.BeesBlogCategory::TABLE.'` WHERE `'.BeesBlogCategory::PRIMARY.'` = '.(int) $blogCategory->id
-                )) {
-                    BeesBlogImage::deleteLegacyImages(BeesBlogImage::ENTITY_CATEGORY, $blogCategory->id);
-                }
 
                 Tools::redirectAdmin($this->context->link->getAdminLink('AdminBeesBlogCategory'));
 
@@ -683,11 +681,6 @@ class AdminBeesBlogCategoryController extends ModuleAdminController
                 continue;
             }
             BeesBlogImage::deleteForShops(BeesBlogImage::ENTITY_CATEGORY, $idCategory, $shopIds);
-            if (!Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue(
-                'SELECT 1 FROM `'._DB_PREFIX_.BeesBlogCategory::TABLE.'` WHERE `'.BeesBlogCategory::PRIMARY.'` = '.$idCategory
-            )) {
-                BeesBlogImage::deleteLegacyImages(BeesBlogImage::ENTITY_CATEGORY, $idCategory);
-            }
         }
 
         if ($result) {

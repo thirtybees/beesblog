@@ -455,14 +455,14 @@ class BeesBlogPost extends ObjectModel
         $idShop = (int) Context::getContext()->shop->id;
 
         $sql = new DbQuery();
-        $sql->select('sbpl.`link_rewrite`');
-        $sql->from(self::TABLE, 'sbp');
-        $sql->innerJoin(self::SHOP_TABLE, 'sbps', 'sbp.`'.self::PRIMARY.'` = sbps.`'.self::PRIMARY.'` AND sbps.`id_shop` = '.(int) $idShop);
-        $sql->innerJoin(self::LANG_TABLE, 'sbpl', 'sbp.`'.self::PRIMARY.'` = sbpl.`'.self::PRIMARY.'` AND sbpl.`id_shop` = sbps.`id_shop`');
-        $sql->where('sbpl.`id_lang` = '.(int) $idLang);
-        $sql->where('sbpl.`lang_active` = 1');
-        $sql->where('sbps.`active` = 1');
-        $sql->where('sbp.`'.self::PRIMARY.'` = '.(int) $idPost);
+        $sql->select('bbpl.`link_rewrite`');
+        $sql->from(self::TABLE, 'bbp');
+        $sql->innerJoin(self::SHOP_TABLE, 'bbps', 'bbp.`'.self::PRIMARY.'` = bbps.`'.self::PRIMARY.'` AND bbps.`id_shop` = '.(int) $idShop);
+        $sql->innerJoin(self::LANG_TABLE, 'bbpl', 'bbp.`'.self::PRIMARY.'` = bbpl.`'.self::PRIMARY.'` AND bbpl.`id_shop` = bbps.`id_shop`');
+        $sql->where('bbpl.`id_lang` = '.(int) $idLang);
+        $sql->where('bbpl.`lang_active` = 1');
+        $sql->where('bbps.`active` = 1');
+        $sql->where('bbp.`'.self::PRIMARY.'` = '.(int) $idPost);
 
         return Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql);
     }
@@ -491,14 +491,14 @@ class BeesBlogPost extends ObjectModel
             $idShop = (int) Context::getContext()->shop->id;
         }
         $sql = new DbQuery();
-        $sql->select('sbp.`'.self::PRIMARY.'`');
-        $sql->from(self::TABLE, 'sbp');
-        $sql->innerJoin(self::SHOP_TABLE, 'sbps', 'sbp.`'.self::PRIMARY.'` = sbps.`'.self::PRIMARY.'` AND sbps.`id_shop` = '.(int) $idShop);
-        $sql->innerJoin(self::LANG_TABLE, 'sbpl', 'sbp.`'.self::PRIMARY.'` = sbpl.`'.self::PRIMARY.'` AND sbpl.`id_shop` = sbps.`id_shop`');
-        $sql->where('sbpl.`id_lang` = '.(int) $idLang);
-        $sql->where('sbps.`active` = '.(int) $active);
-        $sql->where('sbpl.`lang_active`');
-        $sql->where('sbpl.`link_rewrite` = \''.pSQL($rewrite).'\'');
+        $sql->select('bbp.`'.self::PRIMARY.'`');
+        $sql->from(self::TABLE, 'bbp');
+        $sql->innerJoin(self::SHOP_TABLE, 'bbps', 'bbp.`'.self::PRIMARY.'` = bbps.`'.self::PRIMARY.'` AND bbps.`id_shop` = '.(int) $idShop);
+        $sql->innerJoin(self::LANG_TABLE, 'bbpl', 'bbp.`'.self::PRIMARY.'` = bbpl.`'.self::PRIMARY.'` AND bbpl.`id_shop` = bbps.`id_shop`');
+        $sql->where('bbpl.`id_lang` = '.(int) $idLang);
+        $sql->where('bbps.`active` = '.(int) $active);
+        $sql->where('bbpl.`lang_active`');
+        $sql->where('bbpl.`link_rewrite` = \''.pSQL($rewrite).'\'');
 
         return Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql);
     }
@@ -515,11 +515,11 @@ class BeesBlogPost extends ObjectModel
     {
         $idShop = $idShop ?: (int) Context::getContext()->shop->id;
         $sql = new DbQuery();
-        $sql->select('sbpl.`lang_active`');
-        $sql->from(static::LANG_TABLE, 'sbpl');
-        $sql->where('sbpl.`'.static::PRIMARY.'` = '.(int) $idBeesBlogPost);
-        $sql->where('sbpl.`id_lang` = '.(int) $idLang);
-        $sql->where('sbpl.`id_shop` = '.(int) $idShop);
+        $sql->select('bbpl.`lang_active`');
+        $sql->from(static::LANG_TABLE, 'bbpl');
+        $sql->where('bbpl.`'.static::PRIMARY.'` = '.(int) $idBeesBlogPost);
+        $sql->where('bbpl.`id_lang` = '.(int) $idLang);
+        $sql->where('bbpl.`id_shop` = '.(int) $idShop);
 
         return Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql);
     }
