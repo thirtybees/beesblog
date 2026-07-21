@@ -1,0 +1,343 @@
+<?php
+/**
+ * Destructive-to-test-data integration test for an existing thirty bees test
+ * installation. The schema upgrade is intentionally retained; all temporary
+ * shops and blog entities are removed in a finally block.
+ */
+
+if (PHP_SAPI !== 'cli') {
+    exit(1);
+}
+
+$root = isset($argv[1]) ? rtrim($argv[1], '/\\') : '';
+if (!$root || !is_file($root.'/config/config.inc.php')) {
+    fwrite(STDERR, "Usage: php run_multistore_integration.php <thirty-bees-root>\n");
+    exit(1);
+}
+
+require $root.'/config/config.inc.php';
+require_once $root.'/modules/beesblog/beesblog.php';
+require_once $root.'/modules/beesblog/upgrade/upgrade-1.9.0.php';
+
+use BeesBlogModule\BeesBlogCategory;
+use BeesBlogModule\BeesBlogMultistore;
+use BeesBlogModule\BeesBlogPost;
+
+$db = Db::getInstance();
+$module = Module::getInstanceByName('beesblog');
+$createdPosts = [];
+$createdCategories = [];
+$testShopId = 0;
+$originalContext = Shop::getContext();
+$originalContextShopId = (int) Shop::getContextShopID();
+$originalContextGroupId = (int) Shop::getContextShopGroupID();
+$originalShop = Context::getContext()->shop;
+$token = 'codex-ms-'.strtolower(substr(sha1(uniqid('', true)), 0, 10));
+
+function assertTest($condition, $message)
+{
+    if (!$condition) {
+        throw new RuntimeException($message);
+    }
+    echo "PASS: {$message}\n";
+}
+
+function columnExistsForTest($table, $column)
+{
+    return (bool) Db::getInstance()->getValue(
+        'SELECT 1 FROM `information_schema`.`columns` WHERE `table_schema` = DATABASE()'.
+        ' AND `table_name` = \''.pSQL(_DB_PREFIX_.$table).'\''.
+        ' AND `column_name` = \''.pSQL($column).'\''
+    );
+}
+
+function primaryColumnsForTest($table)
+{
+    $columns = [];
+    foreach ((array) Db::getInstance()->executeS(
+        'SHOW INDEX FROM `'._DB_PREFIX_.bqSQL($table).'` WHERE `Key_name` = \'PRIMARY\''
+    ) as $row) {
+        $columns[(int) $row['Seq_in_index']] = $row['Column_name'];
+    }
+    ksort($columns);
+    return array_values($columns);
+}
+
+function langValuesForTest($prefix)
+{
+    $values = [];
+    foreach (Language::getLanguages(false, false, true) as $idLang) {
+        $values[(int) $idLang] = $prefix.'-'.$idLang;
+    }
+    return $values;
+}
+
+function addCategoryForTest($slug, array $shopIds)
+{
+    $category = new BeesBlogCategory();
+    $category->id_parent = 0;
+    $category->position = 0;
+    $category->active = true;
+    $category->title = langValuesForTest('Category '.$slug);
+    $category->description = langValuesForTest('Description '.$slug);
+    $category->link_rewrite = langValuesForTest($slug);
+    $category->meta_title = langValuesForTest('Meta '.$slug);
+    $category->meta_description = langValuesForTest('Description '.$slug);
+    $category->meta_keywords = langValuesForTest('keyword');
+    $category->id_shop_list = $shopIds;
+    assertTest($category->add(), 'category can be created in the requested context');
+    return $category;
+}
+
+function addPostForTest($slug, $categoryId, array $shopIds)
+{
+    $post = new BeesBlogPost();
+    $post->active = true;
+    $post->comments_enabled = true;
+    $post->published = date('Y-m-d H:i:s');
+    $post->id_category = (int) $categoryId;
+    $post->id_employee = 1;
+    $post->position = 0;
+    $post->post_type = '0';
+    $post->viewed = 0;
+    $post->title = langValuesForTest('Post '.$slug);
+    $post->content = langValuesForTest('Content '.$slug);
+    $post->link_rewrite = langValuesForTest($slug);
+    $post->meta_title = langValuesForTest('Meta '.$slug);
+    $post->meta_description = langValuesForTest('Description '.$slug);
+    $post->meta_keywords = langValuesForTest('keyword');
+    $post->lang_active = array_fill_keys(Language::getLanguages(false, false, true), 1);
+    $post->id_shop_list = $shopIds;
+    assertTest($post->add(), 'post can be created in the requested context');
+    return $post;
+}
+
+try {
+    assertTest($module instanceof BeesBlog, 'installed module instance loads');
+
+    $postCountBefore = (int) $db->getValue('SELECT COUNT(*) FROM `'._DB_PREFIX_.BeesBlogPost::TABLE.'`');
+    $categoryCountBefore = (int) $db->getValue('SELECT COUNT(*) FROM `'._DB_PREFIX_.BeesBlogCategory::TABLE.'`');
+    $wasLegacy = !columnExistsForTest(BeesBlogPost::LANG_TABLE, 'id_shop');
+
+    assertTest(upgrade_module_1_9_0($module), '1.9.0 upgrade succeeds');
+    assertTest(columnExistsForTest(BeesBlogPost::LANG_TABLE, 'id_shop'), 'post translations contain id_shop');
+    assertTest(columnExistsForTest(BeesBlogCategory::LANG_TABLE, 'id_shop'), 'category translations contain id_shop');
+    assertTest(primaryColumnsForTest(BeesBlogPost::LANG_TABLE) === [BeesBlogPost::PRIMARY, 'id_shop', 'id_lang'], 'post translation primary key is shop-aware');
+    assertTest(primaryColumnsForTest(BeesBlogCategory::LANG_TABLE) === [BeesBlogCategory::PRIMARY, 'id_shop', 'id_lang'], 'category translation primary key is shop-aware');
+    assertTest(columnExistsForTest('bees_blog_post_product', 'id_shop'), 'related products contain id_shop');
+    assertTest((int) $db->getValue('SELECT COUNT(*) FROM `'._DB_PREFIX_.BeesBlogPost::TABLE.'`') === $postCountBefore, 'migration preserves post base rows');
+    assertTest((int) $db->getValue('SELECT COUNT(*) FROM `'._DB_PREFIX_.BeesBlogCategory::TABLE.'`') === $categoryCountBefore, 'migration preserves category base rows');
+    if ($wasLegacy) {
+        assertTest((int) $db->getValue('SELECT COUNT(*) FROM `'._DB_PREFIX_.BeesBlogPost::LANG_TABLE.'`') > 0, 'legacy post translations were copied');
+        assertTest((int) $db->getValue('SELECT COUNT(*) FROM `'._DB_PREFIX_.BeesBlogCategory::LANG_TABLE.'`') > 0, 'legacy category translations were copied');
+    }
+
+    $sourceShop = (array) $db->getRow(
+        'SELECT * FROM `'._DB_PREFIX_.'shop` WHERE `active` = 1 AND `deleted` = 0 ORDER BY `id_shop` ASC'
+    );
+    assertTest(!empty($sourceShop['id_shop']), 'source shop is available');
+    $sourceShopId = (int) $sourceShop['id_shop'];
+    $sourceGroupId = (int) $sourceShop['id_shop_group'];
+
+    assertTest($db->execute(
+        'INSERT INTO `'._DB_PREFIX_.'shop` (`id_shop_group`, `name`, `id_category`, `id_theme`, `active`, `deleted`)'.
+        ' SELECT `id_shop_group`, \''.pSQL('BeesBlog '.$token).'\', `id_category`, `id_theme`, 1, 0'.
+        ' FROM `'._DB_PREFIX_.'shop` WHERE `id_shop` = '.$sourceShopId
+    ), 'temporary shop row is created');
+    $testShopId = (int) $db->Insert_ID();
+    assertTest($testShopId > 0, 'temporary shop has an id');
+
+    $db->execute(
+        'INSERT IGNORE INTO `'._DB_PREFIX_.'lang_shop` (`id_lang`, `id_shop`)'.
+        ' SELECT `id_lang`, '.$testShopId.' FROM `'._DB_PREFIX_.'lang_shop` WHERE `id_shop` = '.$sourceShopId
+    );
+    $db->execute(
+        'INSERT IGNORE INTO `'._DB_PREFIX_.'employee_shop` (`id_employee`, `id_shop`)'.
+        ' SELECT `id_employee`, '.$testShopId.' FROM `'._DB_PREFIX_.'employee_shop` WHERE `id_shop` = '.$sourceShopId
+    );
+    $db->execute(
+        'INSERT IGNORE INTO `'._DB_PREFIX_.'module_shop` (`id_module`, `id_shop`)'.
+        ' SELECT `id_module`, '.$testShopId.' FROM `'._DB_PREFIX_.'module_shop` WHERE `id_shop` = '.$sourceShopId
+    );
+    Shop::cacheShops(true);
+
+    assertTest($module->hookActionShopDataDuplication([
+        'old_id_shop' => $sourceShopId,
+        'new_id_shop' => $testShopId,
+    ]), 'shop duplication hook succeeds');
+    assertTest(
+        (int) $db->getValue('SELECT COUNT(*) FROM `'._DB_PREFIX_.BeesBlogPost::SHOP_TABLE.'` WHERE `id_shop` = '.$testShopId)
+        === (int) $db->getValue('SELECT COUNT(*) FROM `'._DB_PREFIX_.BeesBlogPost::SHOP_TABLE.'` WHERE `id_shop` = '.$sourceShopId),
+        'shop duplication copies post associations'
+    );
+
+    Shop::setContext(Shop::CONTEXT_SHOP, $testShopId);
+    Context::getContext()->shop = new Shop($testShopId);
+    assertTest(BeesBlogMultistore::getSubmittedShopIds(BeesBlogPost::TABLE) === [$testShopId], 'shop context resolves only the selected shop');
+    $testOnlyCategory = addCategoryForTest($token.'-test-category', [$testShopId]);
+    $createdCategories[] = (int) $testOnlyCategory->id;
+    assertTest((int) $db->getValue(
+        'SELECT COUNT(*) FROM `'._DB_PREFIX_.BeesBlogCategory::SHOP_TABLE.'` WHERE `'.BeesBlogCategory::PRIMARY.'` = '.(int) $testOnlyCategory->id
+    ) === 1, 'dedicated-shop category has one association');
+
+    Shop::setContext(Shop::CONTEXT_GROUP, $sourceGroupId);
+    $groupShopIds = BeesBlogMultistore::getSubmittedShopIds(BeesBlogCategory::TABLE);
+    sort($groupShopIds);
+    assertTest(in_array($sourceShopId, $groupShopIds, true) && in_array($testShopId, $groupShopIds, true), 'group context resolves all shops in the group');
+    $sharedCategory = addCategoryForTest($token.'-shared-category', $groupShopIds);
+    $createdCategories[] = (int) $sharedCategory->id;
+
+    Shop::setContext(Shop::CONTEXT_ALL);
+    $allShopIds = BeesBlogMultistore::getSubmittedShopIds(BeesBlogPost::TABLE);
+    assertTest(in_array($sourceShopId, $allShopIds, true) && in_array($testShopId, $allShopIds, true), 'all-shops context resolves every authorized shop');
+
+    $statusPost = addPostForTest($token.'-status-seed', $sharedCategory->id, [$sourceShopId]);
+    $createdPosts[] = (int) $statusPost->id;
+    $statusPost = new BeesBlogPost((int) $statusPost->id, null, $sourceShopId);
+    $statusPost->id_shop_list = $allShopIds;
+    $statusPost->setFieldsToUpdate(['active' => true]);
+    $statusPost->active = false;
+    assertTest($statusPost->update(), 'restricted all-shops update creates complete missing associations');
+    assertTest(
+        (int) $db->getValue(
+            'SELECT `id_category` FROM `'._DB_PREFIX_.BeesBlogPost::SHOP_TABLE.'`'.
+            ' WHERE `'.BeesBlogPost::PRIMARY.'` = '.(int) $statusPost->id.' AND `id_shop` = '.$testShopId
+        ) === (int) $sharedCategory->id,
+        'restricted update seeds non-updated shop fields from the representative shop'
+    );
+    assertTest(
+        (string) $db->getValue(
+            'SELECT `title` FROM `'._DB_PREFIX_.BeesBlogPost::LANG_TABLE.'`'.
+            ' WHERE `'.BeesBlogPost::PRIMARY.'` = '.(int) $statusPost->id.
+            ' AND `id_shop` = '.$testShopId.' AND `id_lang` = '.(int) Configuration::get('PS_LANG_DEFAULT')
+        ) !== '',
+        'restricted update seeds complete translation rows'
+    );
+
+    $sharedPost = addPostForTest($token.'-shared-post', $sharedCategory->id, $allShopIds);
+    $createdPosts[] = (int) $sharedPost->id;
+
+    $languageId = (int) Configuration::get('PS_LANG_DEFAULT');
+    $shopOneSlug = (string) $db->getValue(
+        'SELECT `link_rewrite` FROM `'._DB_PREFIX_.BeesBlogPost::LANG_TABLE.'`'.
+        ' WHERE `'.BeesBlogPost::PRIMARY.'` = '.(int) $sharedPost->id.
+        ' AND `id_shop` = '.$sourceShopId.' AND `id_lang` = '.$languageId
+    );
+    $shopTwoPost = new BeesBlogPost((int) $sharedPost->id, null, $testShopId);
+    $shopTwoPost->link_rewrite[$languageId] = $token.'-shop-two-slug';
+    $shopTwoPost->title[$languageId] = 'Shop two title';
+    $shopTwoPost->id_shop_list = [$testShopId];
+    assertTest($shopTwoPost->update(), 'dedicated-shop update succeeds');
+    assertTest(
+        (string) $db->getValue(
+            'SELECT `link_rewrite` FROM `'._DB_PREFIX_.BeesBlogPost::LANG_TABLE.'`'.
+            ' WHERE `'.BeesBlogPost::PRIMARY.'` = '.(int) $sharedPost->id.
+            ' AND `id_shop` = '.$sourceShopId.' AND `id_lang` = '.$languageId
+        ) === $shopOneSlug,
+        'updating one shop does not change another shop slug'
+    );
+    assertTest(
+        (int) BeesBlogPost::getIdByRewrite($shopOneSlug, true, $languageId, $sourceShopId) === (int) $sharedPost->id,
+        'shop-one slug resolves in shop one'
+    );
+    assertTest(
+        (int) BeesBlogPost::getIdByRewrite($token.'-shop-two-slug', true, $languageId, $testShopId) === (int) $sharedPost->id,
+        'shop-two slug resolves in shop two'
+    );
+
+    $sameSlugShopOne = addPostForTest($token.'-same-slug', $sharedCategory->id, [$sourceShopId]);
+    $createdPosts[] = (int) $sameSlugShopOne->id;
+    $sameSlugShopTwo = addPostForTest($token.'-same-slug', $sharedCategory->id, [$testShopId]);
+    $createdPosts[] = (int) $sameSlugShopTwo->id;
+    assertTest(
+        !BeesBlogMultistore::findSlugConflicts(
+            BeesBlogPost::TABLE,
+            BeesBlogPost::PRIMARY,
+            (int) $sameSlugShopTwo->id,
+            [$languageId => $token.'-same-slug-'.$languageId],
+            [$testShopId]
+        ),
+        'identical slugs in different shops are accepted'
+    );
+    assertTest(
+        (bool) BeesBlogMultistore::findSlugConflicts(
+            BeesBlogPost::TABLE,
+            BeesBlogPost::PRIMARY,
+            (int) $sameSlugShopTwo->id,
+            [$languageId => $token.'-same-slug-'.$languageId],
+            [$sourceShopId]
+        ),
+        'the same slug is still detected as a conflict inside one shop'
+    );
+
+    assertTest(BeesBlogMultistore::migrateSchema(), 'schema migration can be rerun');
+    assertTest(
+        (string) $db->getValue(
+            'SELECT `link_rewrite` FROM `'._DB_PREFIX_.BeesBlogPost::LANG_TABLE.'`'.
+            ' WHERE `'.BeesBlogPost::PRIMARY.'` = '.(int) $sharedPost->id.
+            ' AND `id_shop` = '.$testShopId.' AND `id_lang` = '.$languageId
+        ) === $token.'-shop-two-slug',
+        'rerunning migration preserves a shop-specific slug'
+    );
+
+    $shopTwoPost = new BeesBlogPost((int) $sharedPost->id, null, $testShopId);
+    $shopTwoPost->id_shop_list = [$testShopId];
+    assertTest($shopTwoPost->delete(), 'deleting in one shop context succeeds');
+    assertTest((bool) $db->getValue(
+        'SELECT 1 FROM `'._DB_PREFIX_.BeesBlogPost::SHOP_TABLE.'`'.
+        ' WHERE `'.BeesBlogPost::PRIMARY.'` = '.(int) $sharedPost->id.' AND `id_shop` = '.$sourceShopId
+    ), 'shop-context delete preserves other shop association');
+    assertTest((bool) $db->getValue(
+        'SELECT 1 FROM `'._DB_PREFIX_.BeesBlogPost::TABLE.'` WHERE `'.BeesBlogPost::PRIMARY.'` = '.(int) $sharedPost->id
+    ), 'shop-context delete preserves the shared base entity');
+
+    Module::upgradeModuleVersion('beesblog', '1.9.0');
+    echo "RESULT: all multistore integration tests passed\n";
+} catch (Throwable $e) {
+    fwrite(STDERR, 'FAIL: '.$e->getMessage()."\n".$e->getTraceAsString()."\n");
+    $exitCode = 1;
+} finally {
+    Shop::setContext(Shop::CONTEXT_ALL);
+
+    foreach (array_unique(array_map('intval', $createdPosts)) as $idPost) {
+        $db->delete('bees_blog_post_product', '`'.BeesBlogPost::PRIMARY.'` = '.$idPost);
+        $db->delete(BeesBlogPost::LANG_TABLE, '`'.BeesBlogPost::PRIMARY.'` = '.$idPost);
+        $db->delete(BeesBlogPost::SHOP_TABLE, '`'.BeesBlogPost::PRIMARY.'` = '.$idPost);
+        $db->delete(BeesBlogPost::TABLE, '`'.BeesBlogPost::PRIMARY.'` = '.$idPost);
+    }
+    foreach (array_unique(array_map('intval', $createdCategories)) as $idCategory) {
+        $db->delete(BeesBlogCategory::LANG_TABLE, '`'.BeesBlogCategory::PRIMARY.'` = '.$idCategory);
+        $db->delete(BeesBlogCategory::SHOP_TABLE, '`'.BeesBlogCategory::PRIMARY.'` = '.$idCategory);
+        $db->delete(BeesBlogCategory::TABLE, '`'.BeesBlogCategory::PRIMARY.'` = '.$idCategory);
+    }
+
+    if ($testShopId) {
+        foreach ([
+            'bees_blog_post_product',
+            BeesBlogPost::LANG_TABLE,
+            BeesBlogPost::SHOP_TABLE,
+            BeesBlogCategory::LANG_TABLE,
+            BeesBlogCategory::SHOP_TABLE,
+            'bees_blog_image_type_shop',
+            'module_shop',
+            'employee_shop',
+            'lang_shop',
+            'shop_url',
+        ] as $table) {
+            $db->delete($table, '`id_shop` = '.(int) $testShopId);
+        }
+        $db->delete('shop', '`id_shop` = '.(int) $testShopId.' AND `name` = \''.pSQL('BeesBlog '.$token).'\'');
+        Shop::cacheShops(true);
+    }
+
+    if ($originalContext === Shop::CONTEXT_SHOP && $originalContextShopId) {
+        Shop::setContext(Shop::CONTEXT_SHOP, $originalContextShopId);
+    } elseif ($originalContext === Shop::CONTEXT_GROUP && $originalContextGroupId) {
+        Shop::setContext(Shop::CONTEXT_GROUP, $originalContextGroupId);
+    } else {
+        Shop::setContext(Shop::CONTEXT_ALL);
+    }
+    Context::getContext()->shop = $originalShop;
+}
+
+exit(isset($exitCode) ? $exitCode : 0);

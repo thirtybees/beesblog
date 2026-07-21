@@ -19,6 +19,7 @@
 
 use BeesBlogModule\BeesBlogCategory;
 use BeesBlogModule\BeesBlogImageType;
+use BeesBlogModule\BeesBlogMultistore;
 use BeesBlogModule\BeesBlogPost;
 
 if (!defined('_TB_VERSION_')) {
@@ -87,7 +88,7 @@ class BeesBlog extends Module
     {
         $this->name = 'beesblog';
         $this->tab = 'front_office_features';
-        $this->version = '1.8.0';
+        $this->version = '1.9.0';
         $this->author = 'thirty bees';
         $this->tb_min_version = '1.0.0';
         $this->tb_versions_compliancy = '> 1.0.0';
@@ -98,6 +99,7 @@ class BeesBlog extends Module
         $this->badges = ['beta'];
 
         parent::__construct();
+        BeesBlogMultistore::registerAssociations();
         $this->displayName = $this->l('Bees Blog');
         $this->description = $this->l('thirty bees blog module');
     }
@@ -136,7 +138,8 @@ class BeesBlog extends Module
         if ($createTables) {
             if (!(BeesBlogPost::createDatabase()
                 && BeesBlogCategory::createDatabase()
-                && BeesBlogImageType::createDatabase())
+                && BeesBlogImageType::createDatabase()
+                && BeesBlogMultistore::migrateSchema())
             ) {
                 return false;
             }
@@ -173,6 +176,7 @@ class BeesBlog extends Module
             $this->registerHook('actionRegisterShortcodes') &&
             $this->registerHook('actionRegisterShortcodeEntityTypes') &&
             $this->registerHook('actionGetWebserviceResources') &&
+            $this->registerHook('actionShopDataDuplication') &&
             $this->insertBlogHooks()
         );
     }
@@ -485,9 +489,7 @@ class BeesBlog extends Module
         $langId = (int)Context::getContext()->language->id;
 
         // Blog posts
-        $results = (new PrestaShopCollection('BeesBlogModule\\BeesBlogPost', $langId))
-            ->where('active', '=', 1)
-            ->getResults();
+        $results = BeesBlogPost::getPosts($langId);
         if ($results) {
             /** @var BeesBlogPost $result */
             foreach ($results as $result) {
@@ -503,13 +505,14 @@ class BeesBlog extends Module
         }
 
         // Categories
-        $results = (new PrestaShopCollection('BeesBlogModule\\BeesBlogCategory', $langId))
-            ->where('active', '=', 1)
-            ->getResults();
+        $results = BeesBlogCategory::getCategories($langId);
 
         if ($results) {
             /** @var BeesBlogCategory $result */
             foreach ($results as $result) {
+                if (!$result->active) {
+                    continue;
+                }
                 $link = [];
                 $link['link'] = $result->link;
                 $link['lastmod'] = $result->date_upd;
@@ -628,10 +631,7 @@ class BeesBlog extends Module
      */
     public function hookActionGetWebserviceResources()
     {
-        // shop associations are normally registered by the admin controllers;
-        // the webservice bypasses those, so register them here as well
-        Shop::addTableAssociation(BeesBlogCategory::TABLE, ['type' => 'shop']);
-        Shop::addTableAssociation(BeesBlogPost::TABLE, ['type' => 'shop']);
+        BeesBlogMultistore::registerAssociations();
 
         return [
             'bees_blog_posts'      => [
@@ -643,6 +643,58 @@ class BeesBlog extends Module
                 'class'       => BeesBlogCategory::class,
             ],
         ];
+    }
+
+    /**
+     * Copy all shop-specific blog data when thirty bees duplicates a shop.
+     * Global entity rows and image files remain shared between associations.
+     *
+     * @param array $params
+     * @return bool
+     * @throws PrestaShopException
+     */
+    public function hookActionShopDataDuplication($params)
+    {
+        $oldShopId = (int) ($params['old_id_shop'] ?? 0);
+        $newShopId = (int) ($params['new_id_shop'] ?? 0);
+        if (!$oldShopId || !$newShopId) {
+            return false;
+        }
+
+        $queries = [
+            'INSERT IGNORE INTO `'._DB_PREFIX_.BeesBlogCategory::SHOP_TABLE.'`'.
+            ' (`'.BeesBlogCategory::PRIMARY.'`, `id_shop`, `id_parent`, `position`, `active`, `date_upd`)'.
+            ' SELECT `'.BeesBlogCategory::PRIMARY.'`, '.$newShopId.', `id_parent`, `position`, `active`, `date_upd`'.
+            ' FROM `'._DB_PREFIX_.BeesBlogCategory::SHOP_TABLE.'` WHERE `id_shop` = '.$oldShopId,
+            'INSERT IGNORE INTO `'._DB_PREFIX_.BeesBlogCategory::LANG_TABLE.'`'.
+            ' (`'.BeesBlogCategory::PRIMARY.'`, `id_lang`, `id_shop`, `title`, `description`, `link_rewrite`, `meta_title`, `meta_description`, `meta_keywords`)'.
+            ' SELECT `'.BeesBlogCategory::PRIMARY.'`, `id_lang`, '.$newShopId.', `title`, `description`, `link_rewrite`, `meta_title`, `meta_description`, `meta_keywords`'.
+            ' FROM `'._DB_PREFIX_.BeesBlogCategory::LANG_TABLE.'` WHERE `id_shop` = '.$oldShopId,
+            'INSERT IGNORE INTO `'._DB_PREFIX_.BeesBlogPost::SHOP_TABLE.'`'.
+            ' (`'.BeesBlogPost::PRIMARY.'`, `id_shop`, `active`, `comments_enabled`, `date_upd`, `published`, `id_category`, `id_employee`, `image`, `position`, `post_type`, `viewed`)'.
+            ' SELECT `'.BeesBlogPost::PRIMARY.'`, '.$newShopId.', `active`, `comments_enabled`, `date_upd`, `published`, `id_category`, `id_employee`, `image`, `position`, `post_type`, `viewed`'.
+            ' FROM `'._DB_PREFIX_.BeesBlogPost::SHOP_TABLE.'` WHERE `id_shop` = '.$oldShopId,
+            'INSERT IGNORE INTO `'._DB_PREFIX_.BeesBlogPost::LANG_TABLE.'`'.
+            ' (`'.BeesBlogPost::PRIMARY.'`, `id_lang`, `id_shop`, `title`, `content`, `link_rewrite`, `meta_title`, `meta_description`, `meta_keywords`, `lang_active`)'.
+            ' SELECT `'.BeesBlogPost::PRIMARY.'`, `id_lang`, '.$newShopId.', `title`, `content`, `link_rewrite`, `meta_title`, `meta_description`, `meta_keywords`, `lang_active`'.
+            ' FROM `'._DB_PREFIX_.BeesBlogPost::LANG_TABLE.'` WHERE `id_shop` = '.$oldShopId,
+            'INSERT IGNORE INTO `'._DB_PREFIX_.BeesBlogImageType::SHOP_TABLE.'`'.
+            ' (`'.BeesBlogImageType::PRIMARY.'`, `id_shop`)'.
+            ' SELECT `'.BeesBlogImageType::PRIMARY.'`, '.$newShopId.
+            ' FROM `'._DB_PREFIX_.BeesBlogImageType::SHOP_TABLE.'` WHERE `id_shop` = '.$oldShopId,
+            'INSERT IGNORE INTO `'._DB_PREFIX_.'bees_blog_post_product`'.
+            ' (`id_product`, `'.BeesBlogPost::PRIMARY.'`, `id_shop`)'.
+            ' SELECT `id_product`, `'.BeesBlogPost::PRIMARY.'`, '.$newShopId.
+            ' FROM `'._DB_PREFIX_.'bees_blog_post_product` WHERE `id_shop` = '.$oldShopId,
+        ];
+
+        foreach ($queries as $query) {
+            if (!Db::getInstance()->execute($query)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
@@ -1154,13 +1206,14 @@ class BeesBlog extends Module
      */
     protected function installFixtures()
     {
-        Shop::addTableAssociation(BeesBlogCategory::TABLE, ['type' => 'shop']);
-        Shop::addTableAssociation(BeesBlogPost::TABLE, ['type' => 'shop']);
+        BeesBlogMultistore::registerAssociations();
+        $shopIds = array_map('intval', Shop::getShops(false, null, true));
 
         $category = new BeesBlogCategory();
         $category->active = true;
         $category->id_parent = 0;
         $category->position = 1;
+        $category->id_shop_list = $shopIds;
         $this->setLangValues($category, [
             'title' => 'News',
             'description' => 'thirty bees news',
@@ -1208,6 +1261,7 @@ class BeesBlog extends Module
         $post->post_type = '0';
         $post->viewed = 0;
         $post->published = date('Y-m-d H:i:s');
+        $post->id_shop_list = array_map('intval', Shop::getShops(false, null, true));
         $this->setLangValues($post, array_merge($texts, [
             'content' => $this->getPostFixtureContent($id . '.html'),
             'meta_keywords' => '',

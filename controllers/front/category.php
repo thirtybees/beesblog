@@ -112,7 +112,7 @@ class BeesBlogCategoryModuleFrontController extends ModuleFrontController
     {
         $categoryId = (int)$categoryId;
         if ($categoryId) {
-            $category = new BeesBlogCategory($categoryId, $this->context->language->id);
+            $category = new BeesBlogCategory($categoryId, $this->context->language->id, (int) $this->context->shop->id);
             if (Validate::isLoadedObject($category) && $category->active) {
                 return $category;
             }

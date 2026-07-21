@@ -24,6 +24,12 @@ To build a package for the thirty bees distribution machinery or suitable for im
 
 For module development, one clones this repository into `modules/` of the shop, alongside the other modules. It should work fine without packaging.
 
+## Multistore
+
+Version 1.9 adds shop-scoped posts, categories, translations, URL rewrites,
+related products, and native all/group/shop back-office workflows. See
+[the multistore behavior and migration notes](docs/multistore.md).
+
 ## Roadmap
 
 #### Short Term

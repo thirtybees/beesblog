@@ -26,6 +26,8 @@ spl_autoload_register(
         if (!in_array($className, [
             'BeesBlogModule\\BeesBlogCategory',
             'BeesBlogModule\\BeesBlogImageType',
+            'BeesBlogModule\\BeesBlogMultistore',
+            'BeesBlogModule\\BeesBlogMultistoreObjectModelTrait',
             'BeesBlogModule\\BeesBlogPost',
         ])) {
             return false;
@@ -36,7 +38,7 @@ spl_autoload_register(
         }
 
         $className = str_replace('BeesBlogModule\\', '', $className);
-        require $className.'.php';
+        require __DIR__.'/'.$className.'.php';
 
         return true;
     }

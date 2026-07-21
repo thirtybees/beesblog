@@ -133,7 +133,7 @@ class BeesBlogPostModuleFrontController extends ModuleFrontController
         if (is_null($this->blogPost)) {
             $postId = $this->getBeesBlogPostId();
             if ($postId) {
-                $blogPost = new BeesBlogPost($postId, $this->context->language->id);
+                $blogPost = new BeesBlogPost($postId, $this->context->language->id, (int) $this->context->shop->id);
                 if (Validate::isLoadedObject($blogPost) && $blogPost->active && $blogPost->lang_active) {
                     $blogPost->content = BeesBlog::processText($blogPost->content);
                     $this->blogPost = $blogPost;

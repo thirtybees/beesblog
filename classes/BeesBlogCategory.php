@@ -20,13 +20,13 @@
 namespace BeesBlogModule;
 
 use BeesBlog;
-use PrestaShopCollection as Collection;
 use Context;
 use Db;
 use DbQuery;
 use ObjectModel;
 use PrestaShopDatabaseException;
 use PrestaShopException;
+use Shop;
 use Tools;
 use Validate;
 use WebserviceRequest;
@@ -40,6 +40,8 @@ if (!defined('_TB_VERSION_')) {
  */
 class BeesBlogCategory extends ObjectModel
 {
+    use BeesBlogMultistoreObjectModelTrait;
+
     const TABLE = 'bees_blog_category';
     const PRIMARY = 'id_bees_blog_category';
     const LANG_TABLE = 'bees_blog_category_lang';
@@ -53,19 +55,29 @@ class BeesBlogCategory extends ObjectModel
         'table'          => self::TABLE,
         'primary'        => self::PRIMARY,
         'multilang'      => true,
+        'multilang_shop' => true,
         'multishop'      => true,
         'fields' => [
-            'id_parent'         => ['type' => self::TYPE_INT,                    'validate' => 'isUnsignedInt', 'required' => true,  'default' => '0',                   'db_type' => 'INT(11) UNSIGNED'],
-            'position'          => ['type' => self::TYPE_INT,                    'validate' => 'isUnsignedInt', 'required' => true,  'default' => '1',                   'db_type' => 'INT(11) UNSIGNED'],
-            'active'            => ['type' => self::TYPE_BOOL,                   'validate' => 'isBool',        'required' => true,                                      'db_type' => 'TINYINT(1)'],
+            'id_parent'         => ['type' => self::TYPE_INT,  'shop' => true,   'validate' => 'isUnsignedInt', 'required' => true,  'default' => '0',                   'db_type' => 'INT(11) UNSIGNED'],
+            'position'          => ['type' => self::TYPE_INT,  'shop' => true,   'validate' => 'isUnsignedInt', 'required' => true,  'default' => '1',                   'db_type' => 'INT(11) UNSIGNED'],
+            'active'            => ['type' => self::TYPE_BOOL, 'shop' => true,   'validate' => 'isBool',        'required' => true,                                      'db_type' => 'TINYINT(1)'],
             'date_add'          => ['type' => self::TYPE_DATE,                   'validate' => 'isString',      'required' => true,  'default' => '1970-01-01 00:00:00', 'db_type' => 'DATETIME'],
-            'date_upd'          => ['type' => self::TYPE_DATE,                   'validate' => 'isString',      'required' => true,  'default' => '1970-01-01 00:00:00', 'db_type' => 'DATETIME'],
+            'date_upd'          => ['type' => self::TYPE_DATE, 'shop' => true,   'validate' => 'isString',      'required' => true,  'default' => '1970-01-01 00:00:00', 'db_type' => 'DATETIME'],
             'title'             => ['type' => self::TYPE_STRING, 'lang' => true, 'validate' => 'isString',      'required' => true,                                      'db_type' => 'VARCHAR(255)'],
             'description'       => ['type' => self::TYPE_STRING, 'lang' => true, 'validate' => 'isString',      'required' => false,                                     'db_type' => 'VARCHAR(512)'],
             'link_rewrite'      => ['type' => self::TYPE_STRING, 'lang' => true, 'validate' => 'isLinkRewrite', 'required' => true,                                      'db_type' => 'VARCHAR(256)', 'ws_modifier' => ['http_method' => WebserviceRequest::HTTP_POST, 'modifier' => 'modifierWsLinkRewrite']],
             'meta_title'        => ['type' => self::TYPE_STRING, 'lang' => true, 'validate' => 'isGenericName', 'required' => false,                                     'db_type' => 'VARCHAR(128)'],
             'meta_description'  => ['type' => self::TYPE_STRING, 'lang' => true, 'validate' => 'isGenericName', 'required' => false,                                     'db_type' => 'VARCHAR(255)'],
             'meta_keywords'     => ['type' => self::TYPE_STRING, 'lang' => true, 'validate' => 'isGenericName', 'required' => false,                                     'db_type' => 'VARCHAR(255)'],
+        ],
+        'keys' => [
+            self::SHOP_TABLE => [
+                'primary' => ['type' => self::PRIMARY_KEY, 'columns' => [self::PRIMARY, 'id_shop']],
+            ],
+            self::LANG_TABLE => [
+                'primary' => ['type' => self::PRIMARY_KEY, 'columns' => [self::PRIMARY, 'id_shop', 'id_lang']],
+                'slug_shop_lang' => ['type' => self::UNIQUE_KEY, 'columns' => ['id_shop', 'id_lang', 'link_rewrite']],
+            ],
         ],
     ];
 
@@ -158,8 +170,9 @@ class BeesBlogCategory extends ObjectModel
      */
     public function __construct($id = null, $idLang = null, $idShop = null)
     {
+        BeesBlogMultistore::registerAssociations();
         parent::__construct($id, $idLang, $idShop);
-        $this->resolveAssociations($idLang, $idShop);
+        $this->resolveAssociations($idLang, $this->id_shop);
     }
 
     /**
@@ -217,23 +230,15 @@ class BeesBlogCategory extends ObjectModel
      */
     public function getPostsInCategory($idLang = null, $page = 0, $limit = 0, $count = false, $raw = false, $propertyFilter = [])
     {
-        $postCollection = new Collection('BeesBlogModule\\BeesBlogPost', $idLang);
-        $postCollection->setPageSize($limit);
-        $postCollection->setPageNumber($page);
-        $postCollection->orderBy('published', 'desc');
-        $postCollection->where('published', '<=', date('Y-m-d H:i:s'));
-        $postCollection->where('id_category', '=', $this->id);
-        $postCollection->where('active', '=', '1');
-        $postCollection->sqlWhere('lang_active = \'1\'');
-
-        if ($count) {
-            return $postCollection->count();
-        }
-
-        $results = $postCollection->getResults();
-        static::filterCollectionResults($results, $raw, $propertyFilter);
-
-        return $results;
+        return BeesBlogPost::getPostsByCategory(
+            (int) $this->id,
+            $idLang,
+            $page,
+            $limit,
+            $count,
+            $raw,
+            $propertyFilter
+        );
     }
 
     /**
@@ -251,15 +256,42 @@ class BeesBlogCategory extends ObjectModel
      */
     public static function getCategories($idLang = null, $page = 0, $limit = 0, $count = false, $raw = false, $propertyFilter = [])
     {
-        $categoryCollection = new Collection('BeesBlogModule\\BeesBlogCategory', $idLang);
-        $categoryCollection->setPageSize($limit);
-        $categoryCollection->setPageNumber($page);
+        $idLang = $idLang ? (int) $idLang : (int) Context::getContext()->language->id;
+        $shopIds = Shop::getContext() === Shop::CONTEXT_SHOP
+            ? [(int) Context::getContext()->shop->id]
+            : BeesBlogMultistore::getContextShopIds();
+        if (!$shopIds) {
+            return $count ? 0 : [];
+        }
+        $shopList = implode(', ', $shopIds);
+        $query = new DbQuery();
+        $query->from(static::TABLE, 'c');
+        $query->innerJoin(
+            static::SHOP_TABLE,
+            'cs',
+            'cs.`'.static::PRIMARY.'` = c.`'.static::PRIMARY.'`'.
+            ' AND cs.`id_shop` = (SELECT MIN(cs_scope.`id_shop`)'.
+            ' FROM `'._DB_PREFIX_.static::SHOP_TABLE.'` cs_scope'.
+            ' WHERE cs_scope.`'.static::PRIMARY.'` = c.`'.static::PRIMARY.'`'.
+            ' AND cs_scope.`id_shop` IN ('.$shopList.'))'
+        );
+        $query->innerJoin(static::LANG_TABLE, 'cl', 'cl.`'.static::PRIMARY.'` = c.`'.static::PRIMARY.'` AND cl.`id_shop` = cs.`id_shop` AND cl.`id_lang` = '.$idLang);
 
         if ($count) {
-            return $categoryCollection->count();
+            $query->select('COUNT(*)');
+            return (int) Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($query);
         }
 
-        $results = $categoryCollection->getResults();
+        $query->select('c.`'.static::PRIMARY.'`, cs.`id_shop`');
+        $query->orderBy('cs.`position` ASC, cl.`title` ASC');
+        if ($limit > 0) {
+            $query->limit((int) $limit, max(0, (int) $page - 1) * (int) $limit);
+        }
+
+        $results = [];
+        foreach ((array) Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($query) as $row) {
+            $results[] = new static((int) $row[static::PRIMARY], $idLang, (int) $row['id_shop']);
+        }
         static::filterCollectionResults($results, $raw, $propertyFilter);
 
         return $results;
@@ -277,12 +309,17 @@ class BeesBlogCategory extends ObjectModel
             $idLang = (int) Context::getContext()->language->id;
         }
 
-        $categoryCollection = new Collection('BeesBlogModule\\BeesBlogCategory', $idLang);
-        $categoryCollection->where('id_parent', '=', 0);
+        $idShop = (int) Context::getContext()->shop->id;
+        $id = (int) Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue(
+            (new DbQuery())
+                ->select('c.`'.static::PRIMARY.'`')
+                ->from(static::TABLE, 'c')
+                ->innerJoin(static::SHOP_TABLE, 'cs', 'cs.`'.static::PRIMARY.'` = c.`'.static::PRIMARY.'` AND cs.`id_shop` = '.$idShop)
+                ->where('cs.`id_parent` = 0')
+                ->orderBy('cs.`position` ASC')
+        );
 
-        /** @var BeesBlogCategory|false $ret */
-        $ret = $categoryCollection->getFirst();
-        return $ret;
+        return $id ? new static($id, $idLang, $idShop) : false;
     }
 
     /**
@@ -310,11 +347,10 @@ class BeesBlogCategory extends ObjectModel
         $sql = new DbQuery();
         $sql->select('sbc.`'.static::PRIMARY.'`');
         $sql->from(static::TABLE, 'sbc');
-        $sql->innerJoin(static::LANG_TABLE, 'sbcl', 'sbc.`'.static::PRIMARY.'` = sbcl.`'.static::PRIMARY.'`');
-        $sql->innerJoin(static::SHOP_TABLE, 'sbcs', 'sbc.`'.static::PRIMARY.'` = sbcs.`'.static::PRIMARY.'`');
+        $sql->innerJoin(static::SHOP_TABLE, 'sbcs', 'sbc.`'.static::PRIMARY.'` = sbcs.`'.static::PRIMARY.'` AND sbcs.`id_shop` = '.(int) $idShop);
+        $sql->innerJoin(static::LANG_TABLE, 'sbcl', 'sbc.`'.static::PRIMARY.'` = sbcl.`'.static::PRIMARY.'` AND sbcl.`id_shop` = sbcs.`id_shop`');
         $sql->where('sbcl.`id_lang` = '.(int) $idLang);
-        $sql->where('sbcs.`id_shop` = '.(int) $idShop);
-        $sql->where('sbc.`active` = '.(int) $active);
+        $sql->where('sbcs.`active` = '.(int) $active);
         $sql->where('sbcl.`link_rewrite` = \''.pSQL($rewrite).'\'');
 
         return Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql);
@@ -385,19 +421,22 @@ class BeesBlogCategory extends ObjectModel
      * @throws PrestaShopDatabaseException
      * @throws PrestaShopException
      */
-    public static function getNameById($id, $idLang = null)
+    public static function getNameById($id, $idLang = null, $idShop = null)
     {
         if (empty($idLang)) {
             $idLang = (int) Context::getContext()->language->id;
+        }
+        if (empty($idShop)) {
+            $idShop = (int) Context::getContext()->shop->id;
         }
 
         $sql = new DbQuery();
         $sql->select('sbcl.`title`');
         $sql->from(static::TABLE, 'sbc');
-        $sql->innerJoin(static::LANG_TABLE, 'sbcl', 'sbc.`'.static::PRIMARY.'` = sbcl.`'.static::PRIMARY.'`');
-        $sql->innerJoin(static::SHOP_TABLE, 'sbcs', 'sbc.`'.static::PRIMARY.'` = sbcs.`'.static::PRIMARY.'`');
+        $sql->innerJoin(static::SHOP_TABLE, 'sbcs', 'sbc.`'.static::PRIMARY.'` = sbcs.`'.static::PRIMARY.'` AND sbcs.`id_shop` = '.(int) $idShop);
+        $sql->innerJoin(static::LANG_TABLE, 'sbcl', 'sbc.`'.static::PRIMARY.'` = sbcl.`'.static::PRIMARY.'` AND sbcl.`id_shop` = sbcs.`id_shop`');
         $sql->where('sbcl.`id_lang` = '.(int) $idLang);
-        $sql->where('sbcl.`'.static::PRIMARY.'` = \''.pSQL($id).'\'');
+        $sql->where('sbcl.`'.static::PRIMARY.'` = '.(int) $id);
 
         return Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql);
     }
