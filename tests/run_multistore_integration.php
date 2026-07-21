@@ -131,6 +131,12 @@ try {
         assertTest((int) $db->getValue('SELECT COUNT(*) FROM `'._DB_PREFIX_.BeesBlogPost::LANG_TABLE.'`') > 0, 'legacy post translations were copied');
         assertTest((int) $db->getValue('SELECT COUNT(*) FROM `'._DB_PREFIX_.BeesBlogCategory::LANG_TABLE.'`') > 0, 'legacy category translations were copied');
     }
+    foreach (Language::getLanguages(false, false, true) as $idLang) {
+        assertTest(
+            BeesBlog::getBlogUrlKey((int) $idLang, (int) Configuration::get('PS_SHOP_DEFAULT')) !== '',
+            'legacy blog URL key is available for language '.(int) $idLang
+        );
+    }
 
     $sourceShop = (array) $db->getRow(
         'SELECT * FROM `'._DB_PREFIX_.'shop` WHERE `active` = 1 AND `deleted` = 0 ORDER BY `id_shop` ASC'
@@ -159,7 +165,92 @@ try {
         'INSERT IGNORE INTO `'._DB_PREFIX_.'module_shop` (`id_module`, `id_shop`)'.
         ' SELECT `id_module`, '.$testShopId.' FROM `'._DB_PREFIX_.'module_shop` WHERE `id_shop` = '.$sourceShopId
     );
+    $db->execute(
+        'INSERT IGNORE INTO `'._DB_PREFIX_.'hook_module` (`id_module`, `id_shop`, `id_hook`, `position`)'.
+        ' SELECT `id_module`, '.$testShopId.', `id_hook`, `position`'.
+        ' FROM `'._DB_PREFIX_.'hook_module` WHERE `id_shop` = '.$sourceShopId
+    );
     Shop::cacheShops(true);
+    Language::loadLanguages();
+
+    if (Shop::isFeatureActive()) {
+        $routeLanguageIds = Language::getLanguages(true, $testShopId, true);
+        assertTest(count($routeLanguageIds) >= 2, 'temporary shop has at least two active languages for route testing');
+        $firstRouteLanguageId = (int) $routeLanguageIds[0];
+        $secondRouteLanguageId = (int) $routeLanguageIds[1];
+        $firstBlogUrlKey = $token.'-blog-one';
+        $secondBlogUrlKey = $token.'-blog-two';
+        Shop::setContext(Shop::CONTEXT_SHOP, $testShopId);
+        Context::getContext()->shop = new Shop($testShopId);
+        assertTest(Configuration::updateValue(
+            BeesBlog::MAIN_URL_KEY,
+            [
+                $firstRouteLanguageId => $firstBlogUrlKey,
+                $secondRouteLanguageId => $secondBlogUrlKey,
+            ],
+            false,
+            $sourceGroupId,
+            $testShopId
+        ), 'shop-specific translated blog URL keys can be saved');
+        assertTest(
+            BeesBlog::getBlogUrlKey($firstRouteLanguageId, $testShopId) === $firstBlogUrlKey,
+            'first-language blog URL key is shop-scoped'
+        );
+        assertTest(
+            BeesBlog::getBlogUrlKey($secondRouteLanguageId, $testShopId) === $secondBlogUrlKey,
+            'second-language blog URL key is shop-scoped'
+        );
+        Shop::setContext(Shop::CONTEXT_SHOP, $sourceShopId);
+        Context::getContext()->shop = new Shop($sourceShopId);
+        $sourceShopBlogUrlKey = BeesBlog::getBlogUrlKey($firstRouteLanguageId, $sourceShopId);
+        assertTest(
+            $sourceShopBlogUrlKey !== $firstBlogUrlKey,
+            'shop-specific blog URL key does not leak into another shop (source: '.$sourceShopBlogUrlKey.')'
+        );
+        Shop::setContext(Shop::CONTEXT_SHOP, $testShopId);
+        Context::getContext()->shop = new Shop($testShopId);
+
+        $routeDefinitions = $module->hookModuleRoutes(['id_shop' => $testShopId]);
+        assertTest(
+            $routeDefinitions['beesblog']['rule'] === '{'.BeesBlog::MAIN_URL_ROUTE_PARAM.'}',
+            'blog route uses the translated-prefix placeholder'
+        );
+        $routeRegexp = $routeDefinitions['beesblog']['keywords'][BeesBlog::MAIN_URL_ROUTE_PARAM]['regexp'];
+        assertTest(
+            preg_match('#^(?:'.$routeRegexp.')$#u', $firstBlogUrlKey) === 1
+            && preg_match('#^(?:'.$routeRegexp.')$#u', $secondBlogUrlKey) === 1,
+            'shop route matcher accepts both configured language prefixes'
+        );
+        assertTest(
+            preg_match('#^(?:'.$routeRegexp.')$#u', $token.'-unconfigured') === 0,
+            'shop route matcher rejects unconfigured prefixes'
+        );
+
+        $firstBlogUrl = BeesBlog::getBeesBlogLink('beesblog', [], $testShopId, $firstRouteLanguageId);
+        $secondBlogUrl = BeesBlog::getBeesBlogLink('beesblog', [], $testShopId, $secondRouteLanguageId);
+        parse_str((string) parse_url($firstBlogUrl, PHP_URL_QUERY), $firstBlogQuery);
+        parse_str((string) parse_url($secondBlogUrl, PHP_URL_QUERY), $secondBlogQuery);
+        assertTest(
+            strpos((string) parse_url($firstBlogUrl, PHP_URL_PATH), '/'.$firstBlogUrlKey) !== false
+            || ($firstBlogQuery[BeesBlog::MAIN_URL_ROUTE_PARAM] ?? null) === $firstBlogUrlKey,
+            'first-language generated URL contains its translated blog prefix in friendly or query form'
+        );
+        assertTest(
+            strpos((string) parse_url($secondBlogUrl, PHP_URL_PATH), '/'.$secondBlogUrlKey) !== false
+            || ($secondBlogQuery[BeesBlog::MAIN_URL_ROUTE_PARAM] ?? null) === $secondBlogUrlKey,
+            'second-language generated URL contains its translated blog prefix in friendly or query form'
+        );
+        assertTest($firstBlogUrl !== $secondBlogUrl, 'translated blog prefixes generate different URLs');
+        assertTest(BeesBlog::migrateMainUrlKeyTranslations(), 'blog URL key migration can be rerun');
+        assertTest(
+            BeesBlog::getBlogUrlKey($secondRouteLanguageId, $testShopId) === $secondBlogUrlKey,
+            'rerunning URL-key migration preserves an existing translation'
+        );
+    } else {
+        echo "SKIP: native configuration isolation requires multistore to be active before bootstrap\n";
+    }
+    Shop::setContext(Shop::CONTEXT_SHOP, $testShopId);
+    Context::getContext()->shop = new Shop($testShopId);
 
     assertTest($module->hookActionShopDataDuplication([
         'old_id_shop' => $sourceShopId,
@@ -171,8 +262,6 @@ try {
         'shop duplication copies post associations'
     );
 
-    Shop::setContext(Shop::CONTEXT_SHOP, $testShopId);
-    Context::getContext()->shop = new Shop($testShopId);
     assertTest(BeesBlogMultistore::getSubmittedShopIds(BeesBlogPost::TABLE) === [$testShopId], 'shop context resolves only the selected shop');
     $testOnlyCategory = addCategoryForTest($token.'-test-category', [$testShopId]);
     $createdCategories[] = (int) $testOnlyCategory->id;
@@ -312,6 +401,13 @@ try {
     }
 
     if ($testShopId) {
+        $configurationIds = array_map('intval', array_column((array) $db->executeS(
+            'SELECT `id_configuration` FROM `'._DB_PREFIX_.'configuration` WHERE `id_shop` = '.(int) $testShopId
+        ), 'id_configuration'));
+        if ($configurationIds) {
+            $db->delete('configuration_lang', '`id_configuration` IN ('.implode(',', $configurationIds).')');
+            $db->delete('configuration', '`id_configuration` IN ('.implode(',', $configurationIds).')');
+        }
         foreach ([
             'bees_blog_post_product',
             BeesBlogPost::LANG_TABLE,
@@ -320,6 +416,7 @@ try {
             BeesBlogCategory::SHOP_TABLE,
             'bees_blog_image_type_shop',
             'module_shop',
+            'hook_module',
             'employee_shop',
             'lang_shop',
             'shop_url',

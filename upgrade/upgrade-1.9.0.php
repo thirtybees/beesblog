@@ -18,5 +18,7 @@ if (!defined('_TB_VERSION_')) {
  */
 function upgrade_module_1_9_0($module)
 {
-    return BeesBlogMultistore::migrateSchema() && $module->registerHooks();
+    return BeesBlogMultistore::migrateSchema()
+        && BeesBlog::migrateMainUrlKeyTranslations()
+        && $module->registerHooks();
 }

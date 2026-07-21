@@ -36,6 +36,21 @@ try {
     $idShop = (int) $context->shop->id;
     $idLang = (int) $context->language->id;
 
+    $blogUrlKey = BeesBlog::getBlogUrlKey($idLang, $idShop);
+    assertSmoke($blogUrlKey !== '', 'translated blog URL key resolves for the current shop and language');
+    $blogUrl = BeesBlog::getBeesBlogLink('beesblog', [], $idShop, $idLang);
+    parse_str((string) parse_url($blogUrl, PHP_URL_QUERY), $blogQuery);
+    assertSmoke(
+        strpos((string) parse_url($blogUrl, PHP_URL_PATH), '/'.$blogUrlKey) !== false
+        || ($blogQuery[BeesBlog::MAIN_URL_ROUTE_PARAM] ?? null) === $blogUrlKey,
+        'blog home URL contains the translated route prefix in friendly or query form'
+    );
+    $blogRoute = Dispatcher::getInstance()->getRoute('beesblog', $idLang, $idShop);
+    assertSmoke(
+        isset($blogRoute['regexp']) && preg_match($blogRoute['regexp'], '/'.$blogUrlKey) === 1,
+        'front-office dispatcher matches the configured blog route prefix'
+    );
+
     $postRow = Db::getInstance()->getRow(
         'SELECT pl.`'.BeesBlogPost::PRIMARY.'`, pl.`link_rewrite`'.
         ' FROM `'._DB_PREFIX_.BeesBlogPost::LANG_TABLE.'` pl'.

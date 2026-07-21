@@ -37,6 +37,7 @@ class BeesBlog extends Module
     const POSTS_PER_PAGE = 'BEESBLOG_POSTS_PER_PAGE';
     const AUTHOR_STYLE = 'BEESBLOG_SHOW_AUTHOR_STYLE';
     const MAIN_URL_KEY = 'BEESBLOG_MAIN_URL_KEY';
+    const MAIN_URL_ROUTE_PARAM = 'blog_url_key';
     const USE_HTML = 'BEESBLOG_USE_HTML';
     const ENABLE_COMMENT = 'BEESBLOG_ENABLE_COMMENT';
     const SHOW_AUTHOR = 'BEESBLOG_SHOW_AUTHOR';
@@ -126,7 +127,7 @@ class BeesBlog extends Module
         Configuration::updateGlobalValue(static::SHOW_DATE, true);
         Configuration::updateGlobalValue(static::SOCIAL_SHARING, true);
         Configuration::updateGlobalValue(static::AUTHOR_STYLE, 1);
-        Configuration::updateGlobalValue(static::MAIN_URL_KEY, 'blog');
+        Configuration::updateGlobalValue(static::MAIN_URL_KEY, $this->getTranslatedDefaults('blog'));
         Configuration::updateGlobalValue(static::USE_HTML, true);
         Configuration::updateGlobalValue(static::SHOW_POST_COUNT, true);
         Configuration::updateGlobalValue(static::SHOW_NO_IMAGE, false);
@@ -371,15 +372,24 @@ class BeesBlog extends Module
      * @return array Array with routes
      * @throws PrestaShopException
      */
-    public function hookModuleRoutes()
+    public function hookModuleRoutes($params = [])
     {
-        $alias = Configuration::get(static::MAIN_URL_KEY);
+        $idShop = isset($params['id_shop'])
+            ? (int) $params['id_shop']
+            : (int) Context::getContext()->shop->id;
+        $alias = '{'.static::MAIN_URL_ROUTE_PARAM.'}';
+        $aliasKeyword = [
+            static::MAIN_URL_ROUTE_PARAM => [
+                'regexp' => static::getBlogUrlKeyRegexp($idShop),
+                'param' => static::MAIN_URL_ROUTE_PARAM,
+            ],
+        ];
 
         return [
             'beesblog'                     => [
                 'controller' => 'category',
                 'rule'       => $alias,
-                'keywords'   => [],
+                'keywords'   => $aliasKeyword,
                 'params'     => [
                     'fc'     => 'module',
                     'module' => $this->name,
@@ -388,7 +398,7 @@ class BeesBlog extends Module
             'beesblog_list'                => [
                 'controller' => 'category',
                 'rule'       => "{$alias}/category",
-                'keywords'   => [],
+                'keywords'   => $aliasKeyword,
                 'params'     => [
                     'fc'     => 'module',
                     'module' => $this->name,
@@ -397,7 +407,7 @@ class BeesBlog extends Module
             'beesblog_list_module'         => [
                 'controller' => 'category',
                 'rule'       => "module/{$alias}/category",
-                'keywords'   => [],
+                'keywords'   => $aliasKeyword,
                 'params'     => [
                     'fc'     => 'module',
                     'module' => $this->name,
@@ -406,9 +416,9 @@ class BeesBlog extends Module
             'beesblog_list_pagination'     => [
                 'controller' => 'category',
                 'rule'       => "{$alias}/category/page/{page}",
-                'keywords'   => [
+                'keywords'   => array_merge($aliasKeyword, [
                     'page' => ['regexp' => '[_a-zA-Z0-9-\pL]*', 'param' => 'page'],
-                ],
+                ]),
                 'params'     => [
                     'fc'     => 'module',
                     'module' => $this->name,
@@ -417,9 +427,9 @@ class BeesBlog extends Module
             'beesblog_pagination'          => [
                 'controller' => 'category',
                 'rule'       => "{$alias}/page/{page}",
-                'keywords'   => [
+                'keywords'   => array_merge($aliasKeyword, [
                     'page' => ['regexp' => '[_a-zA-Z0-9-\pL]*', 'param' => 'page'],
-                ],
+                ]),
                 'params'     => [
                     'fc'     => 'module',
                     'module' => $this->name,
@@ -428,9 +438,9 @@ class BeesBlog extends Module
             'beesblog_category'            => [
                 'controller' => 'category',
                 'rule'       => "{$alias}/category/{cat_rewrite}",
-                'keywords'   => [
+                'keywords'   => array_merge($aliasKeyword, [
                     'cat_rewrite' => ['regexp' => '[_a-zA-Z0-9-\pL]*', 'param' => 'cat_rewrite'],
-                ],
+                ]),
                 'params'     => [
                     'fc'     => 'module',
                     'module' => $this->name,
@@ -439,10 +449,10 @@ class BeesBlog extends Module
             'beesblog_category_pagination' => [
                 'controller' => 'category',
                 'rule'       => "{$alias}/category/{cat_rewrite}/page/{page}",
-                'keywords'   => [
+                'keywords'   => array_merge($aliasKeyword, [
                     'page'        => ['regexp' => '[_a-zA-Z0-9-\pL]*', 'param' => 'page'],
                     'cat_rewrite' => ['regexp' => '[_a-zA-Z0-9-\pL]*', 'param' => 'cat_rewrite'],
-                ],
+                ]),
                 'params'     => [
                     'fc'     => 'module',
                     'module' => $this->name,
@@ -451,10 +461,10 @@ class BeesBlog extends Module
             'beesblog_cat_page_mod'        => [
                 'controller' => 'category',
                 'rule'       => "module/{$alias}/category/{blog_rewrite}/page/{page}",
-                'keywords'   => [
+                'keywords'   => array_merge($aliasKeyword, [
                     'page'         => ['regexp' => '[_a-zA-Z0-9-\pL]*', 'param' => 'page'],
                     'blog_rewrite' => ['regexp' => '[_a-zA-Z0-9-\pL]*'],
-                ],
+                ]),
                 'params'     => [
                     'fc'     => 'module',
                     'module' => $this->name,
@@ -463,15 +473,160 @@ class BeesBlog extends Module
             'beesblog_post'                => [
                 'controller' => 'post',
                 'rule'       => "{$alias}/{blog_rewrite}",
-                'keywords'   => [
+                'keywords'   => array_merge($aliasKeyword, [
                     'blog_rewrite' => ['regexp' => '[_a-zA-Z0-9-\pL]+', 'param' => 'blog_rewrite'],
-                ],
+                ]),
                 'params'     => [
                     'fc'     => 'module',
                     'module' => $this->name,
                 ],
             ],
         ];
+    }
+
+    /**
+     * Return the translated route prefix for a shop and language.
+     *
+     * Configuration::get() needs the target shop group explicitly when links
+     * are generated for a shop outside the current context. Otherwise a group
+     * fallback could be read from the current shop instead of the target shop.
+     *
+     * @param int|null $idLang
+     * @param int|null $idShop
+     * @return string
+     * @throws PrestaShopException
+     */
+    public static function getBlogUrlKey($idLang = null, $idShop = null)
+    {
+        $context = Context::getContext();
+        if ($idShop === null) {
+            $idShop = isset($context->shop) ? (int) $context->shop->id : 0;
+        }
+        $idShopGroup = $idShop ? (int) Shop::getGroupFromShop($idShop) : null;
+        if ($idLang === null) {
+            $idLang = isset($context->language)
+                ? (int) $context->language->id
+                : (int) Configuration::get('PS_LANG_DEFAULT', null, $idShopGroup, $idShop);
+        }
+
+        $value = Configuration::get(static::MAIN_URL_KEY, (int) $idLang, $idShopGroup, $idShop);
+        if ($value === false || trim((string) $value) === '') {
+            $defaultLang = (int) Configuration::get('PS_LANG_DEFAULT', null, $idShopGroup, $idShop);
+            if ($defaultLang && $defaultLang !== (int) $idLang) {
+                $value = Configuration::get(static::MAIN_URL_KEY, $defaultLang, $idShopGroup, $idShop);
+            }
+        }
+        if ($value === false || trim((string) $value) === '') {
+            $value = Configuration::get(static::MAIN_URL_KEY, null, $idShopGroup, $idShop);
+        }
+
+        $value = static::normalizeBlogUrlKey($value);
+        return $value !== '' ? $value : 'blog';
+    }
+
+    /**
+     * Build the safe alternation used by the shared module route definition.
+     * The dispatcher registers this definition for every language, so it must
+     * recognize every configured prefix in the target shop. URL generation
+     * still injects only the prefix of the requested language.
+     *
+     * @param int|null $idShop
+     * @return string
+     * @throws PrestaShopException
+     */
+    public static function getBlogUrlKeyRegexp($idShop = null)
+    {
+        if ($idShop === null) {
+            $idShop = isset(Context::getContext()->shop) ? (int) Context::getContext()->shop->id : 0;
+        }
+
+        $keys = [];
+        $languageIds = Language::getLanguages(true, $idShop ?: false, true);
+        if (!$languageIds) {
+            $languageIds = Language::getLanguages(true, false, true);
+        }
+        foreach ($languageIds as $idLang) {
+            $keys[] = static::getBlogUrlKey((int) $idLang, $idShop);
+        }
+        $keys = array_values(array_unique(array_filter($keys, function ($key) {
+            return $key !== '';
+        })));
+        if (!$keys) {
+            $keys = ['blog'];
+        }
+
+        return implode('|', array_map(function ($key) {
+            return preg_quote($key, '#');
+        }, $keys));
+    }
+
+    /**
+     * @param mixed $value
+     * @return string
+     */
+    public static function normalizeBlogUrlKey($value)
+    {
+        $value = Tools::link_rewrite(trim((string) $value));
+        return mb_substr(trim($value, '-'), 0, 255);
+    }
+
+    /**
+     * Copy every legacy scalar route prefix to missing language rows at the
+     * same global, group or shop configuration scope. Existing translations
+     * are deliberately preserved, making the migration safe to rerun.
+     *
+     * @return bool
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
+     */
+    public static function migrateMainUrlKeyTranslations()
+    {
+        $languageIds = Language::getLanguages(false, false, true);
+        $db = Db::getInstance();
+        $rows = $db->executeS(
+            'SELECT `id_configuration`, `id_shop_group`, `id_shop`, `value`'.
+            ' FROM `'._DB_PREFIX_.'configuration`'.
+            ' WHERE `name` = \''.pSQL(static::MAIN_URL_KEY).'\''
+        );
+
+        if (!$rows) {
+            return Configuration::updateGlobalValue(
+                static::MAIN_URL_KEY,
+                array_fill_keys($languageIds, 'blog')
+            );
+        }
+
+        $result = true;
+        foreach ($rows as $row) {
+            $idConfiguration = (int) $row['id_configuration'];
+            $idShopGroup = (int) $row['id_shop_group'] ?: null;
+            $idShop = (int) $row['id_shop'] ?: null;
+            $legacyValue = static::normalizeBlogUrlKey($row['value']);
+            if ($legacyValue === '') {
+                $legacyValue = static::normalizeBlogUrlKey($db->getValue(
+                    'SELECT `value` FROM `'._DB_PREFIX_.'configuration_lang`'.
+                    ' WHERE `id_configuration` = '.$idConfiguration.' AND `value` IS NOT NULL AND `value` != \'\''.
+                    ' ORDER BY `id_lang` ASC'
+                ));
+            }
+            if ($legacyValue === '') {
+                $legacyValue = 'blog';
+            }
+            foreach ($languageIds as $idLang) {
+                $idLang = (int) $idLang;
+                if (!Configuration::hasKey(static::MAIN_URL_KEY, $idLang, $idShopGroup, $idShop)) {
+                    $result = $db->execute(
+                        'INSERT IGNORE INTO `'._DB_PREFIX_.'configuration_lang`'.
+                        ' (`id_configuration`, `id_lang`, `value`, `date_upd`) VALUES'.
+                        ' ('.$idConfiguration.', '.$idLang.', \''.pSQL($legacyValue).'\', NOW())'
+                    ) && $result;
+                }
+            }
+        }
+
+        Configuration::loadConfiguration();
+
+        return $result;
     }
 
     /**
@@ -563,6 +718,13 @@ class BeesBlog extends Module
         $dispatcher = Dispatcher::getInstance();
         $context = Context::getContext();
         $link = $context->link;
+        if ($idShop === null) {
+            $idShop = (int) $context->shop->id;
+        }
+        if ($idLang === null) {
+            $idLang = (int) $context->language->id;
+        }
+        $params[static::MAIN_URL_ROUTE_PARAM] = static::getBlogUrlKey($idLang, $idShop);
         return $link->getBaseLink($idShop) . $link->getLangLink($idLang, $context, $idShop) . $dispatcher->createUrl($rewrite, $idLang, $params, false, '', $idShop);
     }
 
@@ -730,6 +892,11 @@ class BeesBlog extends Module
     protected function postProcess()
     {
         if (Tools::isSubmit('submit'.$this->name)) {
+            $blogUrlKeys = $this->getBlogUrlKeyFormValues();
+            if (!$blogUrlKeys) {
+                $this->_errors[] = $this->l('The blog URL key must contain at least one letter or number.');
+                return;
+            }
             Configuration::updateValue(static::HOME_TITLE, $this->getTranslatedFormValues(
                 static::HOME_TITLE,
                 $this->getTranslatedConfiguration(static::HOME_TITLE, (int) Configuration::get('PS_LANG_DEFAULT'))
@@ -749,7 +916,7 @@ class BeesBlog extends Module
             Configuration::updateValue(static::SHOW_DATE, Tools::getValue(static::SHOW_DATE));
             Configuration::updateValue(static::SOCIAL_SHARING, Tools::getValue(static::SOCIAL_SHARING));
             Configuration::updateValue(static::AUTHOR_STYLE, Tools::getValue(static::AUTHOR_STYLE));
-            Configuration::updateValue(static::MAIN_URL_KEY, Tools::getValue(static::MAIN_URL_KEY));
+            Configuration::updateValue(static::MAIN_URL_KEY, $blogUrlKeys);
             Configuration::updateValue(static::USE_HTML, Tools::getValue(static::USE_HTML));
             Configuration::updateValue(static::SHOW_NO_IMAGE, Tools::getValue(static::SHOW_NO_IMAGE));
         }
@@ -822,6 +989,8 @@ class BeesBlog extends Module
                     'name'     => static::MAIN_URL_KEY,
                     'size'     => 15,
                     'required' => true,
+                    'lang'     => true,
+                    'desc'     => $this->l('Language-specific URL prefix for the blog. It is saved in the current shop context.'),
                 ],
                 [
                     'type'     => 'select',
@@ -1008,7 +1177,6 @@ class BeesBlog extends Module
                 static::SHOW_DATE,
                 static::SOCIAL_SHARING,
                 static::AUTHOR_STYLE,
-                static::MAIN_URL_KEY,
                 static::USE_HTML,
                 static::SHOW_POST_COUNT,
                 static::SHOW_CATEGORY_IMAGE,
@@ -1019,6 +1187,7 @@ class BeesBlog extends Module
         $values[static::HOME_TITLE] = $this->getTranslatedConfigurationValues(static::HOME_TITLE);
         $values[static::HOME_KEYWORDS] = $this->getTranslatedConfigurationValues(static::HOME_KEYWORDS);
         $values[static::HOME_DESCRIPTION] = $this->getTranslatedConfigurationValues(static::HOME_DESCRIPTION);
+        $values[static::MAIN_URL_KEY] = $this->getTranslatedConfigurationValues(static::MAIN_URL_KEY);
 
         return $values;
     }
@@ -1109,6 +1278,33 @@ class BeesBlog extends Module
         }
 
         return $normalized;
+    }
+
+    /**
+     * Read and normalize the translated route-prefix fields. Empty secondary
+     * languages inherit the submitted default-language value.
+     *
+     * @return array<int,string>
+     * @throws PrestaShopException
+     */
+    protected function getBlogUrlKeyFormValues()
+    {
+        $defaultLang = (int) Configuration::get('PS_LANG_DEFAULT');
+        $values = $this->getTranslatedFormValues(
+            static::MAIN_URL_KEY,
+            static::getTranslatedConfiguration(static::MAIN_URL_KEY, $defaultLang)
+        );
+        $defaultValue = static::normalizeBlogUrlKey($values[$defaultLang] ?? '');
+        if ($defaultValue === '') {
+            return [];
+        }
+
+        foreach ($values as $idLang => $value) {
+            $value = static::normalizeBlogUrlKey($value);
+            $values[(int) $idLang] = $value !== '' ? $value : $defaultValue;
+        }
+
+        return $values;
     }
 
     /**

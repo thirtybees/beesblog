@@ -20,7 +20,8 @@ context selector defines the write scope.
 | Post/category status, position, dates, category/parent, author, comments and views | Shop |
 | Titles, content, SEO fields, language status and URL rewrite | Shop + language |
 | Related products | Shop |
-| Module configuration and blog route prefix | Native thirty bees global/group/shop configuration inheritance |
+| Module configuration | Native thirty bees global/group/shop configuration inheritance |
+| Blog route prefix | Global/group/shop configuration + language |
 | Entity identifier and creation date | Global |
 | Image files and image-type definitions | Shared by entity; image-type associations are per shop |
 
@@ -40,12 +41,21 @@ language row to the same shop association. Therefore:
 - `category` and `page` remain reserved post rewrites because they are blog
   routes.
 
+The main blog prefix is also translated and follows the current configuration
+shop context. For example, the same shop can use `/en/blog/...` and
+`/fr/actualites/...`, while another shop can configure different prefixes.
+The route matcher is restricted to prefixes configured for the requested shop,
+and URL generation selects the prefix for the requested language. Theme
+templates do not need to pass or render this internal route parameter.
+
 ## Upgrade and shop duplication
 
 The 1.9.0 upgrade copies legacy translations to every existing association,
 moves mutable values into the shop tables, scopes related products, repairs
-missing associations, and adds shop-aware keys. The migration is idempotent;
-rerunning it does not overwrite later shop-specific edits.
+missing associations, and adds shop-aware keys. It also copies every legacy
+scalar blog prefix into missing language rows at the same global, group, or
+shop scope. The migration is idempotent: rerunning it preserves existing
+shop-specific edits and translated route prefixes.
 
 When thirty bees duplicates a shop, the module's native
 `actionShopDataDuplication` hook copies post, category, translation,
