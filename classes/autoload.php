@@ -27,6 +27,7 @@ spl_autoload_register(
             'BeesBlogModule\\BeesBlogCategory',
             'BeesBlogModule\\BeesBlogImage',
             'BeesBlogModule\\BeesBlogImageType',
+            'BeesBlogModule\\BeesBlogLanguageLink',
             'BeesBlogModule\\BeesBlogMultistore',
             'BeesBlogModule\\BeesBlogMultistoreObjectModelTrait',
             'BeesBlogModule\\BeesBlogPost',

@@ -17,6 +17,7 @@
  * @license   Academic Free License (AFL 3.0)
  */
 
+use BeesBlogModule\BeesBlogLanguageLink;
 use BeesBlogModule\BeesBlogPost;
 
 if (!defined('_TB_VERSION_')) {
@@ -56,6 +57,12 @@ class BeesBlogPostModuleFrontController extends ModuleFrontController
      */
     public function initContent()
     {
+        BeesBlogLanguageLink::install(
+            BeesBlogLanguageLink::ENTITY_POST,
+            $this->getBeesBlogPostId(),
+            (int) $this->context->shop->id
+        );
+
         parent::initContent();
 
         $post = $this->getBeesBlogPost();

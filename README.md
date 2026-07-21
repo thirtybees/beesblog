@@ -103,7 +103,11 @@ shop context. For example, the same shop can use `/en/blog/...` and
 `/fr/actualites/...`, while another shop can configure different prefixes.
 The route matcher is restricted to prefixes configured for the requested shop,
 and URL generation selects the prefix for the requested language. Theme
-templates do not need to pass or render this internal route parameter.
+templates do not need to pass or render this internal route parameter. On post
+and category pages, the standard language-switch link is decorated so it loads
+the same entity in the target language with that language's route prefix and
+rewrite. This avoids query-string duplicates and does not require changes to
+the language-switcher or theme templates.
 
 ### Upgrade and shop duplication
 

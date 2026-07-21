@@ -22,6 +22,7 @@ require_once __DIR__.'/integration_helpers.php';
 
 use BeesBlogModule\BeesBlogCategory;
 use BeesBlogModule\BeesBlogImage;
+use BeesBlogModule\BeesBlogLanguageLink;
 use BeesBlogModule\BeesBlogMultistore;
 use BeesBlogModule\BeesBlogPost;
 
@@ -229,6 +230,59 @@ try {
 
     $sharedPost = addPostForTest($token.'-shared-post', $sharedCategory->id, $allShopIds);
     $createdPosts[] = (int) $sharedPost->id;
+
+    $switchLanguageIds = Language::getLanguages(true, $testShopId, true);
+    if (count($switchLanguageIds) >= 2) {
+        $switchFirstLanguageId = (int) $switchLanguageIds[0];
+        $switchSecondLanguageId = (int) $switchLanguageIds[1];
+        $firstCategorySlug = $token.'-category-first';
+        $secondCategorySlug = $token.'-category-second';
+        $firstPostSlug = $token.'-post-first';
+        $secondPostSlug = $token.'-post-second';
+
+        $switchCategory = new BeesBlogCategory((int) $sharedCategory->id, null, $testShopId);
+        $switchCategory->link_rewrite[$switchFirstLanguageId] = $firstCategorySlug;
+        $switchCategory->link_rewrite[$switchSecondLanguageId] = $secondCategorySlug;
+        $switchCategory->id_shop_list = [$testShopId];
+        assertTest($switchCategory->update(), 'language-switch category rewrites can differ by language');
+
+        $switchPost = new BeesBlogPost((int) $sharedPost->id, null, $testShopId);
+        $switchPost->link_rewrite[$switchFirstLanguageId] = $firstPostSlug;
+        $switchPost->link_rewrite[$switchSecondLanguageId] = $secondPostSlug;
+        $switchPost->id_shop_list = [$testShopId];
+        assertTest($switchPost->update(), 'language-switch post rewrites can differ by language');
+
+        $categoryLanguageLink = new BeesBlogLanguageLink(
+            Context::getContext()->link,
+            BeesBlogLanguageLink::ENTITY_CATEGORY,
+            (int) $sharedCategory->id,
+            $testShopId
+        );
+        $postLanguageLink = new BeesBlogLanguageLink(
+            Context::getContext()->link,
+            BeesBlogLanguageLink::ENTITY_POST,
+            (int) $sharedPost->id,
+            $testShopId
+        );
+        $firstCategoryUrl = $categoryLanguageLink->getLanguageLink($switchFirstLanguageId);
+        $secondCategoryUrl = $categoryLanguageLink->getLanguageLink($switchSecondLanguageId);
+        $firstPostUrl = $postLanguageLink->getLanguageLink($switchFirstLanguageId);
+        $secondPostUrl = $postLanguageLink->getLanguageLink($switchSecondLanguageId);
+        assertTest(
+            strpos($firstCategoryUrl, $firstCategorySlug) !== false
+            && strpos($secondCategoryUrl, $secondCategorySlug) !== false
+            && $firstCategoryUrl !== $secondCategoryUrl,
+            'language switcher links directly to each translated category rewrite'
+        );
+        assertTest(
+            strpos($firstPostUrl, $firstPostSlug) !== false
+            && strpos($secondPostUrl, $secondPostSlug) !== false
+            && $firstPostUrl !== $secondPostUrl,
+            'language switcher links directly to each translated post rewrite'
+        );
+    } else {
+        echo "SKIP: language-switch regression requires two active languages\n";
+    }
 
     $languageId = (int) Configuration::get('PS_LANG_DEFAULT');
     $shopOneSlug = (string) $db->getValue(
