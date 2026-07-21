@@ -87,16 +87,16 @@ class BlogPostEntityType extends EntityTypeBase
     public function getEntitiesToConvert(): array
     {
         $selectQuery = (new DbQuery())
-            ->select('DISTINCT bl.id_bees_blog_post')
-            ->from('bees_blog_post_lang', 'bl')
-            ->innerJoin('bees_blog_post_shop', 'bs', '(bs.id_bees_blog_post = bl.id_bees_blog_post AND bs.id_shop = bl.id_shop)')
-            ->innerJoin('lang', 'l', '(l.id_lang = bl.id_lang AND l.active)')
-            ->where('bs.active')
-            ->where('bl.lang_active');
+            ->select('DISTINCT bbpl.id_bees_blog_post')
+            ->from('bees_blog_post_lang', 'bbpl')
+            ->innerJoin('bees_blog_post_shop', 'bbps', '(bbps.id_bees_blog_post = bbpl.id_bees_blog_post AND bbps.id_shop = bbpl.id_shop)')
+            ->innerJoin('lang', 'l', '(l.id_lang = bbpl.id_lang AND l.active)')
+            ->where('bbps.active')
+            ->where('bbpl.lang_active');
 
         $conds = [];
         foreach ($this->getFields() as $column => $ignore) {
-            $conds[] = 'bl.'.bqSQL($column).' LIKE "%href%"';
+            $conds[] = 'bbpl.'.bqSQL($column).' LIKE "%href%"';
         }
         $selectQuery->where(implode(" OR ", $conds));
         return array_column(Db::getInstance()->getArray($selectQuery), 'id_bees_blog_post');
@@ -158,14 +158,14 @@ class BlogPostEntityType extends EntityTypeBase
     {
         $conn = Db::getInstance();
         $blogposts = $conn->getArray((new DbQuery())
-            ->select('DISTINCT bl.id_bees_blog_post, bl.id_lang, bl.id_shop, bl.link_rewrite')
-            ->from('bees_blog_post_lang', 'bl')
-            ->innerJoin('bees_blog_post_shop', 'bs', '(bs.id_bees_blog_post = bl.id_bees_blog_post AND bs.id_shop = bl.id_shop)')
-            ->innerJoin('lang', 'l', '(l.id_lang = bl.id_lang AND l.active)')
-            ->innerJoin('lang_shop', 'ls', '(ls.id_lang = bl.id_lang AND ls.id_shop = bl.id_shop)')
-            ->where('bs.active')
-            ->where('bl.lang_active')
-            ->orderBy('bl.id_bees_blog_post, bl.id_shop, bl.id_lang')
+            ->select('DISTINCT bbpl.id_bees_blog_post, bbpl.id_lang, bbpl.id_shop, bbpl.link_rewrite')
+            ->from('bees_blog_post_lang', 'bbpl')
+            ->innerJoin('bees_blog_post_shop', 'bbps', '(bbps.id_bees_blog_post = bbpl.id_bees_blog_post AND bbps.id_shop = bbpl.id_shop)')
+            ->innerJoin('lang', 'l', '(l.id_lang = bbpl.id_lang AND l.active)')
+            ->innerJoin('lang_shop', 'ls', '(ls.id_lang = bbpl.id_lang AND ls.id_shop = bbpl.id_shop)')
+            ->where('bbps.active')
+            ->where('bbpl.lang_active')
+            ->orderBy('bbpl.id_bees_blog_post, bbpl.id_shop, bbpl.id_lang')
         );
 
         $mapping = [];

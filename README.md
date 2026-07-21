@@ -130,8 +130,8 @@ module and uses Bees Blog-specific aliases consistently:
 | Legacy alias | Bees Blog 1.9 alias | Meaning |
 | --- | --- | --- |
 | `sbp` | `bbp` | Post base table |
-| `sbps`, `sbs` | `bbps` | Post shop table |
-| `sbpl`, `sbl` | `bbpl` | Post language table |
+| `sbps`, `sbs`, `bs` | `bbps` | Post shop table |
+| `sbpl`, `sbl`, `bl` | `bbpl` | Post language table |
 | `sbs_scope` | `bbps_scope` | Post shop-context scope |
 | `sbc` | `bbc` | Category base table |
 | `sbcs`, `scs` | `bbcs` | Category shop table |
