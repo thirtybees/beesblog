@@ -1,0 +1,129 @@
+@import "compass";
+@import "theme_variables";
+
+.beesblog-warehouse {
+  width: 100%;
+
+  .beesblog-category-image { margin-bottom: 20px; }
+
+  .beesblog-category-description {
+    margin: 20px 0;
+    padding: 15px;
+    border: $main_border;
+    p:last-child { margin-bottom: 0; }
+  }
+}
+
+.beesblog-post-grid > [class*="col-"] { margin-bottom: 20px; }
+
+.beesblog-post-card {
+  &, .post-item { width: 100%; }
+
+  .post-item {
+    position: relative;
+    text-align: center;
+    @include transition(all .3s ease);
+
+    &:hover {
+      .post-thumbnail { opacity: .85; }
+      .post-content { background: transparent; }
+    }
+  }
+
+  .post-thumbnail {
+    position: relative;
+    overflow: hidden;
+    @include transition(opacity .3s ease);
+  }
+
+  .post-title h2 {
+    margin: 0;
+    padding: 10px 0;
+    border-top: $main_border;
+    border-bottom: $main_border;
+    font-size: 14px;
+    text-align: center;
+    text-transform: uppercase;
+  }
+
+  .post-content {
+    padding: 10px;
+    background: $base-box-bg;
+    font-size: 12px;
+    @include transition(background .3s ease);
+
+    p:last-child { margin-bottom: 0; }
+  }
+
+  .post-read-more { margin-top: 10px; }
+
+  .post-additional-info {
+    padding: 5px;
+    border-top: $main_border;
+    background: transparent;
+    font-size: 10px;
+    text-align: center;
+
+    span {
+      display: inline-block;
+      margin-right: 8px;
+      padding-right: 8px;
+      border-right: 1px dotted $base-border-color;
+
+      &:last-child {
+        margin-right: 0;
+        padding-right: 0;
+        border-right: 0;
+      }
+    }
+  }
+}
+
+.beesblog-single {
+  .post-meta-info {
+    margin-top: -10px;
+    margin-bottom: 20px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid #cecece;
+    color: #a1a1a1;
+    font-size: 12px;
+
+    a { color: #a1a1a1; }
+    span { display: inline-block; margin-right: 10px; }
+  }
+
+  .post-featured-image { margin-bottom: 20px; }
+  .post-content {
+    margin-bottom: 30px;
+    img { display: block; max-width: 100%; height: auto; }
+  }
+  .post-block, #beesblog-after-post { margin-top: 20px; }
+}
+
+.beesblog-social-sharing button { margin: 0 5px 5px 0; }
+
+.beesblog-results {
+  margin-top: 30px;
+  margin-bottom: 20px;
+  text-align: right;
+}
+
+.beesblog-picture,
+.beesblog-responsive-image {
+  display: block;
+  max-width: 100%;
+}
+
+.beesblog-responsive-image {
+  height: auto;
+  margin-right: auto;
+  margin-left: auto;
+}
+
+@media (min-width: 768px) {
+  .beesblog-post-grid > .col-sm-6:nth-child(2n+1) { clear: left; }
+}
+
+@media (max-width: 767px) {
+  .beesblog-results { text-align: left; }
+}

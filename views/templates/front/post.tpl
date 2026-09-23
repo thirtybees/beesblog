@@ -19,7 +19,7 @@
 {assign var=postPath value=$post->link}
 {capture name=path}
 	<a href="{$blogHome|escape:'htmlall':'UTF-8'}">{l s='Blog' mod='beesblog'}</a>
-	<span class="navigation-pipe">{$navigationPipe|escape:'htmlall':'UTF-8'}</span>{$post->title}
+	<span class="navigation-pipe">{$navigationPipe|escape:'htmlall':'UTF-8'}</span>{$post->title|escape:'htmlall':'UTF-8'}
 {/capture}
 
 <article>
@@ -29,9 +29,8 @@
 		</div>
 		<div class="block">
 			<h1 class="title_block">{$post->title|escape:'htmlall':'UTF-8'}</h1>
-			{assign var=imagePath value=Media::getMediaPath(BeesBlog::getPostImagePath($post->id))}
-			{if ($imagePath)}
-				<img class="img-responsive" alt="{$post->title|escape:'htmlall':'UTF-8'}" src="{$link->getMediaLink($imagePath)|escape:'htmlall':'UTF-8'}">
+			{if isset($postImage) && $postImage}
+				{include file="./responsive_image.tpl" responsiveImage=$postImage responsiveAlt=$post->title responsiveContext='full'}
 			{/if}
 		</div>
 		<div class="block">

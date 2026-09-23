@@ -3,7 +3,6 @@
 namespace BeesBlogModule;
 
 use BeesBlog;
-use Configuration;
 use Db;
 use DbQuery;
 use Link;
@@ -88,16 +87,16 @@ class BlogPostEntityType extends EntityTypeBase
     public function getEntitiesToConvert(): array
     {
         $selectQuery = (new DbQuery())
-            ->select('DISTINCT bl.id_bees_blog_post')
-            ->from('bees_blog_post_lang', 'bl')
-            ->innerJoin('bees_blog_post', 'b', '(b.id_bees_blog_post = bl.id_bees_blog_post)')
-            ->innerJoin('lang', 'l', '(l.id_lang = bl.id_lang AND l.active)')
-            ->where('b.active')
-            ->where('bl.lang_active');
+            ->select('DISTINCT bbpl.id_bees_blog_post')
+            ->from('bees_blog_post_lang', 'bbpl')
+            ->innerJoin('bees_blog_post_shop', 'bbps', '(bbps.id_bees_blog_post = bbpl.id_bees_blog_post AND bbps.id_shop = bbpl.id_shop)')
+            ->innerJoin('lang', 'l', '(l.id_lang = bbpl.id_lang AND l.active)')
+            ->where('bbps.active')
+            ->where('bbpl.lang_active');
 
         $conds = [];
         foreach ($this->getFields() as $column => $ignore) {
-            $conds[] = 'bl.'.bqSQL($column).' LIKE "%href%"';
+            $conds[] = 'bbpl.'.bqSQL($column).' LIKE "%href%"';
         }
         $selectQuery->where(implode(" OR ", $conds));
         return array_column(Db::getInstance()->getArray($selectQuery), 'id_bees_blog_post');
@@ -116,7 +115,7 @@ class BlogPostEntityType extends EntityTypeBase
 
         $entityId = (int)$entityId;
         $sql =(new DbQuery())
-            ->select('id_lang')
+            ->select('id_lang, id_shop')
             ->from('bees_blog_post_lang')
             ->where('id_bees_blog_post = ' . $entityId);
         foreach ($this->getFields() as $column => $ignore) {
@@ -126,12 +125,12 @@ class BlogPostEntityType extends EntityTypeBase
         $conn = Db::getInstance();
         $rows = $conn->getArray($sql);
 
-        $shopId = (int)Configuration::get('PS_SHOP_DEFAULT');
         foreach ($rows as $row) {
             $langId = (int)$row['id_lang'];
+            $shopId = (int)$row['id_shop'];
             $values = [];
             foreach ($row as $key => $old) {
-                if ($key != 'id_lang') {
+                if ($key !== 'id_lang' && $key !== 'id_shop') {
                     $old = (string)$old;
                     $field = new ConvertField($this, $entityId, $shopId, $langId, $key);
                     $new = $convertor->convert($old, $field);
@@ -142,7 +141,7 @@ class BlogPostEntityType extends EntityTypeBase
                 }
             }
             if ($values) {
-                $conn->update('bees_blog_post_lang', $values, "id_bees_blog_post = $entityId AND id_lang = $langId");
+                $conn->update('bees_blog_post_lang', $values, "id_bees_blog_post = $entityId AND id_lang = $langId AND id_shop = $shopId");
             }
         }
         return $result;
@@ -159,26 +158,25 @@ class BlogPostEntityType extends EntityTypeBase
     {
         $conn = Db::getInstance();
         $blogposts = $conn->getArray((new DbQuery())
-            ->select('DISTINCT bl.id_bees_blog_post, bl.id_lang, bl.link_rewrite')
-            ->from('bees_blog_post_lang', 'bl')
-            ->innerJoin('bees_blog_post', 'b', '(b.id_bees_blog_post = bl.id_bees_blog_post)')
-            ->innerJoin('lang', 'l', '(l.id_lang = bl.id_lang AND l.active)')
-            ->where('b.active')
-            ->where('bl.lang_active')
-            ->orderBy('bl.id_bees_blog_post, bl.id_lang')
+            ->select('DISTINCT bbpl.id_bees_blog_post, bbpl.id_lang, bbpl.id_shop, bbpl.link_rewrite')
+            ->from('bees_blog_post_lang', 'bbpl')
+            ->innerJoin('bees_blog_post_shop', 'bbps', '(bbps.id_bees_blog_post = bbpl.id_bees_blog_post AND bbps.id_shop = bbpl.id_shop)')
+            ->innerJoin('lang', 'l', '(l.id_lang = bbpl.id_lang AND l.active)')
+            ->innerJoin('lang_shop', 'ls', '(ls.id_lang = bbpl.id_lang AND ls.id_shop = bbpl.id_shop)')
+            ->where('bbps.active')
+            ->where('bbpl.lang_active')
+            ->orderBy('bbpl.id_bees_blog_post, bbpl.id_shop, bbpl.id_lang')
         );
 
         $mapping = [];
-        $shops = Shop::getShops(true, null, true);
 
         foreach ($blogposts as $row) {
-            foreach ($shops as $shopId) {
-                $langId = (int)$row['id_lang'];
-                $blogPostId = (int)$row['id_bees_blog_post'];
-                $linkRewrite = (string)$row['link_rewrite'];
-                $url = BeesBlog::getBeesBlogLink('beesblog_post', ['blog_rewrite' => $linkRewrite], (int)$shopId, $langId);
-                $mapping[$url] = $blogPostId;
-            }
+            $shopId = (int)$row['id_shop'];
+            $langId = (int)$row['id_lang'];
+            $blogPostId = (int)$row['id_bees_blog_post'];
+            $linkRewrite = (string)$row['link_rewrite'];
+            $url = BeesBlog::getBeesBlogLink('beesblog_post', ['blog_rewrite' => $linkRewrite], $shopId, $langId);
+            $mapping[$url] = $blogPostId;
         }
 
         return $mapping;
@@ -208,7 +206,7 @@ class BlogPostEntityType extends EntityTypeBase
      */
     protected function loadEntity(int $entityId)
     {
-        $blogpost = new BeesBlogPost($entityId);
+        $blogpost = new BeesBlogPost($entityId, null, (int) \Context::getContext()->shop->id);
         if (Validate::isLoadedObject($blogpost)) {
             return $blogpost;
         }

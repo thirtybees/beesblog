@@ -17,7 +17,11 @@
  * @license   Academic Free License (AFL 3.0)
  */
 
+use BeesBlogModule\BeesBlogLanguageLink;
+use BeesBlogModule\BeesBlogFrontLayout;
+use BeesBlogModule\BeesBlogImage;
 use BeesBlogModule\BeesBlogPost;
+use BeesBlogModule\BeesBlogResponsiveImage;
 
 if (!defined('_TB_VERSION_')) {
     exit;
@@ -56,6 +60,12 @@ class BeesBlogPostModuleFrontController extends ModuleFrontController
      */
     public function initContent()
     {
+        BeesBlogLanguageLink::install(
+            BeesBlogLanguageLink::ENTITY_POST,
+            $this->getBeesBlogPostId(),
+            (int) $this->context->shop->id
+        );
+
         parent::initContent();
 
         $post = $this->getBeesBlogPost();
@@ -71,11 +81,32 @@ class BeesBlogPostModuleFrontController extends ModuleFrontController
             $this->context->controller->addCSS(_PS_MODULE_DIR_.'beesblog/views/css/socialmedia.css', 'all');
             $this->context->controller->addJS(_PS_MODULE_DIR_.'beesblog/views/js/socialmedia.js');
         }
+        $sharingImagePath = BeesBlogPost::getImagePath(
+            $post->id,
+            'original',
+            (int) $this->context->shop->id,
+            (int) $this->context->language->id
+        );
+        $sharingImageUrl = $sharingImagePath
+            ? $this->context->link->getMediaLink(Media::getMediaPath($sharingImagePath))
+            : '';
         Media::addJsDef([
             'sharing_name' => addcslashes($post->title, "'"),
             'sharing_url' => addcslashes($post->link, "'"),
-            'sharing_img' => addcslashes(Tools::getHttpHost(true).'/img/beesblog/posts/'.(int) $post->id.'.jpg', "'"),
+            'sharing_img' => addcslashes($sharingImageUrl, "'"),
         ]);
+
+        $postImage = BeesBlogResponsiveImage::getImageData(
+            BeesBlogImage::ENTITY_POST,
+            (int) $post->id,
+            'post_default',
+            (int) $this->context->shop->id,
+            (int) $this->context->language->id
+        );
+        if ($postImage) {
+            $postImage['loading'] = 'eager';
+            $postImage['fetchpriority'] = 'high';
+        }
 
         $postProperties = [
             'meta_title'           => $post->meta_title.' - '.Configuration::get('PS_SHOP_NAME'),
@@ -83,6 +114,7 @@ class BeesBlogPostModuleFrontController extends ModuleFrontController
             'meta_keywords'        => $post->meta_keywords,
             'blogHome'             => BeesBlog::getBeesBlogLink(),
             'post'                 => $post,
+            'postImage'            => $postImage,
             'authorStyle'          => Configuration::get(BeesBlog::AUTHOR_STYLE),
             'showAuthor'           => (bool) Configuration::get(BeesBlog::SHOW_AUTHOR),
             'showDate'             => (bool) Configuration::get(BeesBlog::SHOW_DATE),
@@ -99,6 +131,7 @@ class BeesBlogPostModuleFrontController extends ModuleFrontController
         $postProperties = array_merge($postProperties, [
             'displayBeesBlogBeforePost' => Hook::exec('displayBeesBlogBeforePost', $postProperties),
             'displayBeesBlogAfterPost' => Hook::exec('displayBeesBlogAfterPost', $postProperties),
+            'beesblogImageLayout' => BeesBlogFrontLayout::getImageLayout($this->context),
         ]);
 
         $this->context->smarty->assign($postProperties);
@@ -133,7 +166,7 @@ class BeesBlogPostModuleFrontController extends ModuleFrontController
         if (is_null($this->blogPost)) {
             $postId = $this->getBeesBlogPostId();
             if ($postId) {
-                $blogPost = new BeesBlogPost($postId, $this->context->language->id);
+                $blogPost = new BeesBlogPost($postId, $this->context->language->id, (int) $this->context->shop->id);
                 if (Validate::isLoadedObject($blogPost) && $blogPost->active && $blogPost->lang_active) {
                     $blogPost->content = BeesBlog::processText($blogPost->content);
                     $this->blogPost = $blogPost;

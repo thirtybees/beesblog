@@ -1,198 +1,63 @@
 <?php
 /**
- * Copyright (C) 2017-2024 thirty bees
+ * Copyright (C) 2017-2026 thirty bees
  *
- * NOTICE OF LICENSE
- *
- * This source file is subject to the Academic Free License (AFL 3.0)
- * that is bundled with this package in the file LICENSE.md.
- * It is also available through the world-wide-web at this URL:
- * https://opensource.org/licenses/afl-3.0.php
- * If you did not receive a copy of the license and are unable to
- * obtain it through the world-wide-web, please send an email
- * to license@thirtybees.com so we can send you a copy immediately.
- *
- * @author    thirty bees <modules@thirtybees.com>
- * @copyright 2017-2024 thirty bees
- * @license   Academic Free License (AFL 3.0)
+ * @license Academic Free License (AFL 3.0)
  */
 
-use BeesBlogModule\BeesBlogImageType;
+use BeesBlogModule\BeesBlogImage;
+use BeesBlogModule\BeesBlogMultistore;
+use BeesBlogModule\BeesBlogResponsiveImage;
+use BeesBlogModule\BeesBlogResponsiveImageJob;
 
 if (!defined('_TB_VERSION_')) {
     exit;
 }
 
+// Module admin controllers can be reached from a cached tab before the module
+// has been instantiated. Make their model dependencies deterministic.
+require_once dirname(__DIR__, 2).'/classes/autoload.php';
+
 /**
- * Class AdminBeesBlogImagesController
- *
- * @since 1.0.0
+ * Responsive blog image settings, migration status, and resumable generation.
  */
 class AdminBeesBlogImagesController extends ModuleAdminController
 {
-
-    /**
-     * AdminImagesControllerCore constructor.
-     *
-     * @throws PrestaShopException
-     * @since 1.0.0
-     */
+    /** @throws PrestaShopException */
     public function __construct()
     {
         $this->bootstrap = true;
-        $this->table = BeesBlogImageType::TABLE;
-        $this->className = 'BeesBlogModule\\BeesBlogImageType';
-        $this->lang = false;
-
-        // Retrieve the context from a static context, just because
+        $this->table = BeesBlogResponsiveImage::TABLE;
+        $this->className = '';
         $this->context = Context::getContext();
+        $this->multishop_context = Shop::CONTEXT_ALL | Shop::CONTEXT_GROUP | Shop::CONTEXT_SHOP;
+        BeesBlogMultistore::registerAssociations();
 
-        // Only display this page in single store context
-        $this->multishop_context = Shop::CONTEXT_SHOP;
-
-        // Make sure that when we save the `BeesBlogCategory` ObjectModel, the `_shop` table is set, too (primary => id_shop relation)
-        Shop::addTableAssociation(BeesBlogImageType::TABLE, ['type' => 'shop']);
-
-        $this->addRowAction('edit');
-        $this->addRowAction('delete');
-
-        // Refresh/restore basic image types
-        BeesBlogImageType::installBasics();
-
-        // Disable delete button for mandatory types
-        $this->list_skip_actions['delete'] = BeesBlogImageType::getBasicTypeIds();
-
-        $this->bulk_actions = [
-            'delete' =>
-                [
-                    'text'    => $this->l('Delete selected'),
-                    'confirm' => $this->l('Delete selected items?'),
-                    'icon'    => 'icon-trash',
-                ],
-        ];
-
-        $this->fields_list = [
-            BeesBlogImageType::PRIMARY => ['title' => $this->l('ID'),         'align' => 'center', 'class' => 'fixed-width-xs'],
-            'name'                     => ['title' => $this->l('Name')],
-            'width'                    => ['title' => $this->l('Width'),      'suffix' => ' px'],
-            'height'                   => ['title' => $this->l('Height'),     'suffix' => ' px'],
-            'posts'                    => ['title' => $this->l('Posts'),   'align' => 'center', 'active' => 'posts', 'type' => 'bool', 'orderby' => false],
-            'categories'               => ['title' => $this->l('Categories'), 'align' => 'center', 'active' => 'categories', 'type' => 'bool', 'orderby' => false],
-        ];
-
-        $this->fields_form = [
-            'legend' => [
-                'title' => $this->l('Image type'),
-                'icon'  => 'icon-picture',
-            ],
-            'input'  => [
-                [
-                    'type'     => 'text',
-                    'label'    => $this->l('Name for the image type'),
-                    'name'     => 'name',
-                    'required' => true,
-                    'hint'     => $this->l('Letters, underscores and hyphens only (e.g. "small_custom", "cart_medium", "large", "thickbox_extra-large").'),
-                    'disabled' => in_array(Tools::getValue(BeesBlogImageType::PRIMARY), BeesBlogImageType::getBasicTypeIds()),
-                ],
-                [
-                    'type'      => 'text',
-                    'label'     => $this->l('Width'),
-                    'name'      => 'width',
-                    'required'  => true,
-                    'maxlength' => 5,
-                    'suffix'    => $this->l('pixels'),
-                    'hint'      => $this->l('Maximum image width in pixels.'),
-                ],
-                [
-                    'type'      => 'text',
-                    'label'     => $this->l('Height'),
-                    'name'      => 'height',
-                    'required'  => true,
-                    'maxlength' => 5,
-                    'suffix'    => $this->l('pixels'),
-                    'hint'      => $this->l('Maximum image height in pixels.'),
-                ],
-                [
-                    'type'     => 'switch',
-                    'label'    => $this->l('Posts'),
-                    'name'     => 'posts',
-                    'required' => false,
-                    'is_bool'  => true,
-                    'hint'     => $this->l('This type will be used for Post images.'),
-                    'values'   => [
-                        [
-                            'id'    => 'post_on',
-                            'value' => 1,
-                            'label' => $this->l('Enabled'),
-                        ],
-                        [
-                            'id'    => 'post_off',
-                            'value' => 0,
-                            'label' => $this->l('Disabled'),
-                        ],
-                    ],
-                    'disabled' => in_array(Tools::getValue(BeesBlogImageType::PRIMARY), BeesBlogImageType::getBasicTypeIds()),
-                ],
-                [
-                    'type'     => 'switch',
-                    'label'    => $this->l('Categories'),
-                    'name'     => 'categories',
-                    'required' => false,
-                    'class'    => 't',
-                    'is_bool'  => true,
-                    'hint'     => $this->l('This type will be used for Category images.'),
-                    'values'   => [
-                        [
-                            'id'    => 'categories_on',
-                            'value' => 1,
-                            'label' => $this->l('Enabled'),
-                        ],
-                        [
-                            'id'    => 'categories_off',
-                            'value' => 0,
-                            'label' => $this->l('Disabled'),
-                        ],
-                    ],
-                    'disabled' => in_array(Tools::getValue(BeesBlogImageType::PRIMARY), BeesBlogImageType::getBasicTypeIds()),
-                ],
-            ],
-            'submit' => [
-                'title' => $this->l('Save'),
-            ],
-            'buttons' => [
-                'save-and-stay' => [
-                    'title' => $this->l('Save and Stay'),
-                    'name' => 'submitAdd'.$this->table.'AndStay',
-                    'type' => 'submit',
-                    'class' => 'btn btn-default pull-right',
-                    'icon' => 'process-icon-save',
-                ],
-            ],
-        ];
+        if (!BeesBlogResponsiveImageJob::ensureDatabase()) {
+            throw new PrestaShopException('Unable to initialize the responsive blog image queue');
+        }
 
         $this->fields_options = [
-            'regenerate' => [
-                'title'  => $this->l('Regenerate images'),
-                'description' => $this->l('Use this functionality to regenerate blog images'),
+            'responsive' => [
+                'title' => $this->l('Responsive images'),
+                'icon' => 'icon-picture',
+                'description' => $this->l(
+                    'The module generates proportional candidates in the image format configured by thirty bees, plus one legacy-browser fallback. Images are never enlarged.'
+                ),
                 'fields' => [
-                    'type' => [
-                        'title'      => $this->l('Image types'),
-                        'type'       => 'select',
-                        'identifier' => 'type',
-                        'list'       => [
-                            [ 'type' => 'all', 'name' => $this->l('All images') ],
-                            [ 'type' => 'posts', 'name' => $this->l('Posts images') ],
-                            [ 'type' => 'categories', 'name' => $this->l('Category images') ]
-                        ],
-                    ],
-                    'erase' => [
-                        'title'      => $this->l('Delete existing thumbnails'),
-                        'type'       => 'bool',
+                    BeesBlogResponsiveImage::CONFIG_WIDTHS => [
+                        'title' => $this->l('Candidate widths'),
+                        'type' => 'text',
+                        'required' => true,
+                        'validation' => 'isString',
+                        'cast' => 'strval',
+                        'desc' => $this->l(
+                            'Comma-separated pixels. Defaults: 320, 480, 640, 768, 1024, 1280, 1536, 1920. Saving marks existing sets with different settings as missing; use the progress panel to rebuild them.'
+                        ),
                     ],
                 ],
                 'submit' => [
-                    'name' => 'submitRegenerate'.$this->table,
-                    'title' => $this->l('Regenerate')
+                    'title' => $this->l('Save responsive image settings'),
                 ],
             ],
         ];
@@ -200,274 +65,197 @@ class AdminBeesBlogImagesController extends ModuleAdminController
         parent::__construct();
     }
 
-    /**
-     * Post processing
-     *
-     * @return bool
-     *
-     * @throws PrestaShopDatabaseException
-     * @throws PrestaShopException
-     * @since 1.0.0
-     */
-    public function postProcess()
+    /** @return string */
+    public function renderList()
     {
-        if (Tools::isSubmit('submitRegenerate'.$this->table)) {
-            if ($this->tabAccess['edit']) {
-                if ($this->regenerateThumbnails(Tools::getValue('type'), Tools::getValue('erase'))) {
-                    Tools::redirectAdmin(static::$currentIndex.'&conf=9'.'&token='.$this->token);
-                }
-            } else {
-                $this->errors[] = Tools::displayError('You do not have permission to edit this.');
-            }
+        $statuses = BeesBlogResponsiveImageJob::getStatuses(BeesBlogMultistore::getContextShopIds(), true);
+        $statuses[BeesBlogImage::ENTITY_POST]['display_name'] = $this->l('Posts');
+        $statuses[BeesBlogImage::ENTITY_CATEGORY]['display_name'] = $this->l('Categories');
 
-            return false;
-        } elseif (Tools::isSubmit(BeesBlogImageType::PRIMARY) && Tools::isSubmit('categories'.BeesBlogImageType::TABLE)) {
-            $imageType = new BeesBlogImageType((int) Tools::getValue(BeesBlogImageType::PRIMARY), null, $this->context->shop->id);
-            if (Validate::isLoadedObject($imageType)) {
-                if (in_array($imageType->id, BeesBlogImageType::getBasicTypeIds())) {
-                    $this->errors[] = $this->l('Cannot toggle the status for mandatory image types');
+        $this->context->smarty->assign([
+            'beesblogResponsiveStatuses' => $statuses,
+            'beesblogResponsiveAjaxUrl' => static::$currentIndex.'&token='.$this->token,
+        ]);
 
-                    return false;
-                }
-
-                $imageType->categories = !$imageType->categories;
-
-                if ($imageType->update()) {
-                    $this->confirmations[] = sprintf($this->l('Successfully toggled `%s` status'), 'categories');
-
-                    return true;
-                } else {
-                    $this->errors[] = sprintf($this->l('Unable to toggle `%s` status'), 'categories');
-                }
-            } else {
-                $this->errors[] = sprintf($this->l('Unable to toggle `%s` status'), 'categories');
-            }
-
-            return false;
-        } elseif (Tools::isSubmit(BeesBlogImageType::PRIMARY) && Tools::isSubmit('posts'.BeesBlogImageType::TABLE)) {
-            $imageType = new BeesBlogImageType((int) Tools::getValue(BeesBlogImageType::PRIMARY), null, $this->context->shop->id);
-            if (Validate::isLoadedObject($imageType)) {
-                if (in_array($imageType->id, BeesBlogImageType::getBasicTypeIds())) {
-                    $this->errors[] = $this->l('Cannot toggle the status for mandatory image types');
-
-                    return false;
-                }
-
-                $imageType->posts = !$imageType->posts;
-
-                if ($imageType->update()) {
-                    $this->confirmations[] = sprintf($this->l('Successfully toggled `%s` status'), 'posts');
-
-                    return true;
-                } else {
-                    $this->errors[] = sprintf($this->l('Unable to toggle `%s` status'), 'posts');
-
-                    return false;
-                }
-            } else {
-                $this->errors[] = sprintf($this->l('Unable to toggle `%s` status'), 'posts');
-
-                return false;
-            }
-        } else {
-            return parent::postProcess();
-        }
+        return $this->context->smarty->fetch(
+            $this->module->getLocalPath().'views/templates/admin/bees_blog_images/responsive.tpl'
+        );
     }
 
-    /**
-     * Regenerate thumbnails
-     *
-     * @param string $type
-     * @param bool $deleteOldImages
-     *
-     * @return bool
-     *
-     * @throws PrestaShopDatabaseException
-     * @throws PrestaShopException
-     * @since 1.0.0
-     */
-    protected function regenerateThumbnails($type = 'all', $deleteOldImages = false)
+    /** @return void */
+    public function initToolbar()
     {
-        $process = [
-            ['type' => 'posts',      'dir' => rtrim(_PS_IMG_DIR_, '/') . '/beesblog/posts/'],
-            ['type' => 'categories', 'dir' => rtrim(_PS_IMG_DIR_, '/') . '/beesblog/categories/'],
-        ];
-
-        // Launching generation process
-        foreach ($process as $proc) {
-            if ($type != 'all' && $type != $proc['type']) {
-                continue;
-            }
-
-            // Getting format generation
-            $formats = BeesBlogImageType::getImagesTypes($proc['type']);
-            if ($type != 'all') {
-                $format = strval(Tools::getValue('format_'.$type));
-                if ($format != 'all') {
-                    foreach ($formats as $k => $form) {
-                        if ($form['id_image_type'] != $format) {
-                            unset($formats[$k]);
-                        }
-                    }
-                }
-            }
-
-            if ($deleteOldImages) {
-                $this->deleteOldImages($proc['dir'], $formats);
-            }
-            if (($return = $this->regenerateNewImages($proc['dir'], $formats)) === true) {
-                if (!count($this->errors)) {
-                    $this->errors[] = sprintf(Tools::displayError('Cannot write images for this type: %s. Please check the %s folder\'s writing permissions.'), $proc['type'], $proc['dir']);
-                }
-            } elseif ($return == 'timeout') {
-                $this->errors[] = Tools::displayError('Only part of the images have been regenerated. The server timed out before finishing.');
-            }
-        }
-
-        return count($this->errors) === 0;
+        parent::initToolbar();
+        unset($this->toolbar_btn['new'], $this->toolbar_btn['export']);
     }
 
-    /**
-     * Delete resized image then regenerate new one with updated settings
-     *
-     * @param string $dir
-     * @param array  $type
-     *
-     * @return bool
-     *
-     * @since 1.0.0
-     */
-    protected function deleteOldImages($dir, $type)
-    {
-        if (!is_dir($dir)) {
-            return false;
-        }
-        $toDel = scandir($dir);
-
-        foreach ($toDel as $d) {
-            foreach ($type as $imageType) {
-                if (preg_match('/^[0-9]+-'.$imageType['name'].'\.jpg$/', $d)
-                    || (count($type) > 1 && preg_match('/^[0-9]+-[_a-zA-Z0-9-]*\.jpg$/', $d))
-                    || preg_match('/^([[:lower:]]{2})-default-'.$imageType['name'].'\.jpg$/', $d)
-                ) {
-                    if (file_exists($dir.$d)) {
-                        unlink($dir.$d);
-                    }
-                }
-            }
-        }
-        return true;
-    }
-
-    /**
-     * Regenerate images
-     *
-     * @param string $dir
-     * @param array $formats
-     * @return bool
-     *
-     * @throws PrestaShopDatabaseException
-     * @throws PrestaShopException
-     * @since 1.0.0
-     */
-    protected function regenerateNewImages($dir, $formats)
-    {
-        if (!is_dir($dir)) {
-            return false;
-        }
-
-        $generateHighDpiImages = (bool) Configuration::get('PS_HIGHT_DPI');
-
-        $formattedThumbScene = ImageType::getFormatedName('thumb_scene');
-        $formattedMedium = ImageType::getFormatedName('medium');
-        foreach (scandir($dir) as $image) {
-            if (preg_match('/^[0-9]*\.jpg$/', $image)) {
-                foreach ($formats as $imageType) {
-                    // Customizable writing dir
-                    $newDir = $dir;
-                    if ($imageType['name'] == $formattedThumbScene) {
-                        $newDir .= 'thumbs/';
-                    }
-                    if (!file_exists($newDir)) {
-                        continue;
-                    }
-
-                    if (($dir == _PS_CAT_IMG_DIR_) && ($imageType['name'] == $formattedMedium) && is_file(_PS_CAT_IMG_DIR_.str_replace('.', '_thumb.', $image))) {
-                        $image = str_replace('.', '_thumb.', $image);
-                    }
-
-                    if (!file_exists($newDir.substr($image, 0, -4).'-'.stripslashes($imageType['name']).'.jpg')) {
-                        if (!file_exists($dir.$image) || !filesize($dir.$image)) {
-                            $this->errors[] = sprintf(Tools::displayError('Source file does not exist or is empty (%s)'), $dir.$image);
-                        } elseif (!ImageManager::resize($dir.$image, $newDir.substr(str_replace('_thumb.', '.', $image), 0, -4).'-'.stripslashes($imageType['name']).'.jpg', (int) $imageType['width'], (int) $imageType['height'])) {
-                            $this->errors[] = sprintf(Tools::displayError('Failed to resize image file (%s)'), $dir.$image);
-                        }
-
-                        if ($generateHighDpiImages) {
-                            if (!ImageManager::resize($dir.$image, $newDir.substr($image, 0, -4).'-'.stripslashes($imageType['name']).'2x.jpg', (int) $imageType['width'] * 2, (int) $imageType['height'] * 2)) {
-                                $this->errors[] = sprintf(Tools::displayError('Failed to resize image file to high resolution (%s)'), $dir.$image);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        return (bool) count($this->errors);
-    }
-
-    /**
-     * Initialize page header toolbar
-     *
-     * @return void
-     *
-     * @throws PrestaShopException
-     * @since 1.0.0
-     */
+    /** @return void */
     public function initPageHeaderToolbar()
     {
-        if (empty($this->display)) {
-            $this->page_header_toolbar_btn['new_image_type'] = [
-                'href' => static::$currentIndex.'&add'.BeesBlogImageType::TABLE.'&token='.$this->token,
-                'desc' => $this->l('Add new image type', null, null, false),
-                'icon' => 'process-icon-new',
-            ];
-        }
-
         parent::initPageHeaderToolbar();
+        unset($this->page_header_toolbar_btn['new'], $this->page_header_toolbar_btn['new_image_type']);
     }
 
-    /**
-     * Initialize content
-     *
-     * @return void
-     *
-     * @throws PrestaShopDatabaseException
-     * @throws PrestaShopException
-     * @throws SmartyException
-     * @since 1.0.0
-     */
-    public function initContent()
+    /** @return void */
+    public function beforeUpdateOptions()
     {
-        if ($this->display === 'edit' || $this->display === 'add') {
-            $this->warnings[] = $this->l('After modification, do not forget to regenerate thumbnails');
+        if (!Tools::isSubmit(BeesBlogResponsiveImage::CONFIG_WIDTHS)) {
+            return;
         }
-        parent::initContent();
+        $error = null;
+        $normalized = BeesBlogResponsiveImage::normalizeWidths(
+            Tools::getValue(BeesBlogResponsiveImage::CONFIG_WIDTHS),
+            $error
+        );
+        if ($normalized === false) {
+            $this->errors[] = Tools::displayError($error);
+            return;
+        }
+        $_POST[BeesBlogResponsiveImage::CONFIG_WIDTHS] = $normalized;
     }
 
-    /**
-     * Child validation
-     *
-     * @return void
-     *
-     * @throws PrestaShopDatabaseException
-     * @throws PrestaShopException
-     * @since 1.0.0
-     */
-    protected function childValidation()
+    /** @return void */
+    public function ajaxProcessResponsiveImageStatus()
     {
-        if (!Tools::getValue(BeesBlogImageType::PRIMARY) && Validate::isImageTypeName($typeName = Tools::getValue('name')) && BeesBlogImageType::typeAlreadyExists($typeName)) {
-            $this->errors[] = Tools::displayError('This name already exists.');
+        $this->sendJson([
+            'hasError' => false,
+            'statuses' => $this->getResponsiveStatuses(true),
+        ]);
+    }
+
+    /** @return void */
+    public function ajaxProcessResetResponsiveImageStatus()
+    {
+        if (!$this->hasResponsiveImageEditAccess()) {
+            $this->sendJsonError($this->l('You do not have permission to reset image generation status.'));
         }
+
+        try {
+            if (!BeesBlogResponsiveImageJob::resetForShops(BeesBlogMultistore::getContextShopIds())) {
+                $this->sendJsonError($this->l('Unable to reset responsive image generation status.'));
+            }
+            $this->sendJson([
+                'hasError' => false,
+                'statuses' => $this->getResponsiveStatuses(false, false),
+            ]);
+        } catch (Throwable $e) {
+            $this->sendJsonError($e->getMessage());
+        }
+    }
+
+    /** @return void */
+    public function ajaxProcessPrepareResponsiveImages()
+    {
+        if (!$this->hasResponsiveImageEditAccess()) {
+            $this->sendJsonError($this->l('You do not have permission to regenerate images.'));
+        }
+
+        $request = $this->getJsonRequest();
+        $entityType = $this->getRequestedEntityType($request);
+        $mode = isset($request['mode']) ? (string) $request['mode'] : 'missing';
+        if (!$entityType || !in_array($mode, ['missing', 'all'], true)) {
+            $this->sendJsonError($this->l('Invalid responsive image generation request.'));
+        }
+
+        try {
+            if (!BeesBlogResponsiveImageJob::prepare(
+                $entityType,
+                BeesBlogMultistore::getContextShopIds(),
+                $mode === 'all'
+            )) {
+                $this->sendJsonError($this->l('Unable to prepare responsive image generation.'));
+            }
+            $this->sendJson([
+                'hasError' => false,
+                'statuses' => $this->getResponsiveStatuses(false, false),
+            ]);
+        } catch (Throwable $e) {
+            $this->sendJsonError($e->getMessage());
+        }
+    }
+
+    /** @return void */
+    public function ajaxProcessGenerateResponsiveImage()
+    {
+        if (!$this->hasResponsiveImageEditAccess()) {
+            $this->sendJsonError($this->l('You do not have permission to regenerate images.'));
+        }
+
+        $entityType = $this->getRequestedEntityType($this->getJsonRequest());
+        if (!$entityType) {
+            $this->sendJsonError($this->l('Invalid responsive image entity type.'));
+        }
+
+        try {
+            $result = BeesBlogResponsiveImageJob::processNext(
+                $entityType,
+                BeesBlogMultistore::getContextShopIds()
+            );
+            $this->sendJson([
+                'hasError' => !empty($result['error']),
+                'errors' => empty($result['error']) ? [] : [$result['error']],
+                'processed' => !empty($result['processed']),
+                'statuses' => $this->getResponsiveStatuses(false, false),
+            ]);
+        } catch (Throwable $e) {
+            $this->sendJsonError($e->getMessage());
+        }
+    }
+
+    /** @return array */
+    protected function getResponsiveStatuses($verifyFiles = false, $synchronize = true)
+    {
+        $statuses = BeesBlogResponsiveImageJob::getStatuses(
+            BeesBlogMultistore::getContextShopIds(),
+            (bool) $verifyFiles,
+            (bool) $synchronize
+        );
+        $statuses[BeesBlogImage::ENTITY_POST]['display_name'] = $this->l('Posts');
+        $statuses[BeesBlogImage::ENTITY_CATEGORY]['display_name'] = $this->l('Categories');
+
+        return $statuses;
+    }
+
+    /** @return bool */
+    protected function hasResponsiveImageEditAccess()
+    {
+        return !empty($this->tabAccess['edit']);
+    }
+
+    /** @return array */
+    protected function getJsonRequest()
+    {
+        $request = json_decode((string) file_get_contents('php://input'), true);
+
+        return is_array($request) ? $request : [];
+    }
+
+    /** @return string|false */
+    protected function getRequestedEntityType(array $request)
+    {
+        $entityType = isset($request['entity_type']) ? (string) $request['entity_type'] : '';
+
+        return in_array(
+            $entityType,
+            [BeesBlogImage::ENTITY_POST, BeesBlogImage::ENTITY_CATEGORY],
+            true
+        ) ? $entityType : false;
+    }
+
+    /** @return void */
+    protected function sendJsonError($message)
+    {
+        $this->sendJson([
+            'hasError' => true,
+            'errors' => [(string) $message],
+            'statuses' => $this->getResponsiveStatuses(false, false),
+        ]);
+    }
+
+    /** @return void */
+    protected function sendJson(array $response)
+    {
+        header('Content-Type: application/json; charset=utf-8');
+        $this->ajaxDie(json_encode($response));
     }
 }

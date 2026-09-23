@@ -18,7 +18,11 @@
  */
 
 use BeesBlogModule\BeesBlogCategory;
+use BeesBlogModule\BeesBlogFrontLayout;
+use BeesBlogModule\BeesBlogImage;
+use BeesBlogModule\BeesBlogLanguageLink;
 use BeesBlogModule\BeesBlogPost;
+use BeesBlogModule\BeesBlogResponsiveImage;
 
 if (!defined('_TB_VERSION_')) {
     exit;
@@ -46,13 +50,19 @@ class BeesBlogCategoryModuleFrontController extends ModuleFrontController
      */
     public function initContent()
     {
+        $categoryId = $this->getCategoryId();
+        BeesBlogLanguageLink::install(
+            BeesBlogLanguageLink::ENTITY_CATEGORY,
+            $categoryId,
+            (int) $this->context->shop->id
+        );
+
         parent::initContent();
 
         $totalPages = 0;
         $postsPerPage = Configuration::get(BeesBlog::POSTS_PER_PAGE);
         $limit = $postsPerPage;
 
-        $categoryId = $this->getCategoryId();
         $category = $this->loadCategory($categoryId);
 
         $page = (int) Tools::getValue('page');
@@ -74,6 +84,48 @@ class BeesBlogCategoryModuleFrontController extends ModuleFrontController
             $totalPages = ceil($totalPosts / $postsPerPage);
         }
 
+        $postIds = [];
+        foreach ($posts as $post) {
+            $postIds[] = (int) $post->id;
+        }
+        $postImages = BeesBlogResponsiveImage::getImagesData(
+            BeesBlogImage::ENTITY_POST,
+            $postIds,
+            'post_list_item',
+            (int) $this->context->shop->id,
+            (int) $this->context->language->id
+        );
+        foreach ($postImages as &$postImage) {
+            $postImage['loading'] = 'lazy';
+            $postImage['fetchpriority'] = 'auto';
+        }
+        unset($postImage);
+
+        $showCategoryImage = (bool) Configuration::get(BeesBlog::SHOW_CATEGORY_IMAGE);
+        $categoryImage = false;
+        if ((int) $category->id) {
+            $categoryImage = BeesBlogResponsiveImage::getImageData(
+                BeesBlogImage::ENTITY_CATEGORY,
+                (int) $category->id,
+                'category_default',
+                (int) $this->context->shop->id,
+                (int) $this->context->language->id
+            );
+        }
+        if ($showCategoryImage && $categoryImage) {
+            $categoryImage['loading'] = 'eager';
+            $categoryImage['fetchpriority'] = 'high';
+        } else {
+            // Only the first actually rendered image receives high priority.
+            foreach ($postIds as $postId) {
+                if (isset($postImages[$postId])) {
+                    $postImages[$postId]['loading'] = 'eager';
+                    $postImages[$postId]['fetchpriority'] = 'high';
+                    break;
+                }
+            }
+        }
+
         $this->context->smarty->assign([
             'meta_title'           => $category->meta_title.' - '.Configuration::get('PS_SHOP_NAME'),
             'meta_description'     => $category->meta_description,
@@ -81,11 +133,13 @@ class BeesBlogCategoryModuleFrontController extends ModuleFrontController
             'blogHome'             => BeesBlog::getBeesBlogLink(),
             'posts'                => $posts,
             'category'             => $category,
-            'categoryImageUrl'     => Media::getMediaPath(BeesBlogCategory::getImagePath($category->id)),
+            'categoryImage'        => $categoryImage,
+            'postImages'           => $postImages,
+            'beesblogImageLayout'  => BeesBlogFrontLayout::getImageLayout($this->context),
             'authorStyle'          => (bool) Configuration::get(BeesBlog::AUTHOR_STYLE),
             'showAuthor'           => (bool) Configuration::get(BeesBlog::SHOW_AUTHOR),
             'showDate'             => (bool) Configuration::get(BeesBlog::SHOW_DATE),
-            'showCategoryImage'    => (bool) Configuration::get(BeesBlog::SHOW_CATEGORY_IMAGE),
+            'showCategoryImage'    => $showCategoryImage,
             'showViewed'           => (bool) Configuration::get(BeesBlog::SHOW_POST_COUNT),
             'showNoImage'          => (bool) Configuration::get(BeesBlog::SHOW_NO_IMAGE),
             'showComments'         => (bool) Configuration::get(BeesBlog::DISQUS_USERNAME),
@@ -112,7 +166,7 @@ class BeesBlogCategoryModuleFrontController extends ModuleFrontController
     {
         $categoryId = (int)$categoryId;
         if ($categoryId) {
-            $category = new BeesBlogCategory($categoryId, $this->context->language->id);
+            $category = new BeesBlogCategory($categoryId, $this->context->language->id, (int) $this->context->shop->id);
             if (Validate::isLoadedObject($category) && $category->active) {
                 return $category;
             }

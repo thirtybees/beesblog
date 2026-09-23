@@ -15,8 +15,8 @@
 * @copyright 2017-2024 thirty bees
 * @license   Academic Free License (AFL 3.0)
 *}
-<meta property="og:url" content="{$bb_og_link}" >
+<meta property="og:url" content="{$bb_og_link|escape:'htmlall':'UTF-8'}">
 <meta property="og:type" content="article">
-<meta property="og:title" content="{$bb_og_title}">
-<meta property="og:image" content="{$bb_og_image}">
-<meta property="og:description" content="{$bb_og_description}">
+<meta property="og:title" content="{$bb_og_title|escape:'htmlall':'UTF-8'}">
+<meta property="og:image" content="{$bb_og_image|escape:'htmlall':'UTF-8'}">
+<meta property="og:description" content="{$bb_og_description|escape:'htmlall':'UTF-8'}">

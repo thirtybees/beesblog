@@ -16,11 +16,12 @@
  * @license   Academic Free License (AFL 3.0)
  *}
 
+{assign var=escapedCategoryTitle value=$category->title|escape:'htmlall':'UTF-8'}
 {capture name=path}
 	<a href="{$blogHome|escape:'htmlall':'UTF-8'}">{l s='Blog' mod='beesblog'}</a>
 	{if $totalPostsOnThisPage > 0}
 		{if $category->id}
-			<span class="navigation-pipe">{$navigationPipe|escape:'htmlall':'UTF-8'}</span>{l s='Category: %s' mod='beesblog' sprintf=[$category->title]}
+			<span class="navigation-pipe">{$navigationPipe|escape:'htmlall':'UTF-8'}</span>{l s='Category: %s' mod='beesblog' sprintf=[$escapedCategoryTitle]}
 		{else}
 			<span class="navigation-pipe">{$navigationPipe|escape:'htmlall':'UTF-8'}</span>{$category->title|escape:'htmlall':'UTF-8'}
         {/if}
@@ -29,9 +30,9 @@
 {if $totalPostsOnThisPage <= 0}
 	<p class="error">{l s='No posts' mod='beesblog'}</p>
 {else}
-	{if isset($showCategoryImage) && $showCategoryImage && isset($categoryImageUrl) && $categoryImageUrl}
+	{if isset($showCategoryImage) && $showCategoryImage && isset($categoryImage) && $categoryImage}
 		<div>
-			<img class="img-responsive" alt="{$category->title|escape:'htmlall':'UTF-8'}" src="{$link->$getMediaLink($categoryImageUrl)|escape:'htmlall':'UTF-8'}">
+			{include file="./responsive_image.tpl" responsiveImage=$categoryImage responsiveAlt=$category->title responsiveContext='full'}
 			<em>{$category->description}</em>
 			<br />
 			<br />
@@ -41,7 +42,11 @@
 	{/if}
 	<div id="beesblog-category-list" class="block">
 		{foreach from=$posts item=post}
-			{include file="./post_list_item.tpl" post=$post}
+			{assign var=postImage value=false}
+			{if isset($postImages[$post->id])}
+				{assign var=postImage value=$postImages[$post->id]}
+			{/if}
+			{include file="./post_list_item.tpl" post=$post postImage=$postImage}
 		{/foreach}
 	</div>
 	{if $totalPages}

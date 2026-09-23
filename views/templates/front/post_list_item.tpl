@@ -16,7 +16,6 @@
  * @license   Academic Free License (AFL 3.0)
  *}
 
-{assign var=imagePath value=Media::getMediaPath(BeesBlog::getPostImagePath($post->id, 'post_list_item'))}
 {assign var=postPath value=$post->link}
 <article>
     <div class="clearfix beesblog-post-list-item">
@@ -26,10 +25,9 @@
                    href="{$postPath|escape:'htmlall':'UTF-8'}">{$post->title|escape:'htmlall':'UTF-8'}</a>
             </h4>
             <div class="beesblog-post-list-summary">
-                {if ($imagePath)}
+                {if isset($postImage) && $postImage}
                     <a title="{$post->title|escape:'htmlall':'UTF-8'}" href="{$postPath|escape:'htmlall':'UTF-8'}">
-                        <img class="img-responsive" alt="{$post->title|escape:'htmlall':'UTF-8'}"
-                             src="{$link->getMediaLink($imagePath)|escape:'htmlall':'UTF-8'}">
+                        {include file="./responsive_image.tpl" responsiveImage=$postImage responsiveAlt=$post->title responsiveContext='full'}
                     </a>
                 {/if}
                 <span class="clearfix">
