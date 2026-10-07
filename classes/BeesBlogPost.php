@@ -48,6 +48,13 @@ class BeesBlogPost extends ObjectModel
     const IMAGE_TYPE = 'beesblog_post';
 
     /**
+     * Pass as $idShop to the list methods to disable the shop restriction,
+     * for back office callers that must see posts of every shop. Not 0, so
+     * an accidentally empty shop ID restricts to nothing instead of everything.
+     */
+    const ALL_SHOPS = -1;
+
+    /**
      * @var array Contains object definition
      */
     public static $definition = [
@@ -270,11 +277,12 @@ class BeesBlogPost extends ObjectModel
      * @param bool $count
      * @param bool $raw
      * @param array $propertyFilter
+     * @param int|null $idShop Shop ID, null for the current shop, ALL_SHOPS for no restriction
      *
      * @return array|int
      * @throws PrestaShopException
      */
-    public static function getPosts($idLang = null, $page = 0, $limit = 0, $count = false, $raw = false, $propertyFilter = [])
+    public static function getPosts($idLang = null, $page = 0, $limit = 0, $count = false, $raw = false, $propertyFilter = [], $idShop = null)
     {
         $postCollection = new Collection('BeesBlogModule\\BeesBlogPost', $idLang);
         $postCollection->setPageSize($limit);
@@ -283,6 +291,7 @@ class BeesBlogPost extends ObjectModel
         $postCollection->where('published', '<=', date('Y-m-d H:i:s'));
         $postCollection->where('active', '=', '1');
         $postCollection->sqlWhere('lang_active = \'1\'');
+        self::restrictCollectionToShop($postCollection, $idShop);
 
         if ($count) {
             return $postCollection->count();
@@ -318,11 +327,12 @@ class BeesBlogPost extends ObjectModel
      * @param bool $count
      * @param bool $raw
      * @param array $propertyFilter
+     * @param int|null $idShop Shop ID, null for the current shop, ALL_SHOPS for no restriction
      *
      * @return array|int
      * @throws PrestaShopException
      */
-    public static function getPopularPosts($idLang = null, $page = 0, $limit = 0, $count = false, $raw = false, $propertyFilter = [])
+    public static function getPopularPosts($idLang = null, $page = 0, $limit = 0, $count = false, $raw = false, $propertyFilter = [], $idShop = null)
     {
         $postCollection = new Collection('BeesBlogModule\\BeesBlogPost', $idLang);
         $postCollection->setPageSize($limit);
@@ -331,6 +341,7 @@ class BeesBlogPost extends ObjectModel
         $postCollection->where('published', '<=', date('Y-m-d H:i:s'));
         $postCollection->where('active', '=', '1');
         $postCollection->sqlWhere('lang_active = \'1\'');
+        self::restrictCollectionToShop($postCollection, $idShop);
 
         if ($count) {
             return $postCollection->count();
@@ -355,6 +366,34 @@ class BeesBlogPost extends ObjectModel
         }
 
         return $results;
+    }
+
+    /**
+     * Restricts a post collection to posts associated with a shop.
+     *
+     * The post page only resolves posts linked to the current shop (see
+     * getIdByRewrite()), so every front office list must apply the same
+     * restriction; otherwise a list links to a post that returns 404.
+     *
+     * @param Collection $collection
+     * @param int|null $idShop Shop ID, null for the current shop, ALL_SHOPS for no restriction
+     *
+     * @return void
+     * @throws PrestaShopException
+     */
+    public static function restrictCollectionToShop(Collection $collection, $idShop = null)
+    {
+        if ($idShop === null) {
+            $idShop = Context::getContext()->shop->id;
+        }
+        $idShop = (int) $idShop;
+        if ($idShop === self::ALL_SHOPS) {
+            return;
+        }
+
+        $collection->sqlWhere(
+            '{'.self::PRIMARY.'} IN (SELECT `'.self::PRIMARY.'` FROM `'._DB_PREFIX_.self::SHOP_TABLE.'` WHERE `id_shop` = '.(int) $idShop.')'
+        );
     }
 
     /**

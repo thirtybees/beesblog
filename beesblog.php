@@ -87,7 +87,7 @@ class BeesBlog extends Module
     {
         $this->name = 'beesblog';
         $this->tab = 'front_office_features';
-        $this->version = '1.8.0';
+        $this->version = '1.8.1';
         $this->author = 'thirty bees';
         $this->tb_min_version = '1.0.0';
         $this->tb_versions_compliancy = '> 1.0.0';
@@ -484,10 +484,12 @@ class BeesBlog extends Module
         $links = [];
         $langId = (int)Context::getContext()->language->id;
 
-        // Blog posts
-        $results = (new PrestaShopCollection('BeesBlogModule\\BeesBlogPost', $langId))
-            ->where('active', '=', 1)
-            ->getResults();
+        // Blog posts; the sitemap module sets the shop context per generated
+        // sitemap, so only posts reachable in that shop are listed
+        $postCollection = (new PrestaShopCollection('BeesBlogModule\\BeesBlogPost', $langId))
+            ->where('active', '=', 1);
+        BeesBlogPost::restrictCollectionToShop($postCollection);
+        $results = $postCollection->getResults();
         if ($results) {
             /** @var BeesBlogPost $result */
             foreach ($results as $result) {
@@ -503,9 +505,10 @@ class BeesBlog extends Module
         }
 
         // Categories
-        $results = (new PrestaShopCollection('BeesBlogModule\\BeesBlogCategory', $langId))
-            ->where('active', '=', 1)
-            ->getResults();
+        $categoryCollection = (new PrestaShopCollection('BeesBlogModule\\BeesBlogCategory', $langId))
+            ->where('active', '=', 1);
+        BeesBlogCategory::restrictCollectionToShop($categoryCollection);
+        $results = $categoryCollection->getResults();
 
         if ($results) {
             /** @var BeesBlogCategory $result */

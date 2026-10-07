@@ -27,6 +27,7 @@ spl_autoload_register(
             'BeesBlogModule\\BeesBlogCategory',
             'BeesBlogModule\\BeesBlogImageType',
             'BeesBlogModule\\BeesBlogPost',
+            'BeesBlogModule\\NotFoundPageTrait',
         ])) {
             return false;
         }

@@ -23,6 +23,7 @@ if (!defined('_TB_VERSION_')) {
 
 use BeesBlogModule\BeesBlogCategory;
 use BeesBlogModule\BeesBlogImageType;
+use BeesBlogModule\BeesBlogPost;
 
 /**
  * Class AdminBeesBlogCategoryController
@@ -535,7 +536,7 @@ class AdminBeesBlogCategoryController extends ModuleAdminController
         $idLang = (int) Context::getContext()->language->id;
         $blogCategory = new BeesBlogCategory((int) Tools::getValue(BeesBlogCategory::PRIMARY));
 
-        $postCount = (int) $blogCategory->getPostsInCategory($idLang, 0, 0, true);
+        $postCount = (int) $blogCategory->getPostsInCategory($idLang, 0, 0, true, false, [], BeesBlogPost::ALL_SHOPS);
         if ((int) $postCount != 0) {
             $this->errors[] = $this->l('You need to delete all posts associate with this category .');
 
@@ -584,7 +585,7 @@ class AdminBeesBlogCategoryController extends ModuleAdminController
       ];
 
       $langId = Context::getContext()->language->id;
-      $categories = BeesBlogCategory::getCategories($langId, 0, 0, false, true, [BeesBlogCategory::PRIMARY, 'title']);
+      $categories = BeesBlogCategory::getCategories($langId, 0, 0, false, true, [BeesBlogCategory::PRIMARY, 'title'], BeesBlogCategory::ALL_SHOPS);
 
       foreach ($categories as $value) {
           $result[] = $value;

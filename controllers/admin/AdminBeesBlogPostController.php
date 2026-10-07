@@ -135,7 +135,7 @@ class AdminBeesBlogPostController extends ModuleAdminController
         }
 
         // Check if there are any categories available
-        if (BeesBlogCategory::getCategories($this->context->language->id, 0, 10, true) < 1) {
+        if (BeesBlogCategory::getCategories($this->context->language->id, 0, 10, true, false, [], BeesBlogCategory::ALL_SHOPS) < 1) {
             $this->errors[] = $this->l('No categories found. Please add a category before making a new post.');
         }
 
@@ -341,7 +341,7 @@ class AdminBeesBlogPostController extends ModuleAdminController
                     'label'   => $this->l('Blog Category'),
                     'name'    => 'id_category',
                     'options' => [
-                        'query' => BeesBlogCategory::getCategories($this->context->language->id, 0, 0, false, true, ['id', 'title']),
+                        'query' => BeesBlogCategory::getCategories($this->context->language->id, 0, 0, false, true, ['id', 'title'], BeesBlogCategory::ALL_SHOPS),
                         'id'    => 'id',
                         'name'  => 'title',
                     ],

@@ -47,6 +47,13 @@ class BeesBlogCategory extends ObjectModel
     const IMAGE_TYPE = 'beesblog_category';
 
     /**
+     * Pass as $idShop to the list methods to disable the shop restriction,
+     * for back office callers that must see categories of every shop. Not 0,
+     * so an accidentally empty shop ID restricts to nothing instead of everything.
+     */
+    const ALL_SHOPS = -1;
+
+    /**
      * @var array Contains object definition
      */
     public static $definition = [
@@ -211,11 +218,12 @@ class BeesBlogCategory extends ObjectModel
      * @param bool $count
      * @param bool $raw
      * @param array $propertyFilter
+     * @param int|null $idShop Shop ID, null for the current shop, BeesBlogPost::ALL_SHOPS for no restriction
      *
      * @return int|BeesBlogPost[]
      * @throws PrestaShopException
      */
-    public function getPostsInCategory($idLang = null, $page = 0, $limit = 0, $count = false, $raw = false, $propertyFilter = [])
+    public function getPostsInCategory($idLang = null, $page = 0, $limit = 0, $count = false, $raw = false, $propertyFilter = [], $idShop = null)
     {
         $postCollection = new Collection('BeesBlogModule\\BeesBlogPost', $idLang);
         $postCollection->setPageSize($limit);
@@ -225,6 +233,7 @@ class BeesBlogCategory extends ObjectModel
         $postCollection->where('id_category', '=', $this->id);
         $postCollection->where('active', '=', '1');
         $postCollection->sqlWhere('lang_active = \'1\'');
+        BeesBlogPost::restrictCollectionToShop($postCollection, $idShop);
 
         if ($count) {
             return $postCollection->count();
@@ -245,15 +254,17 @@ class BeesBlogCategory extends ObjectModel
      * @param bool $count
      * @param bool $raw
      * @param array $propertyFilter
+     * @param int|null $idShop Shop ID, null for the current shop, ALL_SHOPS for no restriction
      *
      * @return BeesBlogCategory[]|int
      * @throws PrestaShopException
      */
-    public static function getCategories($idLang = null, $page = 0, $limit = 0, $count = false, $raw = false, $propertyFilter = [])
+    public static function getCategories($idLang = null, $page = 0, $limit = 0, $count = false, $raw = false, $propertyFilter = [], $idShop = null)
     {
         $categoryCollection = new Collection('BeesBlogModule\\BeesBlogCategory', $idLang);
         $categoryCollection->setPageSize($limit);
         $categoryCollection->setPageNumber($page);
+        static::restrictCollectionToShop($categoryCollection, $idShop);
 
         if ($count) {
             return $categoryCollection->count();
@@ -263,6 +274,31 @@ class BeesBlogCategory extends ObjectModel
         static::filterCollectionResults($results, $raw, $propertyFilter);
 
         return $results;
+    }
+
+    /**
+     * Restricts a category collection to categories associated with a shop,
+     * the same association the category page requires (see getIdByRewrite())
+     *
+     * @param Collection $collection
+     * @param int|null $idShop Shop ID, null for the current shop, ALL_SHOPS for no restriction
+     *
+     * @return void
+     * @throws PrestaShopException
+     */
+    public static function restrictCollectionToShop(Collection $collection, $idShop = null)
+    {
+        if ($idShop === null) {
+            $idShop = Context::getContext()->shop->id;
+        }
+        $idShop = (int) $idShop;
+        if ($idShop === static::ALL_SHOPS) {
+            return;
+        }
+
+        $collection->sqlWhere(
+            '{'.static::PRIMARY.'} IN (SELECT `'.static::PRIMARY.'` FROM `'._DB_PREFIX_.static::SHOP_TABLE.'` WHERE `id_shop` = '.(int) $idShop.')'
+        );
     }
 
     /**

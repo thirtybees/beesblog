@@ -18,6 +18,7 @@
  */
 
 use BeesBlogModule\BeesBlogPost;
+use BeesBlogModule\NotFoundPageTrait;
 
 if (!defined('_TB_VERSION_')) {
     exit;
@@ -28,6 +29,8 @@ if (!defined('_TB_VERSION_')) {
  */
 class BeesBlogPostModuleFrontController extends ModuleFrontController
 {
+    use NotFoundPageTrait;
+
     /**
      * @var string
      */
@@ -58,9 +61,11 @@ class BeesBlogPostModuleFrontController extends ModuleFrontController
     {
         parent::initContent();
 
+        // unknown slug, post not linked to this shop, or post disabled
+        // (globally or for this language)
         $post = $this->getBeesBlogPost();
         if (! $post) {
-            Tools::redirect(BeesBlog::getBeesBlogLink());
+            $this->displayNotFound();
             return;
         }
 
@@ -155,7 +160,12 @@ class BeesBlogPostModuleFrontController extends ModuleFrontController
         $id = $this->getBeesBlogPostId();
         if ($id) {
             $blogPost = new BeesBlogPost($id, $languageId, $shopId);
-            if (Validate::isLoadedObject($blogPost) && $blogPost->active && $blogPost->lang_active && $blogPost->link) {
+            if (Validate::isLoadedObject($blogPost)
+                && $blogPost->active
+                && $blogPost->lang_active
+                && $blogPost->link
+                && $blogPost->isAssociatedToShop($shopId)
+            ) {
                 return $blogPost->link;
             }
         }
