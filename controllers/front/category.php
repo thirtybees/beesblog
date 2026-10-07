@@ -19,6 +19,7 @@
 
 use BeesBlogModule\BeesBlogCategory;
 use BeesBlogModule\BeesBlogPost;
+use BeesBlogModule\NotFoundPageTrait;
 
 if (!defined('_TB_VERSION_')) {
     exit;
@@ -29,6 +30,7 @@ if (!defined('_TB_VERSION_')) {
  */
 class BeesBlogCategoryModuleFrontController extends ModuleFrontController
 {
+    use NotFoundPageTrait;
 
     /**
      * @var BeesBlog
@@ -41,6 +43,14 @@ class BeesBlogCategoryModuleFrontController extends ModuleFrontController
     protected $categoryId;
 
     /**
+     * True when a category slug was requested that does not resolve in the
+     * current shop and language; set by getCategoryId()
+     *
+     * @var bool
+     */
+    protected $categoryNotFound = false;
+
+    /**
      * Initialize content
      * @throws PrestaShopException
      */
@@ -48,11 +58,16 @@ class BeesBlogCategoryModuleFrontController extends ModuleFrontController
     {
         parent::initContent();
 
+        $categoryId = $this->getCategoryId();
+        if ($this->categoryNotFound) {
+            $this->displayNotFound();
+            return;
+        }
+
         $totalPages = 0;
         $postsPerPage = Configuration::get(BeesBlog::POSTS_PER_PAGE);
         $limit = $postsPerPage;
 
-        $categoryId = $this->getCategoryId();
         $category = $this->loadCategory($categoryId);
 
         $page = (int) Tools::getValue('page');
@@ -139,11 +154,21 @@ class BeesBlogCategoryModuleFrontController extends ModuleFrontController
     protected function getCurrentPageAlternateUrl(int $shopId, int $languageId)
     {
         $categoryId = $this->getCategoryId();
+        if ($this->categoryNotFound) {
+            return null;
+        }
         if ($categoryId) {
             $category = new BeesBlogCategory($categoryId, $languageId, $shopId);
-            if (Validate::isLoadedObject($category) && $category->active && $category->link) {
+            if (Validate::isLoadedObject($category)
+                && $category->active
+                && $category->link
+                && $category->isAssociatedToShop($shopId)
+            ) {
                 return $category->link;
             }
+
+            // no alternate: the category is not available in that shop or language
+            return null;
         }
         return BeesBlog::getBeesBlogLink('beesblog', [], $shopId, $languageId);
     }
@@ -158,9 +183,7 @@ class BeesBlogCategoryModuleFrontController extends ModuleFrontController
         if (is_null($this->categoryId)) {
             $rewrite = trim(Tools::getValue('cat_rewrite'));
             $this->categoryId = (int)BeesBlogCategory::getIdByRewrite($rewrite);
-            if ($rewrite && !$this->categoryId) {
-                Tools::redirect(BeesBlog::getBeesBlogLink());
-            }
+            $this->categoryNotFound = $rewrite && !$this->categoryId;
         }
         return (int)$this->categoryId;
     }
