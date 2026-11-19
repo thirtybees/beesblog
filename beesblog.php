@@ -573,6 +573,7 @@ class BeesBlog extends Module
      */
     public function hookDisplayHeader()
     {
+        $this->context->smarty->registerClass('BeesBlog', 'BeesBlog');
         $controller = $this->context->controller;
         $controller->addCSS($this->_path.'views/css/beesblogstyle.css', 'all');
 
