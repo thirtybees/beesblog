@@ -571,7 +571,7 @@ class BeesBlog extends Module
      * @throws SmartyException
      * @since 1.0.0
      */
-
+    public function hookDisplayHeader()
     {
         $this->context->smarty->registerClass('BeesBlog', 'BeesBlog');
         $controller = $this->context->controller;
